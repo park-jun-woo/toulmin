@@ -23,9 +23,13 @@ g := toulmin.NewGraph("voting").
     Rebuttal(HasCriminalRecord, 1.0).
     Defeat(IsAdult, HasCriminalRecord)
 
+// Evaluate — verdict only
 results := g.Evaluate(claim, ground)
 // results[0].Verdict: +1.0 violation, 0.0 undecided, -1.0 rebutted
-// results[0].Trace: all rules with name, role, activated, qualifier
+
+// EvaluateTrace — verdict + trace (for explainability)
+traced := g.EvaluateTrace(claim, ground)
+// traced[0].Trace: all rules with name, role, activated, qualifier
 ```
 
 ### Rule Reuse

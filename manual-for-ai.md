@@ -100,7 +100,14 @@ g := toulmin.NewGraph("voting").
     Rebuttal(HasCriminalRecord, 1.0).
     Defeat(HasCriminalRecord, IsAdult)
 
+// Evaluate — verdict only (lightweight)
 results := g.Evaluate(claim, ground)
+for _, r := range results {
+    fmt.Printf("%s: verdict=%f\n", r.Name, r.Verdict)
+}
+
+// EvaluateTrace — verdict + trace (for explainability)
+results = g.EvaluateTrace(claim, ground)
 for _, r := range results {
     fmt.Printf("%s: verdict=%f\n", r.Name, r.Verdict)
     for _, t := range r.Trace {
@@ -109,9 +116,14 @@ for _, r := range results {
 }
 ```
 
-#### Trace
+#### Evaluate vs EvaluateTrace
 
-EvalResult.Trace contains all rules (activated and inactive) with their role, result, and qualifier:
+| Method | Returns | Use case |
+|---|---|---|
+| `Evaluate` | verdict only | 판정만 필요할 때 |
+| `EvaluateTrace` | verdict + trace | 사유 설명이 필요할 때 |
+
+TraceEntry contains all rules (activated and inactive) with their role, result, and qualifier:
 
 ```go
 type TraceEntry struct {
@@ -237,9 +249,13 @@ var VotingGraph = toulmin.NewGraph("voting").
 pkg/toulmin/                — public library (engine core)
   engine.go                 — Engine struct
   engine_register.go        — Engine.Register method
-  engine_evaluate.go        — Engine.Evaluate method
+  engine_evaluate.go        — Engine.Evaluate method (verdict only)
+  engine_evaluate_trace.go  — Engine.EvaluateTrace method (verdict + trace)
   graph_builder.go          — GraphBuilder (NewGraph, Warrant, Rebuttal, Defeater, Defeat)
-  graph_builder_evaluate.go — GraphBuilder.Evaluate method
+  graph_builder_evaluate.go — GraphBuilder.Evaluate method (verdict only)
+  graph_builder_evaluate_trace.go — GraphBuilder.EvaluateTrace method (verdict + trace)
+  trace_entry.go            — TraceEntry struct
+  infer_role.go             — role inference for Engine API
   func_name.go              — function pointer → name extraction
   calc_acceptability.go     — h-Categoriser computation
   build_subgraph.go         — defeats graph construction
