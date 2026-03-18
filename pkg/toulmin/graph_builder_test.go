@@ -129,6 +129,49 @@ func TestGraphBuilderTraceIncludesInactive(t *testing.T) {
 	}
 }
 
+func TestLazySkipsRebuttalWhenWarrantFalse(t *testing.T) {
+	rebuttalCalled := false
+	falseWarrant := func(claim any, ground any) bool { return false }
+	trackedRebuttal := func(claim any, ground any) bool {
+		rebuttalCalled = true
+		return true
+	}
+	g := NewGraph("test").
+		Warrant(falseWarrant, 1.0).
+		Rebuttal(trackedRebuttal, 1.0).
+		Defeat(trackedRebuttal, falseWarrant)
+	results := g.Evaluate(nil, nil)
+	if len(results) != 0 {
+		t.Fatalf("expected 0 results (warrant false), got %d", len(results))
+	}
+	if rebuttalCalled {
+		t.Error("rebuttal func should not be called when warrant is false")
+	}
+}
+
+func TestTraceOnlyRelevantRules(t *testing.T) {
+	warrantX := func(claim any, ground any) bool { return true }
+	unrelatedDefeater := func(claim any, ground any) bool { return true }
+	g := NewGraph("test").
+		Warrant(WarrantA, 1.0).
+		Warrant(warrantX, 1.0).
+		Defeater(unrelatedDefeater, 1.0).
+		Rebuttal(RebuttalB, 1.0).
+		Defeat(RebuttalB, WarrantA).
+		Defeat(unrelatedDefeater, warrantX)
+	results := g.EvaluateTrace(nil, nil)
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+	// WarrantA's trace: WarrantA + RebuttalB only
+	traceA := results[0].Trace
+	for _, te := range traceA {
+		if te.Name != "WarrantA" && te.Name != "RebuttalB" {
+			t.Errorf("WarrantA trace contains unrelated rule: %s", te.Name)
+		}
+	}
+}
+
 func TestFuncName(t *testing.T) {
 	name := FuncName(WarrantA)
 	if name != "WarrantA" {

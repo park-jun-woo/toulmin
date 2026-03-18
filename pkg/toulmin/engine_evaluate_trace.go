@@ -1,35 +1,72 @@
 //ff:func feature=engine type=engine control=iteration dimension=1
-//ff:what EvaluateTrace — runs all rules against a claim and returns verdicts with trace
+//ff:what EvaluateTrace — lazily evaluates rules by graph traversal and returns verdicts with per-warrant trace
 package toulmin
 
-// EvaluateTrace runs all registered rules against the claim/ground pair,
-// builds a defeats subgraph from activated rules, and returns verdicts
-// with trace for warrant nodes.
+// EvaluateTrace traverses the defeats graph from each warrant node,
+// lazily executing rule funcs only when reached. Returns verdicts with
+// per-warrant trace containing only relevant rules. State is reset per warrant.
 func (e *Engine) EvaluateTrace(claim any, ground any) []EvalResult {
-	var trace []TraceEntry
-	var activated []RuleMeta
+	fnMap := make(map[string]func(any, any) bool)
+	qualMap := make(map[string]float64)
+	strMap := make(map[string]Strength)
+	edges := make(map[string][]string)
 	for _, r := range e.rules {
-		result := r.Fn(claim, ground)
-		trace = append(trace, TraceEntry{
-			Name:      r.Name,
-			Role:      inferRole(r),
-			Activated: result,
-			Qualifier: r.Qualifier,
-		})
-		if result {
-			activated = append(activated, r)
+		fnMap[r.Name] = r.Fn
+		qualMap[r.Name] = r.Qualifier
+		strMap[r.Name] = r.Strength
+		for _, target := range r.Defeats {
+			edges[target] = append(edges[target], r.Name)
 		}
 	}
-	graph := BuildSubgraph(activated)
+	attackerSet := make(map[string]bool)
+	for _, attackers := range edges {
+		for _, aid := range attackers {
+			attackerSet[aid] = true
+		}
+	}
+	ran := make(map[string]bool)
+	active := make(map[string]bool)
+	var trace []TraceEntry
+	var calc func(string, int) float64
+	calc = func(id string, depth int) float64 {
+		if depth >= maxDepth {
+			return 0.0
+		}
+		if !ran[id] {
+			ran[id] = true
+			active[id] = fnMap[id](claim, ground)
+			trace = append(trace, TraceEntry{
+				Name:      id,
+				Role:      inferRole(strMap, attackerSet, id),
+				Activated: active[id],
+				Qualifier: qualMap[id],
+			})
+		}
+		if !active[id] {
+			return -1.0
+		}
+		sum := 0.0
+		if strMap[id] != Strict {
+			for _, aid := range edges[id] {
+				raw := (calc(aid, depth+1) + 1.0) / 2.0
+				sum += raw
+			}
+		}
+		raw := qualMap[id] / (1.0 + sum)
+		return 2*raw - 1
+	}
 	var results []EvalResult
-	for _, r := range activated {
-		if len(r.Defeats) > 0 {
+	for _, r := range e.rules {
+		if len(r.Defeats) > 0 || r.Strength == Defeater {
 			continue
 		}
-		if r.Strength == Defeater {
+		ran = make(map[string]bool)
+		active = make(map[string]bool)
+		trace = nil
+		verdict := calc(r.Name, 0)
+		if !active[r.Name] {
 			continue
 		}
-		verdict := CalcAcceptability(r.Name, graph, 0)
 		results = append(results, EvalResult{Name: r.Name, Verdict: verdict, Trace: trace})
 	}
 	return results

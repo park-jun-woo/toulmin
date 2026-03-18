@@ -231,15 +231,19 @@ var VotingGraph = toulmin.NewGraph("voting").
 ## Evaluation Flow
 
 ```
-1. Run all rules: func(claim, ground) → bool
-2. Collect activated rules (true only)
-3. Build subgraph: activated nodes + defeats edges
-   (strict nodes reject incoming edges)
-4. h-Categoriser: raw(a) = w(a) / (1 + Σ raw(attackers))
+1. Start from each warrant node
+2. Run warrant func(claim, ground) → false? skip
+3. If true, traverse attackers (rebuttal/defeater) recursively
+4. Each attacker: run func → false? contributes 0 → true? recurse deeper
+5. h-Categoriser at each node: raw(a) = w(a) / (1 + Σ raw(attackers))
    verdict(a) = 2 * raw(a) - 1
    Circular attack: maxDepth(100) returns 0.0
-5. Final judgment: verdict > 0 → violation, == 0 → undecided, < 0 → rebutted
+6. Func results cached — each func runs at most once per evaluation
+7. Final judgment: verdict > 0 → violation, == 0 → undecided, < 0 → rebutted
 ```
+
+Only rules reachable from the warrant's attack chain are executed.
+EvaluateTrace returns per-warrant trace with only relevant rules.
 
 ---
 

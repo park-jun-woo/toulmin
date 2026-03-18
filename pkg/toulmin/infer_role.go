@@ -1,13 +1,14 @@
 //ff:func feature=engine type=engine control=sequence
-//ff:what inferRole — infers rule role from RuleMeta fields
+//ff:what inferRole — infers rule role from strength and attacker set
 package toulmin
 
-// inferRole determines the role of a rule from its metadata.
-func inferRole(r RuleMeta) string {
-	if r.Strength == Defeater {
+// inferRole determines the role of a rule from its strength and
+// whether it appears as an attacker in any defeat edge.
+func inferRole(strMap map[string]Strength, attackerSet map[string]bool, id string) string {
+	if strMap[id] == Defeater {
 		return "defeater"
 	}
-	if len(r.Defeats) > 0 {
+	if attackerSet[id] {
 		return "rebuttal"
 	}
 	return "warrant"
