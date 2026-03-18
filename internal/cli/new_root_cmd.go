@@ -11,5 +11,6 @@ func NewRootCmd() *cobra.Command {
 		Short: "Toulmin argumentation-based rule engine",
 	}
 	cmd.AddCommand(NewEvaluateCmd())
+	cmd.AddCommand(NewGraphCmd())
 	return cmd
 }
