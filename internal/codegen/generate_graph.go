@@ -21,7 +21,7 @@ func GenerateGraph(pkgName string, def *graphdef.GraphDef) (string, error) {
 	fmt.Fprintf(&buf, "var %s = toulmin.NewGraph(%q)", varName, def.Graph)
 	for _, r := range def.Rules {
 		method := roleToMethod(r.Role)
-		fmt.Fprintf(&buf, ".\n\t%s(%s, %g)", method, r.Name, r.Qualifier)
+		fmt.Fprintf(&buf, ".\n\t%s(%s, %g)", method, r.Name, *r.Qualifier)
 	}
 	for _, d := range def.Defeats {
 		fmt.Fprintf(&buf, ".\n\tDefeat(%s, %s)", d.From, d.To)

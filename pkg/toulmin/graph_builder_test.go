@@ -13,7 +13,10 @@ func InactiveR(claim any, ground any) (bool, any) { return false, nil }
 func TestGraphBuilderWarrantOnly(t *testing.T) {
 	g := NewGraph("test").
 		Warrant(WarrantA, 1.0)
-	results := g.EvaluateTrace(nil, nil)
+	results, err := g.EvaluateTrace(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -27,7 +30,10 @@ func TestGraphBuilderWithDefeat(t *testing.T) {
 		Warrant(WarrantA, 1.0).
 		Rebuttal(RebuttalB, 1.0).
 		Defeat(RebuttalB, WarrantA)
-	results := g.EvaluateTrace(nil, nil)
+	results, err := g.EvaluateTrace(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -43,7 +49,10 @@ func TestGraphBuilderCompensation(t *testing.T) {
 		Defeater(DefeaterC, 1.0).
 		Defeat(RebuttalB, WarrantA).
 		Defeat(DefeaterC, RebuttalB)
-	results := g.EvaluateTrace(nil, nil)
+	results, err := g.EvaluateTrace(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -56,7 +65,10 @@ func TestGraphBuilderCompensation(t *testing.T) {
 func TestGraphBuilderQualifierDefault(t *testing.T) {
 	g := NewGraph("test").
 		Warrant(WarrantA)
-	results := g.EvaluateTrace(nil, nil)
+	results, err := g.EvaluateTrace(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -74,8 +86,14 @@ func TestGraphBuilderFuncReuse(t *testing.T) {
 		Warrant(WarrantA, 1.0).
 		Defeater(DefeaterC, 1.0).
 		Defeat(DefeaterC, WarrantA)
-	r1 := g1.Evaluate(nil, nil)
-	r2 := g2.Evaluate(nil, nil)
+	r1, err := g1.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("g1 error: %v", err)
+	}
+	r2, err := g2.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("g2 error: %v", err)
+	}
 	if len(r1) != 1 || len(r2) != 1 {
 		t.Fatalf("expected 1 result each, got %d and %d", len(r1), len(r2))
 	}
@@ -92,7 +110,10 @@ func TestGraphBuilderTraceAllRules(t *testing.T) {
 		Warrant(WarrantA, 1.0).
 		Rebuttal(RebuttalB, 0.8).
 		Defeat(RebuttalB, WarrantA)
-	results := g.EvaluateTrace(nil, nil)
+	results, err := g.EvaluateTrace(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -113,7 +134,10 @@ func TestGraphBuilderTraceIncludesInactive(t *testing.T) {
 		Warrant(WarrantA, 1.0).
 		Rebuttal(InactiveR, 1.0).
 		Defeat(InactiveR, WarrantA)
-	results := g.EvaluateTrace(nil, nil)
+	results, err := g.EvaluateTrace(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -140,7 +164,10 @@ func TestLazySkipsRebuttalWhenWarrantFalse(t *testing.T) {
 		Warrant(falseWarrant, 1.0).
 		Rebuttal(trackedRebuttal, 1.0).
 		Defeat(trackedRebuttal, falseWarrant)
-	results := g.Evaluate(nil, nil)
+	results, err := g.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 0 {
 		t.Fatalf("expected 0 results (warrant false), got %d", len(results))
 	}
@@ -159,11 +186,13 @@ func TestTraceOnlyRelevantRules(t *testing.T) {
 		Rebuttal(RebuttalB, 1.0).
 		Defeat(RebuttalB, WarrantA).
 		Defeat(unrelatedDefeater, warrantX)
-	results := g.EvaluateTrace(nil, nil)
+	results, err := g.EvaluateTrace(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 2 {
 		t.Fatalf("expected 2 results, got %d", len(results))
 	}
-	// WarrantA's trace: WarrantA + RebuttalB only
 	traceA := results[0].Trace
 	for _, te := range traceA {
 		if te.Name != "WarrantA" && te.Name != "RebuttalB" {
@@ -180,7 +209,6 @@ func TestFuncName(t *testing.T) {
 }
 
 func TestFuncIDUniqueness(t *testing.T) {
-	// Anonymous functions in the same package get distinct funcIDs
 	fn1 := func(claim any, ground any) (bool, any) { return true, nil }
 	fn2 := func(claim any, ground any) (bool, any) { return false, nil }
 	id1 := funcID(fn1)
@@ -193,7 +221,10 @@ func TestFuncIDUniqueness(t *testing.T) {
 func TestQualifierZero(t *testing.T) {
 	g := NewGraph("test").
 		Warrant(WarrantA, 0.0)
-	results := g.Evaluate(nil, nil)
+	results, err := g.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -212,12 +243,52 @@ func TestDeepDefeatChain(t *testing.T) {
 		eng.Register(RuleMeta{Name: name, Qualifier: 1.0, Strength: Defeater, Defeats: []string{prev}, Fn: fn})
 		prev = name
 	}
-	results := eng.Evaluate(nil, nil)
+	results, err := eng.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
 	v := results[0].Verdict
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		t.Errorf("verdict should be finite, got %f", v)
+	}
+}
+
+func TestGraphBuilderCycleError(t *testing.T) {
+	cycleA := func(claim any, ground any) (bool, any) { return true, nil }
+	cycleB := func(claim any, ground any) (bool, any) { return true, nil }
+	g := NewGraph("test").
+		Warrant(cycleA, 1.0).
+		Rebuttal(cycleB, 1.0).
+		Defeat(cycleB, cycleA).
+		Defeat(cycleA, cycleB)
+	_, err := g.Evaluate(nil, nil)
+	if err == nil {
+		t.Fatal("expected error for circular defeat graph")
+	}
+}
+
+func TestDeepDefeatChainOver100(t *testing.T) {
+	fn := func(c any, g any) (bool, any) { return true, nil }
+	eng := NewEngine()
+	eng.Register(RuleMeta{Name: "W", Qualifier: 1.0, Strength: Defeasible, Fn: fn})
+	prev := "W"
+	for i := 1; i <= 150; i++ {
+		name := string(rune('A'+i%26)) + string(rune('0'+i/26))
+		eng.Register(RuleMeta{Name: name, Qualifier: 1.0, Strength: Defeater, Defeats: []string{prev}, Fn: fn})
+		prev = name
+	}
+	results, err := eng.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	v := results[0].Verdict
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		t.Errorf("verdict should be finite for deep non-cyclic chain, got %f", v)
 	}
 }

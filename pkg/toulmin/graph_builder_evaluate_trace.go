@@ -5,15 +5,19 @@ package toulmin
 // EvaluateTrace traverses the defeats graph from each warrant node,
 // lazily executing rule funcs only when reached. Returns verdicts with
 // per-warrant trace containing only relevant rules. State is reset per warrant.
-func (b *GraphBuilder) EvaluateTrace(claim any, ground any) []EvalResult {
-	ctx := newEvalContext(b.rules, b.defeats, b.roles)
+// Returns an error if the defeat graph contains a cycle.
+func (b *GraphBuilder) EvaluateTrace(claim any, ground any) ([]EvalResult, error) {
+	ctx, err := newEvalContext(b.rules, b.defeats, b.roles)
+	if err != nil {
+		return nil, err
+	}
 	var results []EvalResult
 	for _, r := range b.rules {
 		if !isWarrant(ctx.attackerSet, r.Strength, r.Name) {
 			continue
 		}
 		ctx.reset()
-		verdict := ctx.calcTrace(r.Name, claim, ground, 0)
+		verdict := ctx.calcTrace(r.Name, claim, ground)
 		if !ctx.active[r.Name] {
 			continue
 		}
@@ -24,5 +28,5 @@ func (b *GraphBuilder) EvaluateTrace(claim any, ground any) []EvalResult {
 		}
 		results = append(results, EvalResult{Name: shortName(r.Name), Verdict: verdict, Evidence: ctx.evidence[r.Name], Trace: trace})
 	}
-	return results
+	return results, nil
 }

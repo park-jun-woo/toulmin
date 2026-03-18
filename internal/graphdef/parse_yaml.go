@@ -21,8 +21,9 @@ func ParseYAML(path string) (*GraphDef, error) {
 		return nil, fmt.Errorf("parse yaml: %w", err)
 	}
 	for i := range def.Rules {
-		if def.Rules[i].Qualifier == 0 {
-			def.Rules[i].Qualifier = 1.0
+		if def.Rules[i].Qualifier == nil {
+			v := 1.0
+			def.Rules[i].Qualifier = &v
 		}
 	}
 	return &def, nil

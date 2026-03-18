@@ -4,7 +4,8 @@ package toulmin
 
 // newEvalContext builds an evalContext from rules and explicit defeat edges.
 // If defeatEdges is nil, edges are derived from RuleMeta.Defeats.
-func newEvalContext(rules []RuleMeta, defeatEdges []defeatEdge, roleMap map[string]string) *evalContext {
+// Returns an error if the defeat graph contains a cycle.
+func newEvalContext(rules []RuleMeta, defeatEdges []defeatEdge, roleMap map[string]string) (*evalContext, error) {
 	ctx := &evalContext{
 		fnMap:    make(map[string]func(any, any) (bool, any)),
 		qualMap:  make(map[string]float64),
@@ -28,5 +29,8 @@ func newEvalContext(rules []RuleMeta, defeatEdges []defeatEdge, roleMap map[stri
 		buildEdgesFromRules(ctx.edges, rules)
 	}
 	ctx.attackerSet = buildAttackerSet(ctx.edges)
-	return ctx
+	if err := detectCycle(ctx.edges); err != nil {
+		return nil, err
+	}
+	return ctx, nil
 }

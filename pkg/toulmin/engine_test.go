@@ -1,6 +1,7 @@
 package toulmin
 
 import (
+	"fmt"
 	"math"
 	"testing"
 )
@@ -11,7 +12,10 @@ func TestWarrantOnly(t *testing.T) {
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
 		Fn: func(c any, g any) (bool, any) { return true, nil },
 	})
-	results := eng.Evaluate(nil, nil)
+	results, err := eng.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -31,7 +35,10 @@ func TestWarrantWithDefeater(t *testing.T) {
 		Defeats: []string{"W"},
 		Fn:      func(c any, g any) (bool, any) { return true, nil },
 	})
-	results := eng.Evaluate(nil, nil)
+	results, err := eng.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -56,13 +63,14 @@ func TestCompensation(t *testing.T) {
 		Defeats: []string{"D1"},
 		Fn:      func(c any, g any) (bool, any) { return true, nil },
 	})
-	results := eng.Evaluate(nil, nil)
+	results, err := eng.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
-	// D2 attacks D1 → D1 weakened → W partially restored
-	// raw(D2)=1.0, raw(D1)=0.5, raw(W)=0.667 → verdict(W)≈+0.333
-	expected := 1.0/3.0
+	expected := 1.0 / 3.0
 	if math.Abs(results[0].Verdict-expected) > 0.001 {
 		t.Errorf("expected ≈%f, got %f", expected, results[0].Verdict)
 	}
@@ -79,7 +87,10 @@ func TestStrictWarrant(t *testing.T) {
 		Defeats: []string{"W"},
 		Fn:      func(c any, g any) (bool, any) { return true, nil },
 	})
-	results := eng.Evaluate(nil, nil)
+	results, err := eng.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -88,7 +99,7 @@ func TestStrictWarrant(t *testing.T) {
 	}
 }
 
-func TestCircularAttack(t *testing.T) {
+func TestCircularAttackError(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "A", Qualifier: 1.0, Strength: Defeasible,
@@ -100,10 +111,9 @@ func TestCircularAttack(t *testing.T) {
 		Defeats: []string{"A"},
 		Fn:      func(c any, g any) (bool, any) { return true, nil },
 	})
-	results := eng.Evaluate(nil, nil)
-	// Both A and B are attackers, so neither is a warrant — no results
-	if len(results) != 0 {
-		t.Fatalf("expected 0 results (both are attackers), got %d", len(results))
+	_, err := eng.Evaluate(nil, nil)
+	if err == nil {
+		t.Fatal("expected error for circular defeat graph")
 	}
 }
 
@@ -118,7 +128,10 @@ func TestNilFuncGuard(t *testing.T) {
 		Defeats: []string{"W"},
 		Fn:      nil,
 	})
-	results := eng.Evaluate(nil, nil)
+	results, err := eng.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -134,13 +147,19 @@ func TestEngineGraphBuilderConsistency(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{Name: "w", Qualifier: 1.0, Strength: Defeasible, Fn: w})
 	eng.Register(RuleMeta{Name: "r", Qualifier: 0.8, Strength: Defeasible, Defeats: []string{"w"}, Fn: r})
-	engResults := eng.Evaluate(nil, nil)
+	engResults, err := eng.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("engine error: %v", err)
+	}
 
 	g := NewGraph("test").
 		Warrant(w, 1.0).
 		Rebuttal(r, 0.8).
 		Defeat(r, w)
-	gbResults := g.Evaluate(nil, nil)
+	gbResults, err := g.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("graph builder error: %v", err)
+	}
 
 	if len(engResults) != 1 || len(gbResults) != 1 {
 		t.Fatalf("expected 1 result each, got %d and %d", len(engResults), len(gbResults))
@@ -152,13 +171,36 @@ func TestEngineGraphBuilderConsistency(t *testing.T) {
 
 func TestParseAnnotation(t *testing.T) {
 	lines := []string{
-		`//tm:backing "Böhm-Jacopini theorem"`,
+		`//tm:backing "Bohm-Jacopini theorem"`,
 	}
 	meta := ParseAnnotation(lines)
-	if meta.Backing != "Böhm-Jacopini theorem" {
-		t.Errorf("backing: expected 'Böhm-Jacopini theorem', got '%s'", meta.Backing)
+	if meta.Backing != "Bohm-Jacopini theorem" {
+		t.Errorf("backing: expected 'Bohm-Jacopini theorem', got '%s'", meta.Backing)
 	}
 	if meta.Qualifier != 1.0 {
 		t.Errorf("qualifier: expected default 1.0, got %f", meta.Qualifier)
+	}
+}
+
+func TestDeepDefeatChainEngine(t *testing.T) {
+	fn := func(c any, g any) (bool, any) { return true, nil }
+	eng := NewEngine()
+	eng.Register(RuleMeta{Name: "W", Qualifier: 1.0, Strength: Defeasible, Fn: fn})
+	prev := "W"
+	for i := 1; i <= 150; i++ {
+		name := fmt.Sprintf("D%d", i)
+		eng.Register(RuleMeta{Name: name, Qualifier: 1.0, Strength: Defeater, Defeats: []string{prev}, Fn: fn})
+		prev = name
+	}
+	results, err := eng.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	v := results[0].Verdict
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		t.Errorf("verdict should be finite, got %f", v)
 	}
 }

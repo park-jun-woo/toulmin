@@ -3,13 +3,19 @@
 package toulmin
 
 import (
+	"fmt"
 	"reflect"
 	"runtime"
 )
 
 // funcID returns the full path name of a function from its pointer.
 // e.g. "github.com/example/pkg.IsAdult"
+// Returns a fallback string if runtime.FuncForPC returns nil.
 func funcID(fn func(any, any) (bool, any)) string {
 	ptr := reflect.ValueOf(fn).Pointer()
-	return runtime.FuncForPC(ptr).Name()
+	f := runtime.FuncForPC(ptr)
+	if f == nil {
+		return fmt.Sprintf("unknown_%d", ptr)
+	}
+	return f.Name()
 }
