@@ -1,12 +1,12 @@
 //ff:func feature=engine type=validator control=iteration dimension=1
-//ff:what detectCycle — DFS cycle detection on directed defeat graph
+//ff:what DetectCycle — DFS cycle detection on directed defeat graph
 package toulmin
 
 import "fmt"
 
-// detectCycle checks for cycles in a directed graph using DFS.
+// DetectCycle checks for cycles in a directed graph using DFS.
 // Returns an error naming the node where a cycle was detected.
-func detectCycle(edges map[string][]string) error {
+func DetectCycle(edges map[string][]string) error {
 	state := make(map[string]int) // 0=unvisited, 1=visiting, 2=done
 	var visit func(id string) error
 	visit = func(id string) error {

@@ -1,0 +1,38 @@
+//ff:func feature=cli type=command control=iteration dimension=1
+//ff:what runGraphGo — analyzes Go file for GraphBuilder defeat cycles
+package cli
+
+import (
+	"fmt"
+
+	"github.com/park-jun-woo/toulmin/internal/analyzer"
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+	"github.com/spf13/cobra"
+)
+
+// runGraphGo analyzes a Go source file, extracts GraphBuilder defeat
+// relationships via AST, and checks each graph for cycles.
+func runGraphGo(cmd *cobra.Command, goPath string) error {
+	graphs, err := analyzer.ExtractDefeats(goPath)
+	if err != nil {
+		return fmt.Errorf("parse %s: %w", goPath, err)
+	}
+	if len(graphs) == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "no GraphBuilder definitions found")
+		return nil
+	}
+	hasError := false
+	for _, g := range graphs {
+		if err := toulmin.DetectCycle(g.Defeats); err != nil {
+			fmt.Fprintf(cmd.OutOrStderr(), "graph %q: %v\n", g.Name, err)
+			hasError = true
+		} else {
+			fmt.Fprintf(cmd.OutOrStdout(), "graph %q: no cycles detected (%d rules, %d defeats)\n",
+				g.Name, len(g.Rules), len(g.Defeats))
+		}
+	}
+	if hasError {
+		return fmt.Errorf("cycle detected in one or more graphs")
+	}
+	return nil
+}

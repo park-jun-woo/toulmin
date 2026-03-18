@@ -29,7 +29,7 @@ func newEvalContext(rules []RuleMeta, defeatEdges []defeatEdge, roleMap map[stri
 		buildEdgesFromRules(ctx.edges, rules)
 	}
 	ctx.attackerSet = buildAttackerSet(ctx.edges)
-	if err := detectCycle(ctx.edges); err != nil {
+	if err := DetectCycle(ctx.edges); err != nil {
 		return nil, err
 	}
 	return ctx, nil

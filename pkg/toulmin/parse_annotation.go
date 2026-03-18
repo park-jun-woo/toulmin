@@ -1,4 +1,4 @@
-//ff:func feature=annotation type=parser control=iteration dimension=1
+//ff:func feature=engine type=parser control=iteration dimension=1
 //ff:what ParseAnnotation — parses //tm: comment lines into RuleMeta
 package toulmin
 
