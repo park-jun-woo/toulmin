@@ -23,13 +23,14 @@ g := toulmin.NewGraph("voting").
     Rebuttal(HasCriminalRecord, 1.0).
     Defeat(IsAdult, HasCriminalRecord)
 
-// Evaluate — verdict only
+// Evaluate — verdict + evidence
 results := g.Evaluate(claim, ground)
 // results[0].Verdict: +1.0 violation, 0.0 undecided, -1.0 rebutted
+// results[0].Evidence: warrant's domain-specific evidence (any)
 
-// EvaluateTrace — verdict + trace (for explainability)
+// EvaluateTrace — verdict + evidence + per-warrant trace
 traced := g.EvaluateTrace(claim, ground)
-// traced[0].Trace: all rules with name, role, activated, qualifier
+// traced[0].Trace: relevant rules with name, role, activated, qualifier, evidence
 ```
 
 ### Rule Reuse
@@ -113,15 +114,21 @@ h-Categoriser: `raw(a) = w(a) / (1 + Sum(raw(attackers)))`, then `verdict = 2*ra
 | Defeasible | Accepts incoming attack edges |
 | Defeater | Outgoing attack edges only, no own verdict |
 
-## Annotations
-
-Rules declare metadata via `//rule:` comments (backing stays on the function):
+## Rule Signature
 
 ```go
-//rule:warrant qualifier=1.0 strength=strict
-//rule:backing "Bohm-Jacopini theorem"
-//rule:what F1: one func per file
-func CheckOneFileOneFunc(claim any, ground any) bool { ... }
+func(claim any, ground any) (bool, any)
+```
+
+Returns `(judgment, evidence)`. Evidence is domain-specific (`any`). Return `nil` when not needed.
+
+## Annotations
+
+Backing stays on the function as optional metadata:
+
+```go
+//tm:backing "Bohm-Jacopini theorem"
+func CheckOneFileOneFunc(claim any, ground any) (bool, any) { ... }
 ```
 
 ## Theory

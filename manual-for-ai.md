@@ -17,10 +17,10 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 All rules share one signature:
 
 ```go
-func(claim any, ground any) bool
+func(claim any, ground any) (bool, any)
 ```
 
-A rule returns `true` when its condition holds. The engine doesn't look inside — it only needs the bool result.
+A rule returns `(true/false, evidence)`. The bool is the judgment, the second value is domain-specific evidence (e.g. error details). Return `nil` when no evidence is needed.
 
 ### Strength
 
@@ -71,13 +71,17 @@ Write `//tm:backing` comment directly above the function declaration. Everything
 
 ```go
 //tm:backing "Böhm-Jacopini theorem"
-func CheckOneFileOneFunc(claim any, ground any) bool {
-    return ground.(FileGround).FuncCount > 1
+func CheckOneFileOneFunc(claim any, ground any) (bool, any) {
+    gf := ground.(*FileGround)
+    if len(gf.Funcs) > 1 {
+        return true, &Evidence{Got: len(gf.Funcs), Expected: 1}
+    }
+    return false, nil
 }
 
 //tm:backing "test files conventionally group multiple test funcs"
-func TestFileException(claim any, ground any) bool {
-    return strings.HasSuffix(claim.(string), "_test.go")
+func TestFileException(claim any, ground any) (bool, any) {
+    return strings.HasSuffix(claim.(string), "_test.go"), nil
 }
 ```
 
@@ -120,10 +124,21 @@ for _, r := range results {
 
 | Method | Returns | Use case |
 |---|---|---|
-| `Evaluate` | verdict only | 판정만 필요할 때 |
-| `EvaluateTrace` | verdict + trace | 사유 설명이 필요할 때 |
+| `Evaluate` | verdict + evidence | 판정 + 증거 |
+| `EvaluateTrace` | verdict + evidence + trace | 판정 + 증거 + 사유 설명 |
 
-TraceEntry contains all rules (activated and inactive) with their role, result, and qualifier:
+EvalResult:
+
+```go
+type EvalResult struct {
+    Name     string       `json:"name"`
+    Verdict  float64      `json:"verdict"`
+    Evidence any          `json:"evidence,omitempty"` // warrant's evidence
+    Trace    []TraceEntry `json:"trace"`
+}
+```
+
+TraceEntry contains relevant rules with their role, result, qualifier, and evidence:
 
 ```go
 type TraceEntry struct {
@@ -131,6 +146,7 @@ type TraceEntry struct {
     Role      string  `json:"role"`      // "warrant", "rebuttal", "defeater"
     Activated bool    `json:"activated"` // func(claim, ground) result
     Qualifier float64 `json:"qualifier"` // applied weight
+    Evidence  any     `json:"evidence,omitempty"` // rule's evidence
 }
 ```
 
@@ -328,5 +344,5 @@ verdict(W) = +1.0 (unchanged)
 |---|---|
 | Missing `//tm:backing` | Optional, but recommended — document why the rule exists |
 | Declaring role/defeats on function | Role, defeats, qualifier, strength belong in Graph Builder or YAML |
-| Rule func wrong signature | Must be `func(claim any, ground any) bool` |
+| Rule func wrong signature | Must be `func(claim any, ground any) (bool, any)` |
 | Editing `graph_gen.go` manually | Re-run `toulmin graph` instead. File is generated |
