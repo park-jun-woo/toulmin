@@ -6,5 +6,6 @@ package toulmin
 type GraphBuilder struct {
 	name    string
 	rules   []RuleMeta
+	roles   map[string]string
 	defeats []defeatEdge
 }

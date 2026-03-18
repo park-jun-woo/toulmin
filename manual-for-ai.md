@@ -103,6 +103,22 @@ g := toulmin.NewGraph("voting").
 results := g.Evaluate(claim, ground)
 for _, r := range results {
     fmt.Printf("%s: verdict=%f\n", r.Name, r.Verdict)
+    for _, t := range r.Trace {
+        fmt.Printf("  %s(%s): activated=%v, qualifier=%g\n", t.Name, t.Role, t.Activated, t.Qualifier)
+    }
+}
+```
+
+#### Trace
+
+EvalResult.Trace contains all rules (activated and inactive) with their role, result, and qualifier:
+
+```go
+type TraceEntry struct {
+    Name      string  `json:"name"`
+    Role      string  `json:"role"`      // "warrant", "rebuttal", "defeater"
+    Activated bool    `json:"activated"` // func(claim, ground) result
+    Qualifier float64 `json:"qualifier"` // applied weight
 }
 ```
 

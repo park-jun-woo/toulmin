@@ -5,9 +5,10 @@ import (
 	"testing"
 )
 
-func WarrantA(claim any, ground any) bool { return true }
+func WarrantA(claim any, ground any) bool  { return true }
 func RebuttalB(claim any, ground any) bool { return true }
 func DefeaterC(claim any, ground any) bool { return true }
+func InactiveR(claim any, ground any) bool { return false }
 
 func TestGraphBuilderWarrantOnly(t *testing.T) {
 	g := NewGraph("test").
@@ -83,6 +84,48 @@ func TestGraphBuilderFuncReuse(t *testing.T) {
 	}
 	if r2[0].Verdict != 0.0 {
 		t.Errorf("g2: expected 0.0, got %f", r2[0].Verdict)
+	}
+}
+
+func TestGraphBuilderTraceAllRules(t *testing.T) {
+	g := NewGraph("test").
+		Warrant(WarrantA, 1.0).
+		Rebuttal(RebuttalB, 0.8).
+		Defeat(RebuttalB, WarrantA)
+	results := g.Evaluate(nil, nil)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	trace := results[0].Trace
+	if len(trace) != 2 {
+		t.Fatalf("expected 2 trace entries, got %d", len(trace))
+	}
+	if trace[0].Name != "WarrantA" || trace[0].Role != "warrant" || !trace[0].Activated || trace[0].Qualifier != 1.0 {
+		t.Errorf("trace[0] unexpected: %+v", trace[0])
+	}
+	if trace[1].Name != "RebuttalB" || trace[1].Role != "rebuttal" || !trace[1].Activated || trace[1].Qualifier != 0.8 {
+		t.Errorf("trace[1] unexpected: %+v", trace[1])
+	}
+}
+
+func TestGraphBuilderTraceIncludesInactive(t *testing.T) {
+	g := NewGraph("test").
+		Warrant(WarrantA, 1.0).
+		Rebuttal(InactiveR, 1.0).
+		Defeat(InactiveR, WarrantA)
+	results := g.Evaluate(nil, nil)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	trace := results[0].Trace
+	if len(trace) != 2 {
+		t.Fatalf("expected 2 trace entries, got %d", len(trace))
+	}
+	if trace[1].Activated {
+		t.Errorf("expected InactiveR activated=false, got true")
+	}
+	if results[0].Verdict != 1.0 {
+		t.Errorf("expected +1.0 (rebuttal inactive), got %f", results[0].Verdict)
 	}
 }
 

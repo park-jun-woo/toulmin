@@ -8,11 +8,13 @@ func (b *GraphBuilder) Defeater(fn func(any, any) bool, qualifier ...float64) *G
 	if len(qualifier) > 0 {
 		q = qualifier[0]
 	}
+	name := FuncName(fn)
 	b.rules = append(b.rules, RuleMeta{
-		Name:      FuncName(fn),
+		Name:      name,
 		Qualifier: q,
 		Strength:  Defeater,
 		Fn:        fn,
 	})
+	b.roles[name] = "defeater"
 	return b
 }
