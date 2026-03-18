@@ -7,7 +7,7 @@ import "strings"
 // ParseAnnotation parses //rule: prefixed comment lines into a RuleMeta.
 // The returned RuleMeta has Fn=nil; the caller must set it before registering.
 func ParseAnnotation(lines []string) RuleMeta {
-	var meta RuleMeta
+	meta := RuleMeta{Qualifier: 1.0}
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "//rule:backing ") {
