@@ -277,12 +277,14 @@ pkg/toulmin/                — public library (engine core)
   trace_entry.go            — TraceEntry struct
   infer_role.go             — role inference for Engine API
   func_name.go              — function pointer → name extraction
-  calc_acceptability.go     — h-Categoriser computation
-  build_subgraph.go         — defeats graph construction
+  eval_context.go           — evalContext shared state + maxDepth constant
+  new_eval_context.go       — evalContext factory
+  eval_context_calc.go      — h-Categoriser lazy calc (single source of truth)
+  eval_context_calc_trace.go — h-Categoriser lazy calc with trace collection
+  eval_context_reset.go     — per-warrant state reset
+  is_warrant.go             — warrant identification helper
   rule_meta.go              — RuleMeta struct
   strength.go               — Strict/Defeasible/Defeater
-  node.go                   — graph node
-  rule_graph.go             — RuleGraph struct
   eval_result.go            — EvalResult struct
   parse_annotation.go       — //rule: parser
 
