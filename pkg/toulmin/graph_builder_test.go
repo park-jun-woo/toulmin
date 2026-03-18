@@ -13,7 +13,7 @@ func InactiveR(claim any, ground any) bool { return false }
 func TestGraphBuilderWarrantOnly(t *testing.T) {
 	g := NewGraph("test").
 		Warrant(WarrantA, 1.0)
-	results := g.Evaluate(nil, nil)
+	results := g.EvaluateTrace(nil, nil)
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -27,7 +27,7 @@ func TestGraphBuilderWithDefeat(t *testing.T) {
 		Warrant(WarrantA, 1.0).
 		Rebuttal(RebuttalB, 1.0).
 		Defeat(RebuttalB, WarrantA)
-	results := g.Evaluate(nil, nil)
+	results := g.EvaluateTrace(nil, nil)
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -43,7 +43,7 @@ func TestGraphBuilderCompensation(t *testing.T) {
 		Defeater(DefeaterC, 1.0).
 		Defeat(RebuttalB, WarrantA).
 		Defeat(DefeaterC, RebuttalB)
-	results := g.Evaluate(nil, nil)
+	results := g.EvaluateTrace(nil, nil)
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -56,7 +56,7 @@ func TestGraphBuilderCompensation(t *testing.T) {
 func TestGraphBuilderQualifierDefault(t *testing.T) {
 	g := NewGraph("test").
 		Warrant(WarrantA)
-	results := g.Evaluate(nil, nil)
+	results := g.EvaluateTrace(nil, nil)
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -92,7 +92,7 @@ func TestGraphBuilderTraceAllRules(t *testing.T) {
 		Warrant(WarrantA, 1.0).
 		Rebuttal(RebuttalB, 0.8).
 		Defeat(RebuttalB, WarrantA)
-	results := g.Evaluate(nil, nil)
+	results := g.EvaluateTrace(nil, nil)
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -113,7 +113,7 @@ func TestGraphBuilderTraceIncludesInactive(t *testing.T) {
 		Warrant(WarrantA, 1.0).
 		Rebuttal(InactiveR, 1.0).
 		Defeat(InactiveR, WarrantA)
-	results := g.Evaluate(nil, nil)
+	results := g.EvaluateTrace(nil, nil)
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}

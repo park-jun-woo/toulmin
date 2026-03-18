@@ -1,22 +1,14 @@
 //ff:func feature=engine type=engine control=iteration dimension=1
-//ff:what Evaluate — runs all rules against a claim and returns verdicts with trace
+//ff:what Evaluate — runs all rules against a claim and returns verdicts
 package toulmin
 
 // Evaluate runs all registered rules against the claim/ground pair,
 // builds a defeats subgraph from activated rules, and returns verdicts
-// with trace for warrant nodes.
+// for warrant nodes (rules with empty Defeats and non-Defeater strength).
 func (e *Engine) Evaluate(claim any, ground any) []EvalResult {
-	var trace []TraceEntry
 	var activated []RuleMeta
 	for _, r := range e.rules {
-		result := r.Fn(claim, ground)
-		trace = append(trace, TraceEntry{
-			Name:      r.Name,
-			Role:      inferRole(r),
-			Activated: result,
-			Qualifier: r.Qualifier,
-		})
-		if result {
+		if r.Fn(claim, ground) {
 			activated = append(activated, r)
 		}
 	}
@@ -30,7 +22,7 @@ func (e *Engine) Evaluate(claim any, ground any) []EvalResult {
 			continue
 		}
 		verdict := CalcAcceptability(r.Name, graph, 0)
-		results = append(results, EvalResult{Name: r.Name, Verdict: verdict, Trace: trace})
+		results = append(results, EvalResult{Name: r.Name, Verdict: verdict})
 	}
 	return results
 }

@@ -1,22 +1,14 @@
 //ff:func feature=engine type=engine control=iteration dimension=1
-//ff:what Evaluate — runs graph builder rules against claim/ground and returns verdicts with trace
+//ff:what Evaluate — runs graph builder rules against claim/ground and returns verdicts
 package toulmin
 
 // Evaluate runs all rules in the graph against the claim/ground pair,
 // builds a defeats subgraph from activated rules with builder-defined edges,
-// and returns verdicts with trace for non-attacking nodes.
+// and returns verdicts for non-attacking nodes.
 func (b *GraphBuilder) Evaluate(claim any, ground any) []EvalResult {
-	var trace []TraceEntry
 	var activated []RuleMeta
 	for _, r := range b.rules {
-		result := r.Fn(claim, ground)
-		trace = append(trace, TraceEntry{
-			Name:      r.Name,
-			Role:      b.roles[r.Name],
-			Activated: result,
-			Qualifier: r.Qualifier,
-		})
-		if result {
+		if r.Fn(claim, ground) {
 			activated = append(activated, r)
 		}
 	}
@@ -31,7 +23,7 @@ func (b *GraphBuilder) Evaluate(claim any, ground any) []EvalResult {
 			continue
 		}
 		verdict := CalcAcceptability(r.Name, graph, 0)
-		results = append(results, EvalResult{Name: r.Name, Verdict: verdict, Trace: trace})
+		results = append(results, EvalResult{Name: r.Name, Verdict: verdict})
 	}
 	return results
 }
