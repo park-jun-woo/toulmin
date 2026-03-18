@@ -25,11 +25,8 @@ func newEvalContext(rules []RuleMeta, defeatEdges []defeatEdge, roleMap map[stri
 			ctx.edges[d.to] = append(ctx.edges[d.to], d.from)
 		}
 	} else {
-		for _, r := range rules {
-			for _, target := range r.Defeats {
-				ctx.edges[target] = append(ctx.edges[target], r.Name)
-			}
-		}
+		buildEdgesFromRules(ctx.edges, rules)
 	}
+	ctx.attackerSet = buildAttackerSet(ctx.edges)
 	return ctx
 }

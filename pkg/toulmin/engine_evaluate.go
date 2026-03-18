@@ -9,7 +9,7 @@ func (e *Engine) Evaluate(claim any, ground any) []EvalResult {
 	ctx := newEvalContext(e.rules, nil, nil)
 	var results []EvalResult
 	for _, r := range e.rules {
-		if !isWarrant(ctx.edges, r.Strength, r.Name) {
+		if !isWarrant(ctx.attackerSet, r.Strength, r.Name) {
 			continue
 		}
 		verdict := ctx.calc(r.Name, claim, ground, 0)

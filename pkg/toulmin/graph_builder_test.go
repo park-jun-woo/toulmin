@@ -178,3 +178,46 @@ func TestFuncName(t *testing.T) {
 		t.Errorf("expected 'WarrantA', got '%s'", name)
 	}
 }
+
+func TestFuncIDUniqueness(t *testing.T) {
+	// Anonymous functions in the same package get distinct funcIDs
+	fn1 := func(claim any, ground any) (bool, any) { return true, nil }
+	fn2 := func(claim any, ground any) (bool, any) { return false, nil }
+	id1 := funcID(fn1)
+	id2 := funcID(fn2)
+	if id1 == id2 {
+		t.Errorf("expected distinct funcIDs for different closures, both got %s", id1)
+	}
+}
+
+func TestQualifierZero(t *testing.T) {
+	g := NewGraph("test").
+		Warrant(WarrantA, 0.0)
+	results := g.Evaluate(nil, nil)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Verdict != -1.0 {
+		t.Errorf("expected -1.0 (qualifier=0), got %f", results[0].Verdict)
+	}
+}
+
+func TestDeepDefeatChain(t *testing.T) {
+	fn := func(c any, g any) (bool, any) { return true, nil }
+	eng := NewEngine()
+	eng.Register(RuleMeta{Name: "W", Qualifier: 1.0, Strength: Defeasible, Fn: fn})
+	prev := "W"
+	for i := 1; i <= 11; i++ {
+		name := "D" + string(rune('0'+i))
+		eng.Register(RuleMeta{Name: name, Qualifier: 1.0, Strength: Defeater, Defeats: []string{prev}, Fn: fn})
+		prev = name
+	}
+	results := eng.Evaluate(nil, nil)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	v := results[0].Verdict
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		t.Errorf("verdict should be finite, got %f", v)
+	}
+}

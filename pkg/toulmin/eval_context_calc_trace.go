@@ -17,13 +17,7 @@ func (ctx *evalContext) calcTrace(id string, claim, ground any, depth int) float
 		ctx.active[id], ctx.evidence[id] = fn(claim, ground)
 		role := ctx.roleMap[id]
 		if role == "" {
-			attackerSet := make(map[string]bool)
-			for _, attackers := range ctx.edges {
-				for _, aid := range attackers {
-					attackerSet[aid] = true
-				}
-			}
-			role = inferRole(ctx.strMap, attackerSet, id)
+			role = inferRole(ctx.strMap, ctx.attackerSet, id)
 		}
 		ctx.trace = append(ctx.trace, TraceEntry{
 			Name:      id,
