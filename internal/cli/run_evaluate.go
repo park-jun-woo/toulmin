@@ -18,7 +18,6 @@ func runEvaluate(cmd *cobra.Command, args []string) error {
 		Qualifier: 1.0,
 		Strength:  toulmin.Defeasible,
 		Backing:   "Böhm-Jacopini theorem",
-		What:      "F1: one func per file",
 		Fn:        func(claim any, ground any) bool { return true },
 	})
 	eng.Register(toulmin.RuleMeta{
@@ -27,7 +26,6 @@ func runEvaluate(cmd *cobra.Command, args []string) error {
 		Strength:  toulmin.Defeater,
 		Defeats:   []string{"OneFileOneFunc"},
 		Backing:   "test files conventionally group multiple test funcs",
-		What:      "F5: test files allow multiple funcs",
 		Fn:        func(claim any, ground any) bool { return true },
 	})
 	results := eng.Evaluate(nil, nil)

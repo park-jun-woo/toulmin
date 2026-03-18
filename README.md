@@ -12,30 +12,82 @@ go get github.com/park-jun-woo/toulmin/pkg/toulmin
 
 ## Usage
 
+### Graph Builder API
+
+Functions are identifiers. No string names needed.
+
+```go
+g := toulmin.NewGraph("voting").
+    Warrant(IsAdult, 1.0).
+    Warrant(IsCitizen, 1.0).
+    Rebuttal(HasCriminalRecord, 1.0).
+    Defeat(IsAdult, HasCriminalRecord)
+
+verdict := g.Evaluate(claim, ground)
+// verdict[0].Verdict: +1.0 violation, 0.0 undecided, -1.0 rebutted
+```
+
+### Rule Reuse
+
+Same function, different graphs, different defeats:
+
+```go
+votingGraph := toulmin.NewGraph("voting").
+    Warrant(IsAdult, 1.0).
+    Rebuttal(HasCriminalRecord, 1.0).
+    Defeat(HasCriminalRecord, IsAdult)
+
+contractGraph := toulmin.NewGraph("contract").
+    Warrant(IsAdult, 1.0).
+    Rebuttal(IsBankrupt, 1.0).
+    Defeat(IsBankrupt, IsAdult)
+```
+
+### Qualifier
+
+Defaults to 1.0 (Toulmin original model). Override per rule:
+
+```go
+g := toulmin.NewGraph("example").
+    Warrant(IsAdult).        // qualifier = 1.0
+    Warrant(IsCitizen, 0.7)  // qualifier = 0.7
+```
+
+### Engine API (Phase 001)
+
 ```go
 eng := toulmin.NewEngine()
-
 eng.Register(toulmin.RuleMeta{
     Name:      "OneFileOneFunc",
     Qualifier: 1.0,
     Strength:  toulmin.Defeasible,
-    Backing:   "Bohm-Jacopini theorem",
-    What:      "F1: one func per file",
-    Fn:        func(claim any, ground any) bool { return ground.(FileGround).FuncCount > 1 },
+    Fn:        CheckOneFileOneFunc,
 })
-
-eng.Register(toulmin.RuleMeta{
-    Name:     "TestFileException",
-    Qualifier: 1.0,
-    Strength:  toulmin.Defeater,
-    Defeats:   []string{"OneFileOneFunc"},
-    Backing:   "test files conventionally group multiple test funcs",
-    What:      "F5: test files allow multiple funcs",
-    Fn:        func(claim any, ground any) bool { return strings.HasSuffix(claim.(string), "_test.go") },
-})
-
 results := eng.Evaluate(claim, ground)
-// results[0].Verdict: +1.0 violation, 0.0 undecided, -1.0 rebutted
+```
+
+## YAML Graph Definition
+
+Define graph structure in YAML, generate Go code:
+
+```yaml
+graph: voting
+rules:
+  - name: IsAdult
+    role: warrant
+    qualifier: 1.0
+  - name: HasCriminalRecord
+    role: rebuttal
+    qualifier: 1.0
+defeats:
+  - from: HasCriminalRecord
+    to: IsAdult
+```
+
+```bash
+toulmin graph voting.yaml                    # generate graph_gen.go
+toulmin graph voting.yaml --dry-run          # print to stdout
+toulmin graph voting.yaml --output out.go    # custom output path
 ```
 
 ## Verdict
@@ -58,18 +110,13 @@ h-Categoriser: `raw(a) = w(a) / (1 + Sum(raw(attackers)))`, then `verdict = 2*ra
 
 ## Annotations
 
-Rules declare metadata via `//rule:` comments:
+Rules declare metadata via `//rule:` comments (backing stays on the function):
 
 ```go
 //rule:warrant qualifier=1.0 strength=strict
 //rule:backing "Bohm-Jacopini theorem"
 //rule:what F1: one func per file
 func CheckOneFileOneFunc(claim any, ground any) bool { ... }
-
-//rule:defeater defeats=CheckOneFileOneFunc
-//rule:backing "test files conventionally group multiple test funcs"
-//rule:what F5: test files allow multiple funcs
-func TestFileException(claim any, ground any) bool { ... }
 ```
 
 ## Theory

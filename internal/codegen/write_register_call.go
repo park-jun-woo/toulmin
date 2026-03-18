@@ -21,9 +21,6 @@ func writeRegisterCall(buf *bytes.Buffer, meta toulmin.RuleMeta) {
 	if meta.Backing != "" {
 		fmt.Fprintf(buf, "\t\tBacking:   %q,\n", meta.Backing)
 	}
-	if meta.What != "" {
-		fmt.Fprintf(buf, "\t\tWhat:      %q,\n", meta.What)
-	}
 	fmt.Fprintf(buf, "\t\tFn:        %s,\n", meta.Name)
 	buf.WriteString("\t})\n")
 }

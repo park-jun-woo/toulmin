@@ -1,5 +1,5 @@
 //ff:func feature=cli type=command control=sequence
-//ff:what runGraph — scans source, validates graph, generates registration code
+//ff:what runGraph — reads YAML graph definition, validates, and generates Graph Builder code
 package cli
 
 import (
@@ -8,32 +8,27 @@ import (
 	"path/filepath"
 
 	"github.com/park-jun-woo/toulmin/internal/codegen"
-	"github.com/park-jun-woo/toulmin/internal/graph"
-	"github.com/park-jun-woo/toulmin/internal/scanner"
+	"github.com/park-jun-woo/toulmin/internal/graphdef"
 	"github.com/spf13/cobra"
 )
 
-// runGraph orchestrates source scanning, graph validation, and code generation.
+// runGraph orchestrates YAML parsing, validation, and Graph Builder code generation.
 func runGraph(cmd *cobra.Command, args []string) error {
-	dir := args[0]
+	yamlPath := args[0]
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
 	output, _ := cmd.Flags().GetString("output")
-	paths, err := scanner.ScanDir(dir)
+	pkgName, _ := cmd.Flags().GetString("package")
+	def, err := graphdef.ParseYAML(yamlPath)
 	if err != nil {
 		return err
 	}
-	pkgName, metas, err := scanAndParse(paths)
-	if err != nil {
+	if err := graphdef.Validate(def); err != nil {
 		return err
 	}
-	if len(metas) == 0 {
-		fmt.Println("no rules found")
-		return nil
+	if pkgName == "" {
+		pkgName = dirToPkg(filepath.Dir(yamlPath))
 	}
-	if err := graph.ValidateGraph(metas); err != nil {
-		return err
-	}
-	code, err := codegen.GenerateRegister(pkgName, metas)
+	code, err := codegen.GenerateGraph(pkgName, def)
 	if err != nil {
 		return err
 	}
@@ -42,7 +37,7 @@ func runGraph(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if output == "" {
-		output = filepath.Join(dir, "register_gen.go")
+		output = filepath.Join(filepath.Dir(yamlPath), "graph_gen.go")
 	}
 	return os.WriteFile(output, []byte(code), 0644)
 }

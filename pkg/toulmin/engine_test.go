@@ -107,21 +107,13 @@ func TestCircularAttack(t *testing.T) {
 
 func TestParseAnnotation(t *testing.T) {
 	lines := []string{
-		`//rule:warrant qualifier=1.0 strength=strict`,
-		`//rule:backing "Böhm-Jacopini theorem"`,
-		`//rule:what F1: one func per file`,
+		`//tm:backing "Böhm-Jacopini theorem"`,
 	}
 	meta := ParseAnnotation(lines)
-	if meta.Qualifier != 1.0 {
-		t.Errorf("qualifier: expected 1.0, got %f", meta.Qualifier)
-	}
-	if meta.Strength != Strict {
-		t.Errorf("strength: expected Strict, got %d", meta.Strength)
-	}
 	if meta.Backing != "Böhm-Jacopini theorem" {
 		t.Errorf("backing: expected 'Böhm-Jacopini theorem', got '%s'", meta.Backing)
 	}
-	if meta.What != "F1: one func per file" {
-		t.Errorf("what: expected 'F1: one func per file', got '%s'", meta.What)
+	if meta.Qualifier != 1.0 {
+		t.Errorf("qualifier: expected default 1.0, got %f", meta.Qualifier)
 	}
 }

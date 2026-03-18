@@ -107,10 +107,31 @@ JWT(RFC 7519)는 토큰 필드를 "facts"가 아니라 "claims"라 명명한다.
 | Ground | 판정 근거 데이터. Ground Adapter가 공급 | 0..N |
 | Warrant | rule (bool 함수). defeats 그래프에서 공격받는 노드 | 1..N |
 | Backing | warrant의 정당성 근거. 메타데이터 | 1..N |
-| Qualifier | h-Categoriser의 초기 가중치 w ∈ [0.0, 1.0] | 1 (rule당) |
+| Qualifier | 각 rule의 초기 가중치 w ∈ [0.0, 1.0] **(아래 §3.3 참조)** | 1 (rule당) |
 | Rebuttal | rule (bool 함수). defeats 그래프에서 공격하는 노드 | 0..N |
 
-### 3.3 Warrant의 인식론적 지위
+### 3.3 Qualifier의 재배치: Claim에서 Rule로
+
+툴민의 원래 모델에서 Qualifier는 **Claim에 부착**된다. "**아마도(presumably)** 이 환자에게 페니실린을 투여해야 한다" — Qualifier는 주장의 확신도를 표현하는 양상 한정사(modal qualifier)다. Warrant, Ground, Rebuttal을 종합하여 화자가 Claim에 부여하는 확신의 정도다.
+
+본 모델은 Qualifier를 Claim에서 **각 Rule(warrant, rebuttal, defeater)**로 재배치한다. 이것은 논증 이론에서 규칙 엔진으로의 적용에서 불가피한 공학적 교정이다.
+
+규칙 엔진에서 claim은 검증 대상일 뿐이다. "이 파일에 함수가 3개다" — 사실 확인이며, 확신도가 붙을 대상이 아니다. 판정의 질을 결정하는 것은 **규칙의 확신도**다:
+
+- "파일당 함수 하나" — qualifier 1.0 (확실한 규칙)
+- "권장 100줄 이하" — qualifier 0.7 (유연한 규칙)
+- "알레르기 가능성" — qualifier 0.95 (강한 반박)
+
+이 재배치는 Amgoud의 h-Categoriser[3]와 자연스럽게 결합한다. h-Categoriser의 `w(a)`가 각 노드(rule)의 초기 가중치이며, 최종 산출물인 verdict가 툴민 원래 모델에서 Qualifier가 담당하던 역할 — 판정의 확신도 — 을 대신한다.
+
+| | 툴민 원래 모델 | 본 모델 |
+|--|--------------|--------|
+| Qualifier 위치 | Claim (출력 측) | 각 Rule (입력 측) |
+| 역할 | 최종 판정의 확신도 | 각 rule의 초기 가중치 |
+| 확신도 산출 | 화자가 종합적으로 판단 | h-Categoriser가 rule 가중치들로 계산 |
+| 최종 확신도 | Qualifier 자체 | **verdict** (h-Categoriser 출력) |
+
+### 3.4 Warrant의 인식론적 지위
 
 엄밀히 말하면 warrant 자체도 claim이다 — "관리자만 삭제할 수 있다"는 조직의 합의이지 물리법칙이 아니다. 물리법칙조차 재현성이 극히 높은 claim이다. 그러나 이 인식을 무한히 적용하면 공리의 무한 후퇴에 빠진다. 괴델의 불완전성 정리[10]가 보여주듯, 충분히 강력한 형식 체계는 자기 자신의 무모순성을 증명할 수 없다. 켈젠의 근본규범(Grundnorm)[11]도 법체계에서 동일한 구조를 지적한다.
 

@@ -9,6 +9,5 @@ type RuleMeta struct {
 	Strength  Strength
 	Defeats   []string
 	Backing   string
-	What      string
 	Fn        func(claim any, ground any) bool
 }
