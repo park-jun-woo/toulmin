@@ -24,12 +24,13 @@ g := toulmin.NewGraph("voting").
     Defeat(IsAdult, HasCriminalRecord)
 
 // Evaluate — verdict + evidence
-results := g.Evaluate(claim, ground)
+results, err := g.Evaluate(claim, ground)
+// err: non-nil if defeat graph contains a cycle
 // results[0].Verdict: +1.0 violation, 0.0 undecided, -1.0 rebutted
 // results[0].Evidence: warrant's domain-specific evidence (any)
 
 // EvaluateTrace — verdict + evidence + per-warrant trace
-traced := g.EvaluateTrace(claim, ground)
+traced, err := g.EvaluateTrace(claim, ground)
 // traced[0].Trace: relevant rules with name, role, activated, qualifier, evidence
 ```
 
@@ -69,7 +70,16 @@ eng.Register(toulmin.RuleMeta{
     Strength:  toulmin.Defeasible,
     Fn:        CheckOneFileOneFunc,
 })
-results := eng.Evaluate(claim, ground)
+results, err := eng.Evaluate(claim, ground)
+```
+
+## Cycle Detection
+
+Cyclic defeat graphs (e.g. A defeats B, B defeats A) are rejected at evaluation time with an error. The CLI can also detect cycles before code generation:
+
+```bash
+toulmin graph voting.yaml --check          # validate YAML for cycles
+toulmin graph voting.go                    # analyze Go file for cycles
 ```
 
 ## YAML Graph Definition
@@ -91,9 +101,11 @@ defeats:
 ```
 
 ```bash
-toulmin graph voting.yaml                    # generate graph_gen.go
+toulmin graph voting.yaml                    # validate + generate graph_gen.go
 toulmin graph voting.yaml --dry-run          # print to stdout
 toulmin graph voting.yaml --output out.go    # custom output path
+toulmin graph voting.yaml --check            # validate only (no code generation)
+toulmin graph voting.go                      # analyze Go file for defeat cycles
 ```
 
 ## Verdict

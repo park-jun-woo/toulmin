@@ -105,13 +105,14 @@ g := toulmin.NewGraph("voting").
     Defeat(HasCriminalRecord, IsAdult)
 
 // Evaluate — verdict only (lightweight)
-results := g.Evaluate(claim, ground)
+results, err := g.Evaluate(claim, ground)
+// err != nil if defeat graph contains a cycle
 for _, r := range results {
     fmt.Printf("%s: verdict=%f\n", r.Name, r.Verdict)
 }
 
 // EvaluateTrace — verdict + trace (for explainability)
-results = g.EvaluateTrace(claim, ground)
+results, err = g.EvaluateTrace(claim, ground)
 for _, r := range results {
     fmt.Printf("%s: verdict=%f\n", r.Name, r.Verdict)
     for _, t := range r.Trace {
@@ -124,8 +125,8 @@ for _, r := range results {
 
 | Method | Returns | Use case |
 |---|---|---|
-| `Evaluate` | verdict + evidence | 판정 + 증거 |
-| `EvaluateTrace` | verdict + evidence + trace | 판정 + 증거 + 사유 설명 |
+| `Evaluate` | ([]EvalResult, error) | 판정 + 증거. 순환 시 error |
+| `EvaluateTrace` | ([]EvalResult, error) | 판정 + 증거 + 사유 설명. 순환 시 error |
 
 EvalResult:
 
@@ -187,7 +188,18 @@ eng.Register(toulmin.RuleMeta{
     Fn:        CheckOneFileOneFunc,
 })
 
-results := eng.Evaluate(claim, ground)
+results, err := eng.Evaluate(claim, ground)
+```
+
+---
+
+## Cycle Detection
+
+Cyclic defeat graphs (A defeats B, B defeats A) are detected at evaluation time via DFS and return an error. The CLI can also detect cycles before code generation or in existing Go files:
+
+```bash
+toulmin graph voting.yaml --check   # validate YAML for cycles (no codegen)
+toulmin graph voting.go             # analyze Go file for defeat cycles
 ```
 
 ---
@@ -195,18 +207,21 @@ results := eng.Evaluate(claim, ground)
 ## Commands
 
 ```bash
-toulmin graph <yaml>                          # generate graph_gen.go from YAML
+toulmin graph <yaml>                          # validate + generate graph_gen.go
 toulmin graph <yaml> --dry-run                # print to stdout
 toulmin graph <yaml> --output path/out.go     # custom output path
 toulmin graph <yaml> --package mypkg          # override package name
+toulmin graph <yaml> --check                  # validate only (no codegen)
+toulmin graph <file.go>                       # analyze Go file for defeat cycles
 toulmin evaluate                              # run example evaluation
 ```
 
 ### toulmin graph
 
-1. Reads YAML graph definition
+1. Reads YAML graph definition (or Go source file)
 2. Validates defeats references (unknown target → error, exit 1)
-3. Generates `graph_gen.go` with Graph Builder code
+3. Detects cycles in defeat graph (cycle → error, exit 1)
+4. Generates `graph_gen.go` with Graph Builder code (YAML only, skipped with --check)
 
 ### YAML Graph Definition
 
@@ -247,13 +262,13 @@ var VotingGraph = toulmin.NewGraph("voting").
 ## Evaluation Flow
 
 ```
+0. Cycle detection: DFS on defeat edges → error if cycle found (before any func execution)
 1. Start from each warrant node
 2. Run warrant func(claim, ground) → false? skip
 3. If true, traverse attackers (rebuttal/defeater) recursively
 4. Each attacker: run func → false? contributes 0 → true? recurse deeper
 5. h-Categoriser at each node: raw(a) = w(a) / (1 + Σ raw(attackers))
    verdict(a) = 2 * raw(a) - 1
-   Circular attack: maxDepth(100) returns 0.0
 6. Func results cached — each func runs at most once per evaluation
 7. Final judgment: verdict > 0 → violation, == 0 → undecided, < 0 → rebutted
 ```
@@ -277,7 +292,8 @@ pkg/toulmin/                — public library (engine core)
   trace_entry.go            — TraceEntry struct
   infer_role.go             — role inference for Engine API
   func_name.go              — function pointer → name extraction
-  eval_context.go           — evalContext shared state + maxDepth constant
+  detect_cycle.go           — DFS cycle detection on defeat graph (exported)
+  eval_context.go           — evalContext shared state
   new_eval_context.go       — evalContext factory
   eval_context_calc.go      — h-Categoriser lazy calc (single source of truth)
   eval_context_calc_trace.go — h-Categoriser lazy calc with trace collection
@@ -286,10 +302,10 @@ pkg/toulmin/                — public library (engine core)
   rule_meta.go              — RuleMeta struct
   strength.go               — Strict/Defeasible/Defeater
   eval_result.go            — EvalResult struct
-  parse_annotation.go       — //rule: parser
+  parse_annotation.go       — //tm: annotation parser
 
-internal/graphdef/          — YAML graph definition parser
-internal/scanner/           — Go AST source scanner
+internal/graphdef/          — YAML graph definition parser + cycle validation
+internal/analyzer/          — Go AST analysis for GraphBuilder defeat extraction
 internal/graph/             — defeats graph validation
 internal/codegen/           — code generation (Graph Builder + RegisterAll)
 internal/cli/               — cobra commands
