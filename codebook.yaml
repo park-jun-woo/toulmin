@@ -1,0 +1,19 @@
+required:
+  feature:
+    engine: "defeats graph construction and h-Categoriser verdict computation"
+    rule: "rule registration, strength classification, defeats relation"
+    annotation: "//rule: prefix parsing and metadata extraction"
+    claim: "claim type definition and claim-rule matching"
+    ground: "ground type definition"
+    cli: "cobra command entrypoint"
+  type:
+    command: "cobra command entrypoint"
+    model: "domain struct (Claim, Ground, Rule, Node, Graph)"
+    engine: "core evaluation logic"
+    parser: "annotation or input parsing"
+    util: "shared utility"
+
+optional:
+  pattern:
+    error-collection: "collect errors for batch reporting"
+    recursive: "recursive graph traversal"

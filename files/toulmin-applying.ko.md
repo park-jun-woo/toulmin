@@ -1,0 +1,369 @@
+# Claim, Not Fact: 툴민 논증 모델의 소프트웨어 규칙 엔진 적용
+
+## 초록
+
+소프트웨어 규칙 엔진 — Rego/OPA, Drools, Semgrep, JSON Schema — 은 공통된 설계 전제를 공유한다: 검증 대상 데이터는 "fact(사실)"이다. 본 논문은 검증 대상이 fact가 아니라 **claim(주장)**이며, 툴민의 논증 모델(1958)이 60년 이상 간과되어 온 소프트웨어 규칙 엔진의 올바른 설계 기초임을 논증한다.
+
+본 논문은 `toulmin`을 제시한다. 툴민의 6요소 — Claim, Ground, Warrant, Backing, Qualifier, Rebuttal — 을 구현한 Go 규칙 엔진으로, 규칙 강도에 Nute의 strict/defeasible/defeater 분류를, verdict 연산에 Amgoud의 h-Categoriser를 [-1, 1] 스케일로 적용한다. 규칙은 Go 함수(`func(claim, ground) → bool`)와 메타데이터 어노테이션으로 작성되며, 엔진은 defeats 그래프를 통해 평가를 오케스트레이션한다. 별도의 DSL은 불필요하다.
+
+filefunc의 22개 코드 구조 규칙을 툴민 warrant로 변환하여 3개 프로젝트에 대한 정량적 효과를 측정함으로써 설계를 검증한다. 나아가 fullend의 컴파일타임/런타임 정책 통합을 통해 시점 선택적 아키텍처를 시연한다.
+
+---
+
+## 1. 서론
+
+### 1.1 문제: fact 전제
+
+현대 소프트웨어 규칙 엔진은 보편적으로 입력을 "fact"로 취급한다. Drools는 Java 객체를 "fact"로 working memory에 적재한다. Rego는 `input` 문서를 암묵적으로 참인 것으로 전제하고 정책을 평가한다. JSON Schema는 문서 구조가 주어진 것으로 간주하고 검증한다.
+
+이 용어는 인식론적으로 부정확하다. **Fact(사실)**는 이미 참으로 확립된 것이다 — 검증이 필요 없다. 그런데 규칙 엔진의 존재 이유는 입력 데이터가 규칙을 충족하는지 **검증하는 것**이다. 검증 대상을 "이미 참인 것"이라 부르는 것은 모순이다.
+
+검증 대상은 **claim(주장)** — 참일 수도 거짓일 수도 있는 단언이며, 규칙에 의해 타당성이 판정되어야 한다. 이것은 단순한 용어 교정이 아니다. "fact" 전제가 기존 규칙 엔진의 세 가지 구조적 한계에 기여해왔다(§3.1).
+
+### 1.2 미싱링크
+
+툴민은 1958년에 논증의 구조를 6요소로 분석했다[1]: Claim, Ground, Warrant, Backing, Qualifier, Rebuttal. 같은 시기에 규칙 엔진들이 등장했다 — CLIPS(1985), Jess(1995), Drools(2001), Rego(2016) — 모두 fact 기반 설계를 공유한다. 툴민의 모델이 이미 올바른 구조를 제공하고 있었음에도, 소프트웨어 규칙 엔진의 설계 기초로 적용된 적이 없다.
+
+이 공백이 존재하는 이유는 툴민의 저작이 철학과 수사학 분야에 출판되었기 때문이다. 규칙 엔진 개발자가 논증 이론을 참조할 이유가 없었다. 한편 각 규칙 엔진은 독립적으로 툴민 모델의 단편들을 재발명해왔다: LegalRuleML은 defeasibility 메커니즘(Rebuttal)을, OPA는 `# METADATA` 어노테이션(부분적 Backing)을, Drools는 salience(부분적 Qualifier)를 추가했다. 어느 것도 툴민을 참조하지 않았다.
+
+### 1.3 기여
+
+1. 툴민의 논증 모델이 소프트웨어 규칙 엔진 설계에 자연스럽게 매핑되며, "fact" 용어가 기존 시스템의 구조적 한계에 기여해왔음을 논증한다(§3).
+2. 툴민의 6요소, Nute의 규칙 강도 분류[2], Amgoud의 h-Categoriser[3]를 결합한 Go 규칙 엔진 `toulmin`을 구현한다(§4).
+3. filefunc의 22개 규칙에 대한 정량적 검증(§5)과, fullend의 시점 통합 사례(§6)를 통해 설계를 실증한다.
+
+---
+
+## 2. 배경 및 관련 연구
+
+### 2.1 툴민의 논증 모델
+
+툴민[1]은 논증을 6요소로 분석했다:
+
+- **Claim(주장)**: 제기되는 단언.
+- **Ground(근거/데이터)**: 주장을 뒷받침하는 증거.
+- **Warrant(보증)**: 근거가 주장을 뒷받침한다고 판단하는 규칙이나 원리.
+- **Backing(뒷받침)**: 보증이 왜 유효한지에 대한 정당성 근거.
+- **Qualifier(한정)**: 확신의 정도 ("확실히", "아마도", "가능하게").
+- **Rebuttal(반박)**: 주장이 성립하지 않는 예외 조건.
+
+Gabriel et al.[4]은 이 중 5요소(Backing 제외)를 AgentSpeak/Jason 기반 BDI 에이전트 시스템에 구현했으며, qualify 함수로 SWW - SWR(warrant 가중치 합 - rebuttal 가중치 합)을 계산했다. 이것이 툴민 모델의 유일한 소프트웨어 구현 선행 연구다.
+
+### 2.2 무력화 가능 추론
+
+Nute[2]는 규칙을 세 강도로 분류했다: **strict**(무력화 불가), **defeasible**(rebuttal에 의해 무력화 가능), **defeater**(자신의 결론 없이 다른 규칙의 결론만 차단). 이 분류는 ASPIC+[5]와 Dung의 추상 논증 프레임워크[6] 내에서 형식화되었다.
+
+### 2.3 점진적 의미론
+
+Amgoud와 Ben-Naim[3]은 논증 프레임워크를 위한 가중 h-Categoriser를 정의했다:
+
+```
+Acc(a) = w(a) / (1 + Σ Acc(attackers))
+```
+
+여기서 `w(a)`는 초기 가중치이고, `attackers`는 `a`를 공격하는 노드들이다. h-Categoriser는 **보상 원리(Compensation)**를 만족하는 유일한 점진적 의미론이다: 공격자가 자신도 공격받으면(방어), 원래 노드의 수용도가 상승한다. 수렴이 보장된다[3].
+
+### 2.4 기존 규칙 시스템
+
+| 시스템 | 입력 모델 | Defeasibility | 메타데이터 | 시점 |
+|--------|----------|---------------|-----------|------|
+| Rego/OPA | fact (`input`) | `default`/`else` 패턴 | `# METADATA` (비시맨틱) | Conftest: 다중 시점 |
+| Drools | fact (working memory) | salience/agenda | 없음 | 런타임 전용 |
+| Semgrep | AST 노드 | 없음 | 없음 | 컴파일타임 전용 |
+| JSON Schema | JSON 문서 | 없음 | `description` | 컴파일타임 전용 |
+| LegalRuleML | fact | XML 요소 (볼트온) | 없음 | N/A |
+
+입력을 claim으로 취급하면서, 1급 defeasibility, 시맨틱 backing/qualifier, 시점 선택적 평가를 동시에 제공하는 기존 시스템은 존재하지 않는다.
+
+### 2.5 시점 통합
+
+StaRVOOrS[7]와 ppDATE[8]는 하나의 명세로 정적 검증(KeY)과 런타임 모니터링(LARVA) 양쪽에서 검증을 수행할 수 있음을 보였다. Cockburn의 Hexagonal Architecture[9]는 도메인 로직과 외부 시스템을 분리하는 어댑터 패턴을 형식화했다.
+
+---
+
+## 3. Fact에서 Claim으로
+
+### 3.1 "Fact" 명명이 설계 한계에 기여하는 방식
+
+규칙 엔진의 구조적 한계 원인은 복합적이다 — 기술 스택의 제약, 성능 최적화, 유스케이스 범위 등이 모두 기여한다. 그러나 "fact"라는 명명은 특정 설계 방향을 촉진하는 인지적 틀(cognitive frame)로 작용한다. 용어가 설계 철학을 형성하고, 설계 철학이 구현을 제약한다.
+
+**기여 1: fact → 검증 인식 약화 → 정합성 불일치.**
+Drools가 working memory 항목을 "fact"로 명명하면, 개발자는 인지적으로 이미 검증된 것으로 취급하게 된다. fact 간 교차 검증은 개발자가 명시적으로 규칙을 추가해야만 수행된다. Java의 객체 모델도 기여하지만, "fact" 명명은 검증 누락을 자연스럽게 느끼게 하는 인지적 틀을 제공한다.
+
+**기여 2: fact → 데이터 구조 바인딩 → 규칙 중복.**
+Rego가 `input`을 고정된 JSON 구조로 취급하면, 규칙은 구체적 경로(`input.user.role`)를 참조한다. Rego의 JSON 질의 문법도 기여 요인이지만, fact 기반 설계 철학이 규칙을 추상 속성이 아닌 구체적 데이터 형태에 바인딩하는 방향을 촉진한다. 동일한 논리적 규칙 — "관리자만 삭제할 수 있다" — 을 HTTP 요청, gRPC 메타데이터, CLI 인자에 각각 재작성해야 한다.
+
+**기여 3: fact → 진리값 고정 → defeasibility의 사후 추가.**
+Fact는 참이다. 참인 것은 뒤집히지 않는다. 이 전제 위에 설계된 시스템은 defeasibility를 위해 외부 예외 메커니즘을 필요로 한다. LegalRuleML이 `<Override>`, `<Defeater>`, `<Superiority>` XML 요소를 필요로 했던 것은 — 핵심 모델 바깥에 추가된 하위 시스템 전체다. 입력을 claim으로 재정의하면 defeasibility가 내재된 설계가 촉진되지만, Rebuttal(§4)이라는 구조적 장치는 여전히 필요하다.
+
+**선례: JWT의 claims.**
+JWT(RFC 7519)는 토큰 필드를 "facts"가 아니라 "claims"라 명명한다. `sub`, `exp`, `iss`는 토큰 발급자의 주장이다. 서명 검증, 만료 확인, issuer 대조가 기대되는 것은 정확히 데이터가 claim으로 프레이밍되었기 때문이다. 용어가 설계의 방향을 형성한 사례다.
+
+### 3.2 툴민 매핑
+
+| 툴민 요소 | 규칙 엔진에서의 역할 | 수량 |
+|---|---|---|
+| Claim | 판정 대상 명제. rule의 입력 | 1 |
+| Ground | 판정 근거 데이터. Ground Adapter가 공급 | 0..N |
+| Warrant | rule (bool 함수). defeats 그래프에서 공격받는 노드 | 1..N |
+| Backing | warrant의 정당성 근거. 메타데이터 | 1..N |
+| Qualifier | h-Categoriser의 초기 가중치 w ∈ [0.0, 1.0] | 1 (rule당) |
+| Rebuttal | rule (bool 함수). defeats 그래프에서 공격하는 노드 | 0..N |
+
+### 3.3 Warrant의 인식론적 지위
+
+엄밀히 말하면 warrant 자체도 claim이다 — "관리자만 삭제할 수 있다"는 조직의 합의이지 물리법칙이 아니다. 물리법칙조차 재현성이 극히 높은 claim이다. 그러나 이 인식을 무한히 적용하면 공리의 무한 후퇴에 빠진다. 괴델의 불완전성 정리[10]가 보여주듯, 충분히 강력한 형식 체계는 자기 자신의 무모순성을 증명할 수 없다. 켈젠의 근본규범(Grundnorm)[11]도 법체계에서 동일한 구조를 지적한다.
+
+따라서 본 모델은 실용적 결단을 취한다: **Warrant는 시스템 내에서 fact로 취급한다.** 이는 모든 공리 체계가 공유하는 불가피한 전제이며, 모델의 적용 범위를 "warrant가 주어졌을 때 claim의 타당성을 판정하는 것"으로 한정한다.
+
+---
+
+## 4. 엔진 설계
+
+### 4.1 함수로서의 규칙
+
+모든 규칙 — warrant, rebuttal, defeater — 은 동일한 시그니처를 공유한다:
+
+```go
+type Rule func(claim Claim, ground Ground) bool
+```
+
+warrant, rebuttal, defeater의 구분은 함수 시그니처가 아니라 **defeats 그래프**에서의 위치에 의해 결정된다:
+
+| 역할 | 그래프에서의 위치 |
+|------|----------------|
+| Warrant | 공격받을 수 있는 노드 |
+| Rebuttal | warrant를 공격하는 노드 |
+| Defeater | 자신의 결론 없이 공격만 하는 노드 |
+
+### 4.2 그래프 제약으로서의 Strength
+
+Nute의 분류[2]가 공격 간선을 제어한다:
+
+| Strength | 의미 |
+|----------|------|
+| Strict | 들어오는 공격 간선 불허 |
+| Defeasible | 들어오는 공격 간선 허용 |
+| Defeater | 나가는 공격 간선만 존재, 자체 verdict 없음 |
+
+### 4.3 Verdict 연산: h-Categoriser
+
+Amgoud의 가중 h-Categoriser[3]를 [-1, 1]로 선형 변환하여 적용한다:
+
+```
+raw(a) = w(a) / (1 + Σ raw(attackers))     [0, 1]
+verdict(a) = 2 × raw(a) - 1                [-1, 1]
+```
+
+| Verdict | 의미 |
+|---------|------|
+| +1.0 | 위반 확정 |
+| 0.0 | 판정불가 |
+| -1.0 | 반박 확정 |
+
+판정: `verdict > 0` → 위반, `verdict == 0` → 판정불가, `verdict < 0` → 반박됨.
+
+### 4.4 구현
+
+```go
+const maxDepth = 100
+
+func CalcAcceptability(nodeID string, graph RuleGraph, depth int) float64 {
+    if depth >= maxDepth {
+        return 0.0 // 순환 — 판정불가
+    }
+    node := graph.Nodes[nodeID]
+    attackerSum := 0.0
+    for _, attackerID := range graph.Attackers(nodeID) {
+        raw := (CalcAcceptability(attackerID, graph, depth+1) + 1.0) / 2.0
+        attackerSum += raw
+    }
+    raw := node.Qualifier / (1.0 + attackerSum)
+    return 2*raw - 1
+}
+```
+
+### 4.5 평가 흐름
+
+```
+1. 검증 대상에서 claim 추출
+2. 각 claim에 대해 적용 가능한 모든 rule 평가: func(claim, ground) → bool
+3. 활성화된 rule 수집 (true인 것만)
+4. 활성 rule + defeats 간선으로 서브그래프 구성
+   (strict 노드는 들어오는 간선 거부)
+5. h-Categoriser 연산: raw → verdict [-1, 1]
+   순환 공격: maxDepth에서 0.0 반환
+6. verdict 부호에 의한 최종 판정
+```
+
+### 4.6 어노테이션을 통한 메타데이터
+
+Rule body는 Go 함수다. 메타데이터 — qualifier, defeats, backing — 는 Go 어노테이션이다:
+
+```go
+//rule:warrant qualifier=1.0 strength=strict
+//rule:backing "Böhm-Jacopini 정리 — 모든 제어 흐름은 sequence, selection, iteration으로 환원 가능"
+//rule:what F1: 파일당 함수 하나
+func CheckOneFileOneFunc(claim Claim, ground Ground) bool {
+    return ground.FuncCount == 1
+}
+
+//rule:defeater defeats=CheckOneFileOneFunc
+//rule:backing "테스트 파일은 관례적으로 여러 테스트 함수를 하나의 파일에 묶는다"
+//rule:what F5: 테스트 파일은 다중 함수 허용
+func TestFileException(claim Claim, ground Ground) bool {
+    return strings.HasSuffix(claim.FileName, "_test.go")
+}
+```
+
+---
+
+## 5. 사례 1: filefunc — 22개 규칙의 툴민 변환
+
+### 5.1 배경
+
+filefunc은 LLM 네이티브 Go 개발을 위한 코드 구조 컨벤션 및 CLI 도구다. 22개 규칙(F1-F6, Q1-Q3, A1-A16, C1-C4)을 Go 함수로 구현하여 컴파일타임에 AST를 대상으로 평가한다. 모든 규칙을 툴민 warrant로 변환했다.
+
+### 5.2 Strength 분류
+
+| Strength | 수 | 비율 | 예시 |
+|----------|---|------|------|
+| Strict | 15 | 68% | F1, F2, F3, F4, A1-A3, A6-A16 |
+| Defeasible | 4 | 18% | Q1, Q2, Q3, C4 |
+| Defeater | 3 | 14% | F5, F6, 테스트 파일 예외 |
+
+대부분의 규칙이 strict다 — 코드 구조 컨벤션은 본질적으로 예외를 최소화한다. defeasible 규칙은 맥락에 따라 임계값이 달라지는 것들(깊이 제한 Q1-Q2, 크기 제한 Q3)이다.
+
+### 5.3 정량적 결과
+
+| 프로젝트 | 파일 수 (전→후) | 평균 LOC/파일 (전→후) | SRP 위반 해소 | depth 위반 해소 |
+|---------|---------------|---------------------|-------------|--------------|
+| filefunc | — (처음부터 준수) | 25.1 | 0 | 0 |
+| fullend | 87→1,260 | 244→25.4 | 66→0 | 148→0 |
+| whyso | 12→99 | 147.8→24.4 | 12→0 | 23→0 |
+
+### 5.4 툴민 변환의 이점
+
+1. **Backing의 명시적 기록**: 각 규칙이 왜 존재하는지("Böhm-Jacopini 정리", "AI 에이전트의 read 단위는 파일")가 규칙 선언에 기록된다. 주석에 흩어지지 않는다.
+2. **Rebuttal/Defeater의 구조화**: 예외 조건(F5 테스트 파일, F6 그룹 상수)이 명시적 `defeats` 관계로 선언된다. 코드 속 if 분기에 매몰되지 않는다.
+3. **Strength 분류**: "이 규칙은 예외 없음"(strict) vs "이 규칙은 무력화 가능"(defeasible)이 선언적으로 표현된다.
+
+---
+
+## 6. 사례 2: fullend — 시점 선택적 아키텍처
+
+### 6.1 배경
+
+fullend는 9개 SSOT(OpenAPI, SSaC, Rego 등)의 정합성을 검증하고 코드를 생성하는 시스템이다. 18개 교차 검증 규칙이 Go 함수로 구현되어 있고, 런타임 정책은 별도의 Rego 파일이다. filefunc(§5)이 단일 시점(컴파일타임)에서 작동하는 반면, fullend는 시점 선택적 아키텍처의 필요성을 보여주는 사례다.
+
+### 6.2 문제: 규칙 중복
+
+동일한 논리적 규칙이 두 번 작성된다:
+
+**컴파일타임** (Go crosscheck):
+```go
+func CheckRegoClaimsPresence(policies, openapi) []Error { ... }
+```
+
+**런타임** (Rego 정책):
+```rego
+allow if {
+  input.action == "ExecuteWorkflow"
+  input.claims.user_id > 0
+}
+```
+
+### 6.3 툴민 해법
+
+```go
+//rule:warrant qualifier=1.0 strength=defeasible
+//rule:backing "OWASP API Security Top 10 A2:2023"
+//rule:what 인증된 endpoint는 claims 검사 필요
+func AuthEndpointRequiresClaims(claim Claim, ground Ground) bool {
+    return ground.EndpointSecurity.Contains("bearerAuth") &&
+           !ground.PolicyRule.References("claims")
+}
+
+//rule:defeater defeats=AuthEndpointRequiresClaims
+//rule:backing "공개 API endpoint는 설계상 인증이 불필요하다"
+func PublicEndpointException(claim Claim, ground Ground) bool {
+    return ground.EndpointAnnotation.Contains("x-public")
+}
+```
+
+**컴파일타임 Ground Adapter**: `endpoint.security` ← OpenAPI 스펙 파싱, `endpoint.policy_rule` ← Rego AST 파싱.
+
+**런타임 Ground Adapter**: `endpoint.security` ← 요청 라우트 미들웨어, `endpoint.policy_rule` ← OPA 평가.
+
+하나의 warrant 선언으로 컴파일타임 교차 검증과 런타임 정책 적용을 모두 수행한다. Ground Adapter만 바뀐다.
+
+---
+
+## 7. 논의
+
+### 7.1 본 논문이 주장하지 않는 것
+
+본 논문은 이론적 독창성을 주장하지 않는다. 구조적 기초는 툴민(1958), 강도 분류는 Nute(1994), verdict 연산은 Amgoud(2017), 어댑터 패턴은 Cockburn(2005)과 StaRVOOrS(2015)다. 우리의 기여는 **독립적으로 발전한 이 조각들이 연결된다는 것을 발견한 것** — 툴민의 논증 모델이 소프트웨어 규칙 엔진의 누락된 설계 기초라는 것 — 이며, **구현을 통해 이를 실증한 것**이다.
+
+### 7.2 한계
+
+- Rule body가 Go 함수(엔진에 불투명)이므로, 부분 평가, 직렬화, 교차 언어 이식이 본 구현에서 지원되지 않는다.
+- h-Categoriser의 [-1, 1] 변환은 선형 매핑이다. 복잡한 규칙 상호작용에는 더 정교한 verdict 집계가 필요할 수 있다.
+- Claim 모델링에 추가 작업이 필요하다 — 두 주어 간의 관계 단언은 단순한 (subject, property, value) 삼중쌍의 표현력을 초과한다.
+- 정량적 검증이 저자 자신의 프로젝트에 한정되어 있다. 유명 오픈소스 라이브러리에 대한 외부 검증을 계획 중이다.
+
+### 7.3 기존 시스템과의 관계
+
+본 엔진은 Rego, Drools, Semgrep을 대체하지 않는다. **상위 추상화**를 제공한다. Rego는 런타임 Ground Adapter 백엔드로 사용할 수 있다. Semgrep 규칙은 컴파일타임 Ground Adapter에서 재사용할 수 있다. 기존 시스템은 특정 시점의 Ground Adapter 구현체가 된다.
+
+---
+
+## 8. 결론
+
+60년간 소프트웨어 규칙 엔진은 검증 대상을 "fact"로 취급하고 이 전제 위에 설계를 구축해왔다. 툴민의 논증 모델(1958)이 이미 올바른 구조 — Claim(Fact가 아닌), Ground, Warrant, Backing, Qualifier, Rebuttal — 을 제공했지만, 철학과 소프트웨어 공학 사이의 학문적 장벽이 그 적용을 가로막았다.
+
+우리는 이 간극을 메우는 Go 규칙 엔진 `toulmin`을 구현했다. 규칙은 Go 함수와 툴민 메타데이터 어노테이션으로 작성된다. 엔진은 규칙을 boolean 함수로 평가하고, 활성화된 규칙들로 defeats 그래프를 구성하고, Amgoud의 h-Categoriser를 통해 [-1, 1] 스케일의 verdict를 연산한다. Nute의 strict/defeasible/defeater 분류가 그래프의 공격 간선을 제어한다.
+
+설계에 별도의 DSL이 필요 없다 — Go의 타입 시스템이 claim-rule 매칭을 처리하고, 엔진 코어는 수백 줄 규모다. filefunc의 22개 규칙에 대한 3개 프로젝트 검증은 툴민 모델이 규칙 강도 분류, 구조화된 defeasibility, 명시적 backing을 자연스럽게 수용함을 보여준다. fullend의 시점 통합 사례는 Ground Adapter가 시점 선택적 규칙 재사용을 가능하게 함을 시연한다.
+
+`toulmin` 라이브러리는 MIT 라이센스로 공개된다.
+
+---
+
+## 참고문헌
+
+[1] Toulmin, S. *The Uses of Argument*. Cambridge University Press, 1958.
+
+[2] Nute, D. "Defeasible Reasoning." In *Handbook of Logic in Artificial Intelligence and Logic Programming*, Vol. 3, Oxford University Press, 1994.
+
+[3] Amgoud, L., and Ben-Naim, J. "Ranking-based Semantics for Argumentation Frameworks." *SUM 2013*, LNCS 8078, 2013.
+
+[4] Gabriel, V.O., Panisson, A.R., Bordini, R.H., Adamatti, D.F., Billa, C.Z. "Reasoning in BDI agents using Toulmin's argumentation model." *Theoretical Computer Science*, 805:76–91, 2020.
+
+[5] Modgil, S., and Prakken, H. "The ASPIC+ Framework for Structured Argumentation: A Tutorial." *Argument and Computation*, 5(1):31–62, 2014.
+
+[6] Dung, P.M. "On the Acceptability of Arguments and its Fundamental Role in Nonmonotonic Reasoning, Logic Programming and n-person Games." *Artificial Intelligence*, 77(2):321–357, 1995.
+
+[7] Ahrendt, W., et al. "StaRVOOrS: A Tool for Combined Static and Runtime Verification of Java." *Runtime Verification*, LNCS 9333, 2015.
+
+[8] Ahrendt, W., et al. "A Specification Language for Static and Runtime Verification of Data and Control Properties." *FM 2015*, LNCS 9109, 2015.
+
+[9] Cockburn, A. "Hexagonal Architecture (Ports and Adapters)." 2005.
+
+[10] Gödel, K. "Über formal unentscheidbare Sätze der Principia Mathematica und verwandter Systeme I." *Monatshefte für Mathematik und Physik*, 38(1):173–198, 1931.
+
+[11] Kelsen, H. *Reine Rechtslehre (Pure Theory of Law)*. Franz Deuticke, Wien, 1934.
+
+[12] Besnard, P., and Hunter, A. "A Logic-Based Theory of Deductive Arguments." *Artificial Intelligence*, 128(1-2):203–235, 2001.
+
+[13] Amgoud, L., and Ben-Naim, J. "Weighted Bipolar Argumentation Graphs: Axioms and Semantics." *IJCAI 2017*, pp. 5194–5198, 2017.
+
+[14] The Open Policy Agent Authors. "Rego Policy Language." https://www.openpolicyagent.org/docs/latest/policy-language/, 2024.
+
+[15] Hahn, U., and Oaksford, M. "A Normative Theory of Argument Strength." *Informal Logic*, 26(1):1–22, 2006.
+
+[16] Prakken, H. "Probabilistic Strength of Arguments with Structure." *KR 2018*, pp. 158–167, 2018.
+
+[17] Kelly, T.P. "Arguing Safety — A Systematic Approach to Managing Safety Cases." PhD Thesis, University of York, 1998.
+
+[18] Palmirani, M., et al. "LegalRuleML: Design principles and foundations." *The 14th International Conference on AI and Law*, 2013.
