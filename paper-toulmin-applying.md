@@ -4,7 +4,7 @@
 
 Software rule engines — Rego/OPA, Drools, Semgrep, JSON Schema — share a common design assumption: the data being validated is a "fact." This paper argues that validation targets are not facts but **claims**, and that Toulmin's argumentation model (1958) provides the correct design foundation for software rule engines that has been overlooked for over 60 years.
 
-We present `toulmin`, a Go rule engine that implements Toulmin's six elements — Claim, Ground, Warrant, Backing, Qualifier, Rebuttal — with Nute's strict/defeasible/defeater classification for rule strength and Amgoud's h-Categoriser for verdict computation on a [-1, 1] scale. Rules are Go functions (`func(claim, ground) → bool`) with metadata annotations; the engine orchestrates evaluation through a defeats graph without requiring a custom DSL.
+We present `toulmin`, a Go rule engine that implements Toulmin's six elements — Claim, Ground, Warrant, Backing, Qualifier, Rebuttal — with Nute's strict/defeasible/defeater classification for rule strength and Amgoud's h-Categoriser for verdict computation on a [-1, 1] scale. Rules are Go functions (`func(claim, ground) → (bool, evidence)`) organized into defeats graphs; the engine computes verdicts and provides full trace explainability without requiring a custom DSL.
 
 We validate the design by converting filefunc's 22 code structure rules into Toulmin warrants and measuring quantitative effects across three projects. We further demonstrate phase-optional architecture through fullend's compile-time/runtime policy integration.
 
@@ -141,23 +141,53 @@ Therefore, this model takes a pragmatic position: **warrants are treated as fact
 
 ## 4. Engine Design
 
-### 4.1 Rules as Functions
+### 4.1 Rules as Functions with Evidence
 
 All rules — warrants, rebuttals, defeaters — share the same signature:
 
 ```go
-type Rule func(claim Claim, ground Ground) bool
+type Rule func(claim any, ground any) (bool, any)
 ```
+
+A rule returns `(judgment, evidence)`. The bool is the judgment; the second value is domain-specific evidence (e.g., error details, violation context). This enables the engine to not only compute verdicts but also **explain why**.
 
 The distinction between warrant, rebuttal, and defeater is not in the function signature but in the **defeats graph**:
 
 | Role | Graph position |
 |------|---------------|
 | Warrant | Node that can be attacked |
-| Rebuttal | Node that attacks a warrant |
+| Rebuttal | Node that attacks a warrant (has own conclusion) |
 | Defeater | Node that attacks without asserting its own conclusion |
 
-### 4.2 Strength as Graph Constraint
+### 4.2 Graph Builder: Separating Logic from Structure
+
+The engine provides two APIs. The Graph Builder API (recommended) separates rule logic (Go functions) from graph structure (defeats, qualifier, strength):
+
+```go
+g := toulmin.NewGraph("file-structure").
+    Warrant(CheckOneFileOneFunc, 1.0).
+    Defeater(TestFileException, 1.0).
+    Defeat(TestFileException, CheckOneFileOneFunc)
+```
+
+Functions are identifiers — no string names needed. The same function can be reused across different graphs with different roles and defeats relationships:
+
+```go
+// Same IsAdult function, different graphs, different defeats
+votingGraph := toulmin.NewGraph("voting").
+    Warrant(IsAdult, 1.0).
+    Rebuttal(HasCriminalRecord, 1.0).
+    Defeat(HasCriminalRecord, IsAdult)
+
+contractGraph := toulmin.NewGraph("contract").
+    Warrant(IsAdult, 1.0).
+    Rebuttal(IsBankrupt, 1.0).
+    Defeat(IsBankrupt, IsAdult)
+```
+
+This separation means `//tm:backing` is the only annotation on the function itself — it documents why the rule exists. All structural metadata (role, qualifier, strength, defeats) belongs to the graph, not the function.
+
+### 4.3 Strength as Graph Constraint
 
 Nute's classification [2] controls attack edges:
 
@@ -167,7 +197,7 @@ Nute's classification [2] controls attack edges:
 | Defeasible | Incoming attack edges allowed |
 | Defeater | Only outgoing attack edges; no verdict of its own |
 
-### 4.3 Verdict Computation: h-Categoriser
+### 4.4 Verdict Computation: h-Categoriser
 
 We adopt Amgoud's weighted h-Categoriser [3] with a linear transform to [-1, 1]:
 
@@ -184,56 +214,92 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 
 Judgment: `verdict > 0` → violation, `verdict == 0` → undecided, `verdict < 0` → rebutted.
 
-### 4.4 Implementation
+### 4.5 Evaluate and EvaluateTrace
+
+The engine provides two evaluation modes:
 
 ```go
-const maxDepth = 100
+// Evaluate — verdict + evidence (lightweight)
+results := g.Evaluate(claim, ground)
 
-func CalcAcceptability(nodeID string, graph RuleGraph, depth int) float64 {
-    if depth >= maxDepth {
-        return 0.0 // circular — undecided
-    }
-    node := graph.Nodes[nodeID]
-    attackerSum := 0.0
-    for _, attackerID := range graph.Attackers(nodeID) {
-        raw := (CalcAcceptability(attackerID, graph, depth+1) + 1.0) / 2.0
-        attackerSum += raw
-    }
-    raw := node.Qualifier / (1.0 + attackerSum)
-    return 2*raw - 1
+// EvaluateTrace — verdict + evidence + full trace (explainability)
+results := g.EvaluateTrace(claim, ground)
+```
+
+EvalResult:
+
+```go
+type EvalResult struct {
+    Name     string       `json:"name"`
+    Verdict  float64      `json:"verdict"`
+    Evidence any          `json:"evidence,omitempty"`
+    Trace    []TraceEntry `json:"trace"`
+}
+
+type TraceEntry struct {
+    Name      string  `json:"name"`
+    Role      string  `json:"role"`       // "warrant", "rebuttal", "defeater"
+    Activated bool    `json:"activated"`
+    Qualifier float64 `json:"qualifier"`
+    Evidence  any     `json:"evidence,omitempty"`
 }
 ```
 
-### 4.5 Evaluation Flow
+EvaluateTrace provides full explainability: which rules activated, in what role, with what qualifier, producing what evidence. This is a key advantage of symbolic reasoning — the verdict's derivation is transparent and auditable.
+
+### 4.6 Evaluation Flow
 
 ```
-1. Extract claims from validation target
-2. For each claim, evaluate all applicable rules: func(claim, ground) → bool
-3. Collect activated rules (true only)
-4. Build sub-graph from activated rules + defeats edges
-   (strict nodes reject incoming edges)
-5. Compute h-Categoriser: raw → verdict [-1, 1]
-   Circular attacks: return 0.0 at maxDepth
-6. Final judgment per verdict sign
+1. Start from each warrant node
+2. Run warrant func(claim, ground) → false? skip
+3. If true, traverse attackers (rebuttal/defeater) recursively
+4. Each attacker: run func → false? contributes 0 → true? recurse deeper
+5. h-Categoriser at each node: raw(a) = w(a) / (1 + Σ raw(attackers))
+   verdict(a) = 2 * raw(a) - 1
+   Circular attack: maxDepth(100) returns 0.0
+6. Func results cached — each func runs at most once per evaluation
+7. Only rules reachable from the warrant's attack chain are executed
 ```
 
-### 4.6 Metadata via Annotations
+### 4.7 YAML Graph Definition and Code Generation
 
-Rule bodies are Go functions. Metadata — qualifier, defeats, backing — are Go annotations:
+Graphs can be defined in YAML and compiled to Go code:
+
+```yaml
+graph: file-structure
+rules:
+  - name: CheckOneFileOneFunc
+    role: warrant
+    qualifier: 1.0
+  - name: TestFileException
+    role: defeater
+    qualifier: 1.0
+defeats:
+  - from: TestFileException
+    to: CheckOneFileOneFunc
+```
+
+```bash
+toulmin graph file-structure.yaml   # generates graph_gen.go
+```
+
+### 4.8 Metadata via Annotations
+
+Only `//tm:backing` is annotated on the function — documenting why the rule exists. All other metadata belongs to the graph:
 
 ```go
-//rule:warrant qualifier=1.0 strength=strict
-//rule:backing "Böhm-Jacopini theorem — all control flow reducible to sequence, selection, iteration"
-//rule:what F1: one func per file
-func CheckOneFileOneFunc(claim Claim, ground Ground) bool {
-    return ground.FuncCount == 1
+//tm:backing "Böhm-Jacopini theorem — all control flow reducible to sequence, selection, iteration"
+func CheckOneFileOneFunc(claim any, ground any) (bool, any) {
+    gf := ground.(*FileGround)
+    if len(gf.Funcs) > 1 {
+        return true, &Evidence{Got: len(gf.Funcs), Expected: 1}
+    }
+    return false, nil
 }
 
-//rule:defeater defeats=CheckOneFileOneFunc
-//rule:backing "Test files conventionally group multiple test functions"
-//rule:what F5: test files may have multiple funcs
-func TestFileException(claim Claim, ground Ground) bool {
-    return strings.HasSuffix(claim.FileName, "_test.go")
+//tm:backing "test files conventionally group multiple test funcs"
+func TestFileException(claim any, ground any) (bool, any) {
+    return strings.HasSuffix(claim.(string), "_test.go"), nil
 }
 ```
 
@@ -297,26 +363,33 @@ allow if {
 ### 6.3 Toulmin Solution
 
 ```go
-//rule:warrant qualifier=1.0 strength=defeasible
-//rule:backing "OWASP API Security Top 10 A2:2023"
-//rule:what authenticated endpoint requires claims check
-func AuthEndpointRequiresClaims(claim Claim, ground Ground) bool {
-    return ground.EndpointSecurity.Contains("bearerAuth") &&
-           !ground.PolicyRule.References("claims")
+//tm:backing "OWASP API Security Top 10 A2:2023"
+func AuthEndpointRequiresClaims(claim any, ground any) (bool, any) {
+    g := ground.(*EndpointGround)
+    if g.Security.Contains("bearerAuth") && !g.PolicyRule.References("claims") {
+        return true, &Evidence{Endpoint: g.Path, Missing: "claims reference"}
+    }
+    return false, nil
 }
 
-//rule:defeater defeats=AuthEndpointRequiresClaims
-//rule:backing "Public API endpoints do not require authentication by design"
-func PublicEndpointException(claim Claim, ground Ground) bool {
-    return ground.EndpointAnnotation.Contains("x-public")
+//tm:backing "Public API endpoints do not require authentication by design"
+func PublicEndpointException(claim any, ground any) (bool, any) {
+    g := ground.(*EndpointGround)
+    return g.Annotation.Contains("x-public"), nil
 }
+
+// Graph definition
+g := toulmin.NewGraph("endpoint-auth").
+    Warrant(AuthEndpointRequiresClaims, 1.0).
+    Defeater(PublicEndpointException, 1.0).
+    Defeat(PublicEndpointException, AuthEndpointRequiresClaims)
 ```
 
-**Compile-time Ground Adapter**: `endpoint.security` ← OpenAPI spec parse, `endpoint.policy_rule` ← Rego AST parse.
+**Compile-time Ground Adapter**: `EndpointGround.Security` ← OpenAPI spec parse, `EndpointGround.PolicyRule` ← Rego AST parse.
 
-**Runtime Ground Adapter**: `endpoint.security` ← request route middleware, `endpoint.policy_rule` ← OPA evaluation.
+**Runtime Ground Adapter**: `EndpointGround.Security` ← request route middleware, `EndpointGround.PolicyRule` ← OPA evaluation.
 
-One warrant declaration serves both compile-time cross-validation and runtime policy enforcement. Only the Ground Adapter changes.
+One warrant function serves both compile-time cross-validation and runtime policy enforcement. The graph structure is identical; only the Ground Adapter changes. The function itself is reusable across graphs — the same `AuthEndpointRequiresClaims` can participate in different defeats relationships in different contexts.
 
 ---
 
@@ -343,9 +416,9 @@ This engine does not replace Rego, Drools, or Semgrep. It provides a **superordi
 
 For 60 years, software rule engines have treated validation targets as "facts" and built designs on this assumption. Toulmin's argumentation model (1958) already provided the correct structure — Claim (not Fact), Ground, Warrant, Backing, Qualifier, Rebuttal — but the disciplinary gap between philosophy and software engineering prevented its application.
 
-We implemented `toulmin`, a Go rule engine that bridges this gap. Rules are Go functions with Toulmin metadata annotations. The engine evaluates rules as boolean functions, builds a defeats graph from activated rules, and computes verdicts via Amgoud's h-Categoriser on a [-1, 1] scale. Nute's strict/defeasible/defeater classification controls attack edges in the graph.
+We implemented `toulmin`, a Go rule engine that bridges this gap. Rules are Go functions returning `(bool, evidence)` — judgment and its basis. The engine organizes rules into defeats graphs via the Graph Builder API, evaluates them, and computes verdicts via Amgoud's h-Categoriser on a [-1, 1] scale. Nute's strict/defeasible/defeater classification controls attack edges in the graph. EvaluateTrace provides full explainability — which rules activated, in what role, with what evidence.
 
-The design requires no custom DSL — Go's type system handles claim-rule matching, and the engine core is under a few hundred lines. Validation on filefunc's 22 rules across three projects demonstrates that the Toulmin model naturally accommodates rule strength classification, structured defeasibility, and explicit backing. fullend's cross-phase case demonstrates that Ground Adapters enable phase-optional rule reuse.
+The design requires no custom DSL — Go's type system handles claim-rule matching, and the engine core is under a few hundred lines. The same rule function can be reused across different graphs with different defeats relationships, separating rule logic from graph structure. Validation on filefunc's 22 rules across three projects demonstrates that the Toulmin model naturally accommodates rule strength classification, structured defeasibility, and explicit backing. fullend's cross-phase case demonstrates that Ground Adapters enable phase-optional rule reuse.
 
 The `toulmin` library is available under MIT License.
 

@@ -4,7 +4,7 @@
 
 소프트웨어 규칙 엔진 — Rego/OPA, Drools, Semgrep, JSON Schema — 은 공통된 설계 전제를 공유한다: 검증 대상 데이터는 "fact(사실)"이다. 본 논문은 검증 대상이 fact가 아니라 **claim(주장)**이며, 툴민의 논증 모델(1958)이 60년 이상 간과되어 온 소프트웨어 규칙 엔진의 올바른 설계 기초임을 논증한다.
 
-본 논문은 `toulmin`을 제시한다. 툴민의 6요소 — Claim, Ground, Warrant, Backing, Qualifier, Rebuttal — 을 구현한 Go 규칙 엔진으로, 규칙 강도에 Nute의 strict/defeasible/defeater 분류를, verdict 연산에 Amgoud의 h-Categoriser를 [-1, 1] 스케일로 적용한다. 규칙은 Go 함수(`func(claim, ground) → bool`)와 메타데이터 어노테이션으로 작성되며, 엔진은 defeats 그래프를 통해 평가를 오케스트레이션한다. 별도의 DSL은 불필요하다.
+본 논문은 `toulmin`을 제시한다. 툴민의 6요소 — Claim, Ground, Warrant, Backing, Qualifier, Rebuttal — 을 구현한 Go 규칙 엔진으로, 규칙 강도에 Nute의 strict/defeasible/defeater 분류를, verdict 연산에 Amgoud의 h-Categoriser를 [-1, 1] 스케일로 적용한다. 규칙은 Go 함수(`func(claim, ground) → (bool, evidence)`)로 작성되어 defeats 그래프로 조직되며, 엔진은 verdict를 연산하고 완전한 trace 설명 가능성을 제공한다. 별도의 DSL은 불필요하다.
 
 filefunc의 22개 코드 구조 규칙을 툴민 warrant로 변환하여 3개 프로젝트에 대한 정량적 효과를 측정함으로써 설계를 검증한다. 나아가 fullend의 컴파일타임/런타임 정책 통합을 통해 시점 선택적 아키텍처를 시연한다.
 
@@ -107,7 +107,7 @@ JWT(RFC 7519)는 토큰 필드를 "facts"가 아니라 "claims"라 명명한다.
 | Ground | 판정 근거 데이터. Ground Adapter가 공급 | 0..N |
 | Warrant | rule (bool 함수). defeats 그래프에서 공격받는 노드 | 1..N |
 | Backing | warrant의 정당성 근거. 메타데이터 | 1..N |
-| Qualifier | 각 rule의 초기 가중치 w ∈ [0.0, 1.0] **(아래 §3.3 참조)** | 1 (rule당) |
+| Qualifier | 각 rule의 초기 가중치 w ∈ [0.0, 1.0] **(§3.3 참조)** | 1 (rule당) |
 | Rebuttal | rule (bool 함수). defeats 그래프에서 공격하는 노드 | 0..N |
 
 ### 3.3 Qualifier의 재배치: Claim에서 Rule로
@@ -141,23 +141,53 @@ JWT(RFC 7519)는 토큰 필드를 "facts"가 아니라 "claims"라 명명한다.
 
 ## 4. 엔진 설계
 
-### 4.1 함수로서의 규칙
+### 4.1 증거를 반환하는 함수로서의 규칙
 
 모든 규칙 — warrant, rebuttal, defeater — 은 동일한 시그니처를 공유한다:
 
 ```go
-type Rule func(claim Claim, ground Ground) bool
+type Rule func(claim any, ground any) (bool, any)
 ```
+
+규칙은 `(판정, 증거)`를 반환한다. bool은 판정이고, 두 번째 값은 도메인 특화 증거(예: 에러 상세, 위반 맥락)다. 이를 통해 엔진은 verdict를 연산할 뿐 아니라 **왜 그런 판정이 나왔는지를 설명**할 수 있다.
 
 warrant, rebuttal, defeater의 구분은 함수 시그니처가 아니라 **defeats 그래프**에서의 위치에 의해 결정된다:
 
 | 역할 | 그래프에서의 위치 |
 |------|----------------|
 | Warrant | 공격받을 수 있는 노드 |
-| Rebuttal | warrant를 공격하는 노드 |
+| Rebuttal | warrant를 공격하는 노드 (자신의 결론을 가짐) |
 | Defeater | 자신의 결론 없이 공격만 하는 노드 |
 
-### 4.2 그래프 제약으로서의 Strength
+### 4.2 Graph Builder: 로직과 구조의 분리
+
+엔진은 두 가지 API를 제공한다. Graph Builder API(권장)는 규칙 로직(Go 함수)과 그래프 구조(defeats, qualifier, strength)를 분리한다:
+
+```go
+g := toulmin.NewGraph("file-structure").
+    Warrant(CheckOneFileOneFunc, 1.0).
+    Defeater(TestFileException, 1.0).
+    Defeat(TestFileException, CheckOneFileOneFunc)
+```
+
+함수가 식별자다 — 문자열 이름이 필요 없다. 같은 함수를 다른 그래프에서 다른 역할과 defeats 관계로 재사용할 수 있다:
+
+```go
+// 같은 IsAdult 함수, 다른 그래프, 다른 defeats
+votingGraph := toulmin.NewGraph("voting").
+    Warrant(IsAdult, 1.0).
+    Rebuttal(HasCriminalRecord, 1.0).
+    Defeat(HasCriminalRecord, IsAdult)
+
+contractGraph := toulmin.NewGraph("contract").
+    Warrant(IsAdult, 1.0).
+    Rebuttal(IsBankrupt, 1.0).
+    Defeat(IsBankrupt, IsAdult)
+```
+
+이 분리는 `//tm:backing`만이 함수 자체에 부착되는 유일한 어노테이션임을 의미한다 — 규칙이 왜 존재하는지를 기록한다. 모든 구조적 메타데이터(역할, qualifier, strength, defeats)는 함수가 아니라 그래프에 속한다.
+
+### 4.3 그래프 제약으로서의 Strength
 
 Nute의 분류[2]가 공격 간선을 제어한다:
 
@@ -167,7 +197,7 @@ Nute의 분류[2]가 공격 간선을 제어한다:
 | Defeasible | 들어오는 공격 간선 허용 |
 | Defeater | 나가는 공격 간선만 존재, 자체 verdict 없음 |
 
-### 4.3 Verdict 연산: h-Categoriser
+### 4.4 Verdict 연산: h-Categoriser
 
 Amgoud의 가중 h-Categoriser[3]를 [-1, 1]로 선형 변환하여 적용한다:
 
@@ -184,56 +214,92 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 
 판정: `verdict > 0` → 위반, `verdict == 0` → 판정불가, `verdict < 0` → 반박됨.
 
-### 4.4 구현
+### 4.5 Evaluate와 EvaluateTrace
+
+엔진은 두 가지 평가 모드를 제공한다:
 
 ```go
-const maxDepth = 100
+// Evaluate — verdict + 증거 (경량)
+results := g.Evaluate(claim, ground)
 
-func CalcAcceptability(nodeID string, graph RuleGraph, depth int) float64 {
-    if depth >= maxDepth {
-        return 0.0 // 순환 — 판정불가
-    }
-    node := graph.Nodes[nodeID]
-    attackerSum := 0.0
-    for _, attackerID := range graph.Attackers(nodeID) {
-        raw := (CalcAcceptability(attackerID, graph, depth+1) + 1.0) / 2.0
-        attackerSum += raw
-    }
-    raw := node.Qualifier / (1.0 + attackerSum)
-    return 2*raw - 1
+// EvaluateTrace — verdict + 증거 + 완전한 trace (설명 가능성)
+results := g.EvaluateTrace(claim, ground)
+```
+
+EvalResult:
+
+```go
+type EvalResult struct {
+    Name     string       `json:"name"`
+    Verdict  float64      `json:"verdict"`
+    Evidence any          `json:"evidence,omitempty"`
+    Trace    []TraceEntry `json:"trace"`
+}
+
+type TraceEntry struct {
+    Name      string  `json:"name"`
+    Role      string  `json:"role"`       // "warrant", "rebuttal", "defeater"
+    Activated bool    `json:"activated"`
+    Qualifier float64 `json:"qualifier"`
+    Evidence  any     `json:"evidence,omitempty"`
 }
 ```
 
-### 4.5 평가 흐름
+EvaluateTrace는 완전한 설명 가능성을 제공한다: 어떤 규칙이 활성화되었고, 어떤 역할로, 어떤 qualifier로, 어떤 증거를 생산했는지. 이것이 심볼릭 추론의 핵심 장점이다 — verdict의 도출 과정이 투명하고 감사 가능하다.
+
+### 4.6 평가 흐름
 
 ```
-1. 검증 대상에서 claim 추출
-2. 각 claim에 대해 적용 가능한 모든 rule 평가: func(claim, ground) → bool
-3. 활성화된 rule 수집 (true인 것만)
-4. 활성 rule + defeats 간선으로 서브그래프 구성
-   (strict 노드는 들어오는 간선 거부)
-5. h-Categoriser 연산: raw → verdict [-1, 1]
-   순환 공격: maxDepth에서 0.0 반환
-6. verdict 부호에 의한 최종 판정
+1. 각 warrant 노드에서 시작
+2. warrant func(claim, ground) 실행 → false? 건너뛰기
+3. true이면 attackers (rebuttal/defeater) 재귀적 순회
+4. 각 attacker: func 실행 → false? 기여 0 → true? 더 깊이 재귀
+5. 각 노드에서 h-Categoriser: raw(a) = w(a) / (1 + Σ raw(attackers))
+   verdict(a) = 2 * raw(a) - 1
+   순환 공격: maxDepth(100)에서 0.0 반환
+6. func 결과 캐싱 — 각 func는 평가당 최대 한 번 실행
+7. warrant의 공격 체인에서 도달 가능한 규칙만 실행
 ```
 
-### 4.6 어노테이션을 통한 메타데이터
+### 4.7 YAML 그래프 정의와 코드 생성
 
-Rule body는 Go 함수다. 메타데이터 — qualifier, defeats, backing — 는 Go 어노테이션이다:
+그래프를 YAML로 정의하고 Go 코드로 컴파일할 수 있다:
+
+```yaml
+graph: file-structure
+rules:
+  - name: CheckOneFileOneFunc
+    role: warrant
+    qualifier: 1.0
+  - name: TestFileException
+    role: defeater
+    qualifier: 1.0
+defeats:
+  - from: TestFileException
+    to: CheckOneFileOneFunc
+```
+
+```bash
+toulmin graph file-structure.yaml   # graph_gen.go 생성
+```
+
+### 4.8 어노테이션을 통한 메타데이터
+
+`//tm:backing`만이 함수에 부착되는 유일한 어노테이션이다 — 규칙이 왜 존재하는지를 기록한다. 나머지 모든 메타데이터는 그래프에 속한다:
 
 ```go
-//rule:warrant qualifier=1.0 strength=strict
-//rule:backing "Böhm-Jacopini 정리 — 모든 제어 흐름은 sequence, selection, iteration으로 환원 가능"
-//rule:what F1: 파일당 함수 하나
-func CheckOneFileOneFunc(claim Claim, ground Ground) bool {
-    return ground.FuncCount == 1
+//tm:backing "Böhm-Jacopini 정리 — 모든 제어 흐름은 sequence, selection, iteration으로 환원 가능"
+func CheckOneFileOneFunc(claim any, ground any) (bool, any) {
+    gf := ground.(*FileGround)
+    if len(gf.Funcs) > 1 {
+        return true, &Evidence{Got: len(gf.Funcs), Expected: 1}
+    }
+    return false, nil
 }
 
-//rule:defeater defeats=CheckOneFileOneFunc
-//rule:backing "테스트 파일은 관례적으로 여러 테스트 함수를 하나의 파일에 묶는다"
-//rule:what F5: 테스트 파일은 다중 함수 허용
-func TestFileException(claim Claim, ground Ground) bool {
-    return strings.HasSuffix(claim.FileName, "_test.go")
+//tm:backing "테스트 파일은 관례적으로 여러 테스트 함수를 하나의 파일에 묶는다"
+func TestFileException(claim any, ground any) (bool, any) {
+    return strings.HasSuffix(claim.(string), "_test.go"), nil
 }
 ```
 
@@ -297,26 +363,33 @@ allow if {
 ### 6.3 툴민 해법
 
 ```go
-//rule:warrant qualifier=1.0 strength=defeasible
-//rule:backing "OWASP API Security Top 10 A2:2023"
-//rule:what 인증된 endpoint는 claims 검사 필요
-func AuthEndpointRequiresClaims(claim Claim, ground Ground) bool {
-    return ground.EndpointSecurity.Contains("bearerAuth") &&
-           !ground.PolicyRule.References("claims")
+//tm:backing "OWASP API Security Top 10 A2:2023"
+func AuthEndpointRequiresClaims(claim any, ground any) (bool, any) {
+    g := ground.(*EndpointGround)
+    if g.Security.Contains("bearerAuth") && !g.PolicyRule.References("claims") {
+        return true, &Evidence{Endpoint: g.Path, Missing: "claims reference"}
+    }
+    return false, nil
 }
 
-//rule:defeater defeats=AuthEndpointRequiresClaims
-//rule:backing "공개 API endpoint는 설계상 인증이 불필요하다"
-func PublicEndpointException(claim Claim, ground Ground) bool {
-    return ground.EndpointAnnotation.Contains("x-public")
+//tm:backing "공개 API endpoint는 설계상 인증이 불필요하다"
+func PublicEndpointException(claim any, ground any) (bool, any) {
+    g := ground.(*EndpointGround)
+    return g.Annotation.Contains("x-public"), nil
 }
+
+// 그래프 정의
+g := toulmin.NewGraph("endpoint-auth").
+    Warrant(AuthEndpointRequiresClaims, 1.0).
+    Defeater(PublicEndpointException, 1.0).
+    Defeat(PublicEndpointException, AuthEndpointRequiresClaims)
 ```
 
-**컴파일타임 Ground Adapter**: `endpoint.security` ← OpenAPI 스펙 파싱, `endpoint.policy_rule` ← Rego AST 파싱.
+**컴파일타임 Ground Adapter**: `EndpointGround.Security` ← OpenAPI 스펙 파싱, `EndpointGround.PolicyRule` ← Rego AST 파싱.
 
-**런타임 Ground Adapter**: `endpoint.security` ← 요청 라우트 미들웨어, `endpoint.policy_rule` ← OPA 평가.
+**런타임 Ground Adapter**: `EndpointGround.Security` ← 요청 라우트 미들웨어, `EndpointGround.PolicyRule` ← OPA 평가.
 
-하나의 warrant 선언으로 컴파일타임 교차 검증과 런타임 정책 적용을 모두 수행한다. Ground Adapter만 바뀐다.
+하나의 warrant 함수로 컴파일타임 교차 검증과 런타임 정책 적용을 모두 수행한다. 그래프 구조는 동일하며 Ground Adapter만 바뀐다. 함수 자체는 그래프 간에 재사용 가능하다 — 같은 `AuthEndpointRequiresClaims`가 다른 맥락에서 다른 defeats 관계로 참여할 수 있다.
 
 ---
 
@@ -343,9 +416,9 @@ func PublicEndpointException(claim Claim, ground Ground) bool {
 
 60년간 소프트웨어 규칙 엔진은 검증 대상을 "fact"로 취급하고 이 전제 위에 설계를 구축해왔다. 툴민의 논증 모델(1958)이 이미 올바른 구조 — Claim(Fact가 아닌), Ground, Warrant, Backing, Qualifier, Rebuttal — 을 제공했지만, 철학과 소프트웨어 공학 사이의 학문적 장벽이 그 적용을 가로막았다.
 
-우리는 이 간극을 메우는 Go 규칙 엔진 `toulmin`을 구현했다. 규칙은 Go 함수와 툴민 메타데이터 어노테이션으로 작성된다. 엔진은 규칙을 boolean 함수로 평가하고, 활성화된 규칙들로 defeats 그래프를 구성하고, Amgoud의 h-Categoriser를 통해 [-1, 1] 스케일의 verdict를 연산한다. Nute의 strict/defeasible/defeater 분류가 그래프의 공격 간선을 제어한다.
+우리는 이 간극을 메우는 Go 규칙 엔진 `toulmin`을 구현했다. 규칙은 `(bool, evidence)`를 반환하는 Go 함수 — 판정과 그 근거다. 엔진은 Graph Builder API를 통해 규칙을 defeats 그래프로 조직하고, 평가하고, Amgoud의 h-Categoriser를 통해 [-1, 1] 스케일의 verdict를 연산한다. Nute의 strict/defeasible/defeater 분류가 그래프의 공격 간선을 제어한다. EvaluateTrace는 완전한 설명 가능성을 제공한다 — 어떤 규칙이 활성화되었고, 어떤 역할로, 어떤 증거와 함께.
 
-설계에 별도의 DSL이 필요 없다 — Go의 타입 시스템이 claim-rule 매칭을 처리하고, 엔진 코어는 수백 줄 규모다. filefunc의 22개 규칙에 대한 3개 프로젝트 검증은 툴민 모델이 규칙 강도 분류, 구조화된 defeasibility, 명시적 backing을 자연스럽게 수용함을 보여준다. fullend의 시점 통합 사례는 Ground Adapter가 시점 선택적 규칙 재사용을 가능하게 함을 시연한다.
+설계에 별도의 DSL이 필요 없다 — Go의 타입 시스템이 claim-rule 매칭을 처리하고, 엔진 코어는 수백 줄 규모다. 같은 규칙 함수를 다른 그래프에서 다른 defeats 관계로 재사용할 수 있으며, 규칙 로직과 그래프 구조가 분리된다. filefunc의 22개 규칙에 대한 3개 프로젝트 검증은 툴민 모델이 규칙 강도 분류, 구조화된 defeasibility, 명시적 backing을 자연스럽게 수용함을 보여준다. fullend의 시점 통합 사례는 Ground Adapter가 시점 선택적 규칙 재사용을 가능하게 함을 시연한다.
 
 `toulmin` 라이브러리는 MIT 라이센스로 공개된다.
 
