@@ -6,7 +6,7 @@ package toulmin
 // lazily executing rule funcs only when reached. Returns verdicts
 // for warrant nodes. Funcs are cached across warrant evaluations.
 func (b *GraphBuilder) Evaluate(claim any, ground any) []EvalResult {
-	fnMap := make(map[string]func(any, any) bool)
+	fnMap := make(map[string]func(any, any) (bool, any))
 	qualMap := make(map[string]float64)
 	strMap := make(map[string]Strength)
 	for _, r := range b.rules {
@@ -20,6 +20,7 @@ func (b *GraphBuilder) Evaluate(claim any, ground any) []EvalResult {
 	}
 	ran := make(map[string]bool)
 	active := make(map[string]bool)
+	evidence := make(map[string]any)
 	var calc func(string, int) float64
 	calc = func(id string, depth int) float64 {
 		if depth >= maxDepth {
@@ -27,7 +28,7 @@ func (b *GraphBuilder) Evaluate(claim any, ground any) []EvalResult {
 		}
 		if !ran[id] {
 			ran[id] = true
-			active[id] = fnMap[id](claim, ground)
+			active[id], evidence[id] = fnMap[id](claim, ground)
 		}
 		if !active[id] {
 			return -1.0
@@ -52,7 +53,7 @@ func (b *GraphBuilder) Evaluate(claim any, ground any) []EvalResult {
 		if !active[r.Name] {
 			continue
 		}
-		results = append(results, EvalResult{Name: r.Name, Verdict: verdict})
+		results = append(results, EvalResult{Name: r.Name, Verdict: verdict, Evidence: evidence[r.Name]})
 	}
 	return results
 }

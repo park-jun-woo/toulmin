@@ -3,7 +3,7 @@
 package toulmin
 
 // Defeat declares a defeat edge: from attacks to.
-func (b *GraphBuilder) Defeat(from func(any, any) bool, to func(any, any) bool) *GraphBuilder {
+func (b *GraphBuilder) Defeat(from func(any, any) (bool, any), to func(any, any) (bool, any)) *GraphBuilder {
 	b.defeats = append(b.defeats, defeatEdge{
 		from: FuncName(from),
 		to:   FuncName(to),

@@ -9,7 +9,7 @@ func TestWarrantOnly(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(c any, g any) bool { return true },
+		Fn: func(c any, g any) (bool, any) { return true, nil },
 	})
 	results := eng.Evaluate(nil, nil)
 	if len(results) != 1 {
@@ -24,12 +24,12 @@ func TestWarrantWithDefeater(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(c any, g any) bool { return true },
+		Fn: func(c any, g any) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"W"},
-		Fn:      func(c any, g any) bool { return true },
+		Fn:      func(c any, g any) (bool, any) { return true, nil },
 	})
 	results := eng.Evaluate(nil, nil)
 	if len(results) != 1 {
@@ -44,17 +44,17 @@ func TestCompensation(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(c any, g any) bool { return true },
+		Fn: func(c any, g any) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D1", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"W"},
-		Fn:      func(c any, g any) bool { return true },
+		Fn:      func(c any, g any) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D2", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"D1"},
-		Fn:      func(c any, g any) bool { return true },
+		Fn:      func(c any, g any) (bool, any) { return true, nil },
 	})
 	results := eng.Evaluate(nil, nil)
 	if len(results) != 1 {
@@ -72,12 +72,12 @@ func TestStrictWarrant(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Strict,
-		Fn: func(c any, g any) bool { return true },
+		Fn: func(c any, g any) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"W"},
-		Fn:      func(c any, g any) bool { return true },
+		Fn:      func(c any, g any) (bool, any) { return true, nil },
 	})
 	results := eng.Evaluate(nil, nil)
 	if len(results) != 1 {

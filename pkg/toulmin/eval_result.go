@@ -4,7 +4,8 @@ package toulmin
 
 // EvalResult holds the verdict and trace for an evaluated warrant.
 type EvalResult struct {
-	Name    string       `json:"name"`
-	Verdict float64      `json:"verdict"`
-	Trace   []TraceEntry `json:"trace"`
+	Name     string       `json:"name"`
+	Verdict  float64      `json:"verdict"`
+	Evidence any          `json:"evidence,omitempty"`
+	Trace    []TraceEntry `json:"trace"`
 }

@@ -8,4 +8,5 @@ type TraceEntry struct {
 	Role      string  `json:"role"`
 	Activated bool    `json:"activated"`
 	Qualifier float64 `json:"qualifier"`
+	Evidence  any     `json:"evidence,omitempty"`
 }

@@ -6,7 +6,7 @@ package toulmin
 // lazily executing rule funcs only when reached. Returns verdicts with
 // per-warrant trace containing only relevant rules. State is reset per warrant.
 func (e *Engine) EvaluateTrace(claim any, ground any) []EvalResult {
-	fnMap := make(map[string]func(any, any) bool)
+	fnMap := make(map[string]func(any, any) (bool, any))
 	qualMap := make(map[string]float64)
 	strMap := make(map[string]Strength)
 	edges := make(map[string][]string)
@@ -26,6 +26,7 @@ func (e *Engine) EvaluateTrace(claim any, ground any) []EvalResult {
 	}
 	ran := make(map[string]bool)
 	active := make(map[string]bool)
+	evidence := make(map[string]any)
 	var trace []TraceEntry
 	var calc func(string, int) float64
 	calc = func(id string, depth int) float64 {
@@ -34,12 +35,13 @@ func (e *Engine) EvaluateTrace(claim any, ground any) []EvalResult {
 		}
 		if !ran[id] {
 			ran[id] = true
-			active[id] = fnMap[id](claim, ground)
+			active[id], evidence[id] = fnMap[id](claim, ground)
 			trace = append(trace, TraceEntry{
 				Name:      id,
 				Role:      inferRole(strMap, attackerSet, id),
 				Activated: active[id],
 				Qualifier: qualMap[id],
+				Evidence:  evidence[id],
 			})
 		}
 		if !active[id] {
@@ -62,12 +64,13 @@ func (e *Engine) EvaluateTrace(claim any, ground any) []EvalResult {
 		}
 		ran = make(map[string]bool)
 		active = make(map[string]bool)
+		evidence = make(map[string]any)
 		trace = nil
 		verdict := calc(r.Name, 0)
 		if !active[r.Name] {
 			continue
 		}
-		results = append(results, EvalResult{Name: r.Name, Verdict: verdict, Trace: trace})
+		results = append(results, EvalResult{Name: r.Name, Verdict: verdict, Evidence: evidence[r.Name], Trace: trace})
 	}
 	return results
 }

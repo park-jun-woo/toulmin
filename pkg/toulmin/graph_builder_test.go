@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-func WarrantA(claim any, ground any) bool  { return true }
-func RebuttalB(claim any, ground any) bool { return true }
-func DefeaterC(claim any, ground any) bool { return true }
-func InactiveR(claim any, ground any) bool { return false }
+func WarrantA(claim any, ground any) (bool, any)  { return true, nil }
+func RebuttalB(claim any, ground any) (bool, any) { return true, nil }
+func DefeaterC(claim any, ground any) (bool, any) { return true, nil }
+func InactiveR(claim any, ground any) (bool, any) { return false, nil }
 
 func TestGraphBuilderWarrantOnly(t *testing.T) {
 	g := NewGraph("test").
@@ -131,10 +131,10 @@ func TestGraphBuilderTraceIncludesInactive(t *testing.T) {
 
 func TestLazySkipsRebuttalWhenWarrantFalse(t *testing.T) {
 	rebuttalCalled := false
-	falseWarrant := func(claim any, ground any) bool { return false }
-	trackedRebuttal := func(claim any, ground any) bool {
+	falseWarrant := func(claim any, ground any) (bool, any) { return false, nil }
+	trackedRebuttal := func(claim any, ground any) (bool, any) {
 		rebuttalCalled = true
-		return true
+		return true, nil
 	}
 	g := NewGraph("test").
 		Warrant(falseWarrant, 1.0).
@@ -150,8 +150,8 @@ func TestLazySkipsRebuttalWhenWarrantFalse(t *testing.T) {
 }
 
 func TestTraceOnlyRelevantRules(t *testing.T) {
-	warrantX := func(claim any, ground any) bool { return true }
-	unrelatedDefeater := func(claim any, ground any) bool { return true }
+	warrantX := func(claim any, ground any) (bool, any) { return true, nil }
+	unrelatedDefeater := func(claim any, ground any) (bool, any) { return true, nil }
 	g := NewGraph("test").
 		Warrant(WarrantA, 1.0).
 		Warrant(warrantX, 1.0).

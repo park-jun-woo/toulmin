@@ -3,7 +3,7 @@
 package toulmin
 
 // Warrant adds a warrant rule to the graph. Qualifier defaults to 1.0.
-func (b *GraphBuilder) Warrant(fn func(any, any) bool, qualifier ...float64) *GraphBuilder {
+func (b *GraphBuilder) Warrant(fn func(any, any) (bool, any), qualifier ...float64) *GraphBuilder {
 	q := 1.0
 	if len(qualifier) > 0 {
 		q = qualifier[0]

@@ -10,7 +10,7 @@ import (
 
 // FuncName returns the short name of a function from its pointer.
 // e.g. "github.com/example/pkg.IsAdult" → "IsAdult"
-func FuncName(fn func(any, any) bool) string {
+func FuncName(fn func(any, any) (bool, any)) string {
 	ptr := reflect.ValueOf(fn).Pointer()
 	full := runtime.FuncForPC(ptr).Name()
 	if idx := strings.LastIndex(full, "."); idx >= 0 {
