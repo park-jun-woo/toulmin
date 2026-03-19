@@ -17,10 +17,21 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 All rules share one signature:
 
 ```go
-func(claim any, ground any) (bool, any)
+func(claim any, ground any, backing any) (bool, any)
 ```
 
-A rule returns `(true/false, evidence)`. The bool is the judgment, the second value is domain-specific evidence (e.g. error details). Return `nil` when no evidence is needed.
+A rule returns `(true/false, evidence)`. The bool is the judgment, the second value is domain-specific evidence (e.g. error details). Return `nil` when no evidence is needed. The `backing` parameter receives the judgment criteria registered at graph declaration time.
+
+Legacy signature `func(claim any, ground any) (bool, any)` is still supported — the engine wraps it internally via `toRuleFunc`.
+
+### Ground vs Backing
+
+| | Ground | Backing |
+|---|---|---|
+| What | Facts about the judgment target | Judgment criteria |
+| When | Changes per request (runtime) | Fixed at graph declaration time |
+| Passed by | `Evaluate(claim, ground)` caller | `Warrant(fn, backing, qualifier)` declaration |
+| Example | File AST, user profile, request context | Threshold value, policy name, config |
 
 ### Strength
 
@@ -61,17 +72,21 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 
 `0.0–1.0` float. Initial weight for h-Categoriser per rule. Default: `1.0` (Toulmin original model).
 
+### Rule Identity (ruleID)
+
+Each registered rule is identified by `ruleID = funcID + "#" + backing` (when backing is non-nil). When backing is nil, `ruleID = funcID`. This allows the same function to be registered multiple times with different backing values, each as a distinct rule.
+
 ---
 
 ## Writing Rules
 
 ### Annotations
 
-Write `//tm:backing` comment directly above the function declaration. Everything else (role, qualifier, defeats, strength) is declared at graph level.
+Write `//tm:backing` comment directly above the function declaration to document why the rule exists. The annotation is for documentation — the actual backing value is passed at graph declaration time via the API.
 
 ```go
 //tm:backing "Böhm-Jacopini theorem"
-func CheckOneFileOneFunc(claim any, ground any) (bool, any) {
+func CheckOneFileOneFunc(claim any, ground any, backing any) (bool, any) {
     gf := ground.(*FileGround)
     if len(gf.Funcs) > 1 {
         return true, &Evidence{Got: len(gf.Funcs), Expected: 1}
@@ -80,14 +95,14 @@ func CheckOneFileOneFunc(claim any, ground any) (bool, any) {
 }
 
 //tm:backing "test files conventionally group multiple test funcs"
-func TestFileException(claim any, ground any) (bool, any) {
+func TestFileException(claim any, ground any, backing any) (bool, any) {
     return strings.HasSuffix(claim.(string), "_test.go"), nil
 }
 ```
 
 | Annotation | Required | Description |
 |---|---|---|
-| `//tm:backing` | optional | Why this rule exists. Quoted string |
+| `//tm:backing` | optional | Why this rule exists. Quoted string (documentation only) |
 
 ---
 
@@ -95,13 +110,13 @@ func TestFileException(claim any, ground any) (bool, any) {
 
 ### Graph Builder API (recommended)
 
-Functions are identifiers — no string names needed. Defeats are declared on the graph, not the function. Same function can be reused across different graphs with different defeats.
+Functions are identifiers — no string names needed. Defeats are declared on the graph, not the function. Same function can be reused across different graphs with different defeats. The API takes `fn any, backing any, qualifier float64` in that order.
 
 ```go
 g := toulmin.NewGraph("voting").
-    Warrant(IsAdult, 1.0).
-    Warrant(IsCitizen, 1.0).
-    Rebuttal(HasCriminalRecord, 1.0).
+    Warrant(IsAdult, nil, 1.0).
+    Warrant(IsCitizen, nil, 1.0).
+    Rebuttal(HasCriminalRecord, nil, 1.0).
     Defeat(HasCriminalRecord, IsAdult)
 
 // Evaluate — verdict only (lightweight)
@@ -116,7 +131,7 @@ results, err = g.EvaluateTrace(claim, ground)
 for _, r := range results {
     fmt.Printf("%s: verdict=%f\n", r.Name, r.Verdict)
     for _, t := range r.Trace {
-        fmt.Printf("  %s(%s): activated=%v, qualifier=%g\n", t.Name, t.Role, t.Activated, t.Qualifier)
+        fmt.Printf("  %s(%s): activated=%v, qualifier=%g, backing=%v\n", t.Name, t.Role, t.Activated, t.Qualifier, t.Backing)
     }
 }
 ```
@@ -139,15 +154,16 @@ type EvalResult struct {
 }
 ```
 
-TraceEntry contains relevant rules with their role, result, qualifier, and evidence:
+TraceEntry contains relevant rules with their role, result, qualifier, evidence, and backing:
 
 ```go
 type TraceEntry struct {
     Name      string  `json:"name"`
     Role      string  `json:"role"`      // "warrant", "rebuttal", "defeater"
-    Activated bool    `json:"activated"` // func(claim, ground) result
+    Activated bool    `json:"activated"` // func(claim, ground, backing) result
     Qualifier float64 `json:"qualifier"` // applied weight
     Evidence  any     `json:"evidence,omitempty"` // rule's evidence
+    Backing   any     `json:"backing,omitempty"`  // rule's backing value
 }
 ```
 
@@ -156,22 +172,39 @@ type TraceEntry struct {
 ```go
 // Same IsAdult function, different graphs, different defeats
 votingGraph := toulmin.NewGraph("voting").
-    Warrant(IsAdult, 1.0).
-    Rebuttal(HasCriminalRecord, 1.0).
+    Warrant(IsAdult, nil, 1.0).
+    Rebuttal(HasCriminalRecord, nil, 1.0).
     Defeat(HasCriminalRecord, IsAdult)
 
 contractGraph := toulmin.NewGraph("contract").
-    Warrant(IsAdult, 1.0).
-    Rebuttal(IsBankrupt, 1.0).
+    Warrant(IsAdult, nil, 1.0).
+    Rebuttal(IsBankrupt, nil, 1.0).
     Defeat(IsBankrupt, IsAdult)
 ```
 
-#### Qualifier Default
+#### Same Function, Different Backing
+
+The same function can be registered multiple times with different backing values. Each registration becomes a distinct rule identified by `ruleID = funcID + "#" + backing`. Use `DefeatWith` to reference rules by both function and backing.
+
+```go
+// Same CheckThreshold function, different backing values
+g := toulmin.NewGraph("limits").
+    Warrant(CheckThreshold, 100, 1.0).       // ruleID = "CheckThreshold#100"
+    Warrant(CheckThreshold, 200, 0.8).       // ruleID = "CheckThreshold#200"
+    Rebuttal(HasExemption, "vip", 1.0).
+    DefeatWith(HasExemption, "vip", CheckThreshold, 100)
+```
+
+#### DefeatWith
+
+`DefeatWith(fromFn, fromBacking, toFn, toBacking)` declares a defeat edge between rules identified by both function and backing. Use this when the same function is registered with different backing values.
 
 ```go
 g := toulmin.NewGraph("example").
-    Warrant(IsAdult).        // qualifier = 1.0 (Toulmin original)
-    Warrant(IsCitizen, 0.7)  // qualifier = 0.7 (extended use)
+    Warrant(CheckLimit, "daily", 1.0).
+    Warrant(CheckLimit, "monthly", 1.0).
+    Rebuttal(HasOverride, "daily", 1.0).
+    DefeatWith(HasOverride, "daily", CheckLimit, "daily")  // targets only the daily variant
 ```
 
 ### Engine API (Phase 001, still available)
@@ -251,9 +284,9 @@ package mypkg
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 var VotingGraph = toulmin.NewGraph("voting").
-    Warrant(IsAdult, 1.0).
-    Warrant(IsCitizen, 0.7).
-    Rebuttal(HasCriminalRecord, 1.0).
+    Warrant(IsAdult, nil, 1.0).
+    Warrant(IsCitizen, nil, 0.7).
+    Rebuttal(HasCriminalRecord, nil, 1.0).
     Defeat(HasCriminalRecord, IsAdult)
 ```
 
@@ -264,17 +297,18 @@ var VotingGraph = toulmin.NewGraph("voting").
 ```
 0. Cycle detection: DFS on defeat edges → error if cycle found (before any func execution)
 1. Start from each warrant node
-2. Run warrant func(claim, ground) → false? skip
+2. Run warrant func(claim, ground, backing) → false? skip
 3. If true, traverse attackers (rebuttal/defeater) recursively
-4. Each attacker: run func → false? contributes 0 → true? recurse deeper
+4. Each attacker: run func(claim, ground, backing) → false? contributes 0 → true? recurse deeper
 5. h-Categoriser at each node: raw(a) = w(a) / (1 + Σ raw(attackers))
    verdict(a) = 2 * raw(a) - 1
-6. Func results cached — each func runs at most once per evaluation
+6. Func results cached — each rule (ruleID) runs at most once per evaluation
 7. Final judgment: verdict > 0 → violation, == 0 → undecided, < 0 → rebutted
 ```
 
 Only rules reachable from the warrant's attack chain are executed.
 EvaluateTrace returns per-warrant trace with only relevant rules.
+Each rule's registered backing value is passed as the third argument to the rule function.
 
 ---
 
@@ -286,12 +320,17 @@ pkg/toulmin/                — public library (engine core)
   engine_register.go        — Engine.Register method
   engine_evaluate.go        — Engine.Evaluate method (verdict only)
   engine_evaluate_trace.go  — Engine.EvaluateTrace method (verdict + trace)
-  graph_builder.go          — GraphBuilder (NewGraph, Warrant, Rebuttal, Defeater, Defeat)
+  graph_builder.go          — GraphBuilder (NewGraph, Warrant, Rebuttal, Defeater, Defeat, DefeatWith)
   graph_builder_evaluate.go — GraphBuilder.Evaluate method (verdict only)
   graph_builder_evaluate_trace.go — GraphBuilder.EvaluateTrace method (verdict + trace)
-  trace_entry.go            — TraceEntry struct
+  graph_builder_defeat_with.go — DefeatWith method (defeat with explicit backing)
+  trace_entry.go            — TraceEntry struct (includes Backing field)
   infer_role.go             — role inference for Engine API
-  func_name.go              — function pointer → name extraction
+  func_name.go              — FuncName(any) → name extraction
+  func_id.go                — funcID(any) → unique function identifier
+  rule_id.go                — ruleID(fn, backing) → funcID + "#" + backing
+  to_rule_func.go           — toRuleFunc: converts fn any to 3-arg rule func
+  wrap_legacy.go            — wrapLegacy: wraps 2-arg func as 3-arg
   detect_cycle.go           — DFS cycle detection on defeat graph (exported)
   eval_context.go           — evalContext shared state
   new_eval_context.go       — evalContext factory
@@ -299,7 +338,7 @@ pkg/toulmin/                — public library (engine core)
   eval_context_calc_trace.go — h-Categoriser lazy calc with trace collection
   eval_context_reset.go     — per-warrant state reset
   is_warrant.go             — warrant identification helper
-  rule_meta.go              — RuleMeta struct
+  rule_meta.go              — RuleMeta struct (Fn takes 3-arg signature)
   strength.go               — Strict/Defeasible/Defeater
   eval_result.go            — EvalResult struct
   parse_annotation.go       — //tm: annotation parser
@@ -362,5 +401,66 @@ verdict(W) = +1.0 (unchanged)
 |---|---|
 | Missing `//tm:backing` | Optional, but recommended — document why the rule exists |
 | Declaring role/defeats on function | Role, defeats, qualifier, strength belong in Graph Builder or YAML |
-| Rule func wrong signature | Must be `func(claim any, ground any) (bool, any)` |
+| Rule func wrong signature | Must be `func(claim any, ground any, backing any) (bool, any)` (legacy 2-arg also accepted) |
 | Editing `graph_gen.go` manually | Re-run `toulmin graph` instead. File is generated |
+| Using fn in Defeat without registering it | Must register via Warrant/Rebuttal/Defeater first |
+| Treating verdict 0.0 as allow or deny | 0.0 is undecided — threshold is your framework's decision |
+| Confusing ground and backing | ground = per-request facts, backing = fixed judgment criteria at graph declaration |
+| Forgetting backing parameter | All Warrant/Rebuttal/Defeater calls require `(fn, backing, qualifier)`. Use `nil` when no backing is needed |
+
+### Backing Replaces Closures
+
+Previously, parameterized rules required closure factories (e.g. `HasRole("admin")`) which caused `funcID` identity issues because each call created a new function pointer. With backing as a first-class parameter, the same function can be registered with different backing values — no closures needed.
+
+```go
+// OLD (closure approach — no longer needed)
+hasAdmin := HasRole("admin")      // closure factory
+hasEditor := HasRole("editor")    // different function pointer
+g := toulmin.NewGraph("example").
+    Rebuttal(hasAdmin, nil, 1.0).
+    Rebuttal(hasEditor, nil, 1.0).
+    Defeat(hasAdmin, SomeWarrant)
+
+// NEW (backing approach — recommended)
+func HasRole(claim any, ground any, backing any) (bool, any) {
+    role := backing.(string)  // backing carries the parameter
+    user := ground.(*User)
+    return user.HasRole(role), nil
+}
+
+g := toulmin.NewGraph("example").
+    Rebuttal(HasRole, "admin", 1.0).       // ruleID = "HasRole#admin"
+    Rebuttal(HasRole, "editor", 1.0).      // ruleID = "HasRole#editor"
+    DefeatWith(HasRole, "admin", SomeWarrant, nil)
+```
+
+### Defeat Requires Registration
+
+A function referenced in `Defeat(fn, target)` must be registered in the graph via `Warrant`, `Rebuttal`, or `Defeater`. Unregistered functions are not in `fnMap` and will not execute.
+
+```go
+// WRONG — whitelisted is not registered
+g := toulmin.NewGraph("example").
+    Warrant(IsAuthenticated, nil, 1.0).
+    Rebuttal(IsIPBlocked, nil, 1.0).
+    Defeat(IsIPBlocked, IsAuthenticated).
+    Defeat(IsWhitelisted, IsIPBlocked)          // IsWhitelisted not in fnMap!
+
+// CORRECT — register as Defeater
+g := toulmin.NewGraph("example").
+    Warrant(IsAuthenticated, nil, 1.0).
+    Rebuttal(IsIPBlocked, nil, 1.0).
+    Defeater(IsWhitelisted, nil, 1.0).
+    Defeat(IsIPBlocked, IsAuthenticated).
+    Defeat(IsWhitelisted, IsIPBlocked)
+```
+
+### Verdict 0.0 Threshold Is Framework's Decision
+
+Verdict `0.0` means "undecided" — the warrant is exactly neutralized by its attackers. Whether `0.0` means allow or deny depends on the domain:
+
+- **Security/route guard**: `verdict <= 0` → deny (safe default)
+- **Content moderation**: `verdict < 0.3` → flag for manual review
+- **Feature flags**: `verdict > 0` → enabled
+
+The toulmin engine computes the verdict. The framework layer interprets it.

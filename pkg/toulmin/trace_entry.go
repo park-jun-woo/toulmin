@@ -9,4 +9,5 @@ type TraceEntry struct {
 	Activated bool    `json:"activated"`
 	Qualifier float64 `json:"qualifier"`
 	Evidence  any     `json:"evidence,omitempty"`
+	Backing   any     `json:"backing,omitempty"`
 }

@@ -12,7 +12,7 @@ func (ctx *evalContext) calc(id string, claim, ground any) float64 {
 	}
 	if !ctx.ran[id] {
 		ctx.ran[id] = true
-		ctx.active[id], ctx.evidence[id] = fn(claim, ground)
+		ctx.active[id], ctx.evidence[id] = fn(claim, ground, ctx.backingMap[id])
 	}
 	if !ctx.active[id] {
 		return -1.0

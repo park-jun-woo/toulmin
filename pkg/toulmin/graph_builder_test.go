@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-func WarrantA(claim any, ground any) (bool, any)  { return true, nil }
-func RebuttalB(claim any, ground any) (bool, any) { return true, nil }
-func DefeaterC(claim any, ground any) (bool, any) { return true, nil }
-func InactiveR(claim any, ground any) (bool, any) { return false, nil }
+func WarrantA(claim any, ground any, backing any) (bool, any)  { return true, nil }
+func RebuttalB(claim any, ground any, backing any) (bool, any) { return true, nil }
+func DefeaterC(claim any, ground any, backing any) (bool, any) { return true, nil }
+func InactiveR(claim any, ground any, backing any) (bool, any) { return false, nil }
 
 func TestGraphBuilderWarrantOnly(t *testing.T) {
 	g := NewGraph("test").
-		Warrant(WarrantA, 1.0)
+		Warrant(WarrantA, nil, 1.0)
 	results, err := g.EvaluateTrace(nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -27,8 +27,8 @@ func TestGraphBuilderWarrantOnly(t *testing.T) {
 
 func TestGraphBuilderWithDefeat(t *testing.T) {
 	g := NewGraph("test").
-		Warrant(WarrantA, 1.0).
-		Rebuttal(RebuttalB, 1.0).
+		Warrant(WarrantA, nil, 1.0).
+		Rebuttal(RebuttalB, nil, 1.0).
 		Defeat(RebuttalB, WarrantA)
 	results, err := g.EvaluateTrace(nil, nil)
 	if err != nil {
@@ -44,9 +44,9 @@ func TestGraphBuilderWithDefeat(t *testing.T) {
 
 func TestGraphBuilderCompensation(t *testing.T) {
 	g := NewGraph("test").
-		Warrant(WarrantA, 1.0).
-		Rebuttal(RebuttalB, 1.0).
-		Defeater(DefeaterC, 1.0).
+		Warrant(WarrantA, nil, 1.0).
+		Rebuttal(RebuttalB, nil, 1.0).
+		Defeater(DefeaterC, nil, 1.0).
 		Defeat(RebuttalB, WarrantA).
 		Defeat(DefeaterC, RebuttalB)
 	results, err := g.EvaluateTrace(nil, nil)
@@ -62,29 +62,14 @@ func TestGraphBuilderCompensation(t *testing.T) {
 	}
 }
 
-func TestGraphBuilderQualifierDefault(t *testing.T) {
-	g := NewGraph("test").
-		Warrant(WarrantA)
-	results, err := g.EvaluateTrace(nil, nil)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(results) != 1 {
-		t.Fatalf("expected 1 result, got %d", len(results))
-	}
-	if results[0].Verdict != 1.0 {
-		t.Errorf("expected +1.0 (default qualifier), got %f", results[0].Verdict)
-	}
-}
-
 func TestGraphBuilderFuncReuse(t *testing.T) {
 	g1 := NewGraph("graph1").
-		Warrant(WarrantA, 1.0).
-		Rebuttal(RebuttalB, 1.0).
+		Warrant(WarrantA, nil, 1.0).
+		Rebuttal(RebuttalB, nil, 1.0).
 		Defeat(RebuttalB, WarrantA)
 	g2 := NewGraph("graph2").
-		Warrant(WarrantA, 1.0).
-		Defeater(DefeaterC, 1.0).
+		Warrant(WarrantA, nil, 1.0).
+		Defeater(DefeaterC, nil, 1.0).
 		Defeat(DefeaterC, WarrantA)
 	r1, err := g1.Evaluate(nil, nil)
 	if err != nil {
@@ -107,8 +92,8 @@ func TestGraphBuilderFuncReuse(t *testing.T) {
 
 func TestGraphBuilderTraceAllRules(t *testing.T) {
 	g := NewGraph("test").
-		Warrant(WarrantA, 1.0).
-		Rebuttal(RebuttalB, 0.8).
+		Warrant(WarrantA, nil, 1.0).
+		Rebuttal(RebuttalB, nil, 0.8).
 		Defeat(RebuttalB, WarrantA)
 	results, err := g.EvaluateTrace(nil, nil)
 	if err != nil {
@@ -131,8 +116,8 @@ func TestGraphBuilderTraceAllRules(t *testing.T) {
 
 func TestGraphBuilderTraceIncludesInactive(t *testing.T) {
 	g := NewGraph("test").
-		Warrant(WarrantA, 1.0).
-		Rebuttal(InactiveR, 1.0).
+		Warrant(WarrantA, nil, 1.0).
+		Rebuttal(InactiveR, nil, 1.0).
 		Defeat(InactiveR, WarrantA)
 	results, err := g.EvaluateTrace(nil, nil)
 	if err != nil {
@@ -155,14 +140,14 @@ func TestGraphBuilderTraceIncludesInactive(t *testing.T) {
 
 func TestLazySkipsRebuttalWhenWarrantFalse(t *testing.T) {
 	rebuttalCalled := false
-	falseWarrant := func(claim any, ground any) (bool, any) { return false, nil }
-	trackedRebuttal := func(claim any, ground any) (bool, any) {
+	falseWarrant := func(claim any, ground any, backing any) (bool, any) { return false, nil }
+	trackedRebuttal := func(claim any, ground any, backing any) (bool, any) {
 		rebuttalCalled = true
 		return true, nil
 	}
 	g := NewGraph("test").
-		Warrant(falseWarrant, 1.0).
-		Rebuttal(trackedRebuttal, 1.0).
+		Warrant(falseWarrant, nil, 1.0).
+		Rebuttal(trackedRebuttal, nil, 1.0).
 		Defeat(trackedRebuttal, falseWarrant)
 	results, err := g.Evaluate(nil, nil)
 	if err != nil {
@@ -177,13 +162,13 @@ func TestLazySkipsRebuttalWhenWarrantFalse(t *testing.T) {
 }
 
 func TestTraceOnlyRelevantRules(t *testing.T) {
-	warrantX := func(claim any, ground any) (bool, any) { return true, nil }
-	unrelatedDefeater := func(claim any, ground any) (bool, any) { return true, nil }
+	warrantX := func(claim any, ground any, backing any) (bool, any) { return true, nil }
+	unrelatedDefeater := func(claim any, ground any, backing any) (bool, any) { return true, nil }
 	g := NewGraph("test").
-		Warrant(WarrantA, 1.0).
-		Warrant(warrantX, 1.0).
-		Defeater(unrelatedDefeater, 1.0).
-		Rebuttal(RebuttalB, 1.0).
+		Warrant(WarrantA, nil, 1.0).
+		Warrant(warrantX, nil, 1.0).
+		Defeater(unrelatedDefeater, nil, 1.0).
+		Rebuttal(RebuttalB, nil, 1.0).
 		Defeat(RebuttalB, WarrantA).
 		Defeat(unrelatedDefeater, warrantX)
 	results, err := g.EvaluateTrace(nil, nil)
@@ -209,8 +194,8 @@ func TestFuncName(t *testing.T) {
 }
 
 func TestFuncIDUniqueness(t *testing.T) {
-	fn1 := func(claim any, ground any) (bool, any) { return true, nil }
-	fn2 := func(claim any, ground any) (bool, any) { return false, nil }
+	fn1 := func(claim any, ground any, backing any) (bool, any) { return true, nil }
+	fn2 := func(claim any, ground any, backing any) (bool, any) { return false, nil }
 	id1 := funcID(fn1)
 	id2 := funcID(fn2)
 	if id1 == id2 {
@@ -220,7 +205,7 @@ func TestFuncIDUniqueness(t *testing.T) {
 
 func TestQualifierZero(t *testing.T) {
 	g := NewGraph("test").
-		Warrant(WarrantA, 0.0)
+		Warrant(WarrantA, nil, 0.0)
 	results, err := g.Evaluate(nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -234,7 +219,7 @@ func TestQualifierZero(t *testing.T) {
 }
 
 func TestDeepDefeatChain(t *testing.T) {
-	fn := func(c any, g any) (bool, any) { return true, nil }
+	fn := func(c any, g any, b any) (bool, any) { return true, nil }
 	eng := NewEngine()
 	eng.Register(RuleMeta{Name: "W", Qualifier: 1.0, Strength: Defeasible, Fn: fn})
 	prev := "W"
@@ -257,11 +242,11 @@ func TestDeepDefeatChain(t *testing.T) {
 }
 
 func TestGraphBuilderCycleError(t *testing.T) {
-	cycleA := func(claim any, ground any) (bool, any) { return true, nil }
-	cycleB := func(claim any, ground any) (bool, any) { return true, nil }
+	cycleA := func(claim any, ground any, backing any) (bool, any) { return true, nil }
+	cycleB := func(claim any, ground any, backing any) (bool, any) { return true, nil }
 	g := NewGraph("test").
-		Warrant(cycleA, 1.0).
-		Rebuttal(cycleB, 1.0).
+		Warrant(cycleA, nil, 1.0).
+		Rebuttal(cycleB, nil, 1.0).
 		Defeat(cycleB, cycleA).
 		Defeat(cycleA, cycleB)
 	_, err := g.Evaluate(nil, nil)
@@ -271,7 +256,7 @@ func TestGraphBuilderCycleError(t *testing.T) {
 }
 
 func TestDeepDefeatChainOver100(t *testing.T) {
-	fn := func(c any, g any) (bool, any) { return true, nil }
+	fn := func(c any, g any, b any) (bool, any) { return true, nil }
 	eng := NewEngine()
 	eng.Register(RuleMeta{Name: "W", Qualifier: 1.0, Strength: Defeasible, Fn: fn})
 	prev := "W"
@@ -290,5 +275,107 @@ func TestDeepDefeatChainOver100(t *testing.T) {
 	v := results[0].Verdict
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		t.Errorf("verdict should be finite for deep non-cyclic chain, got %f", v)
+	}
+}
+
+func TestBackingSameFunc(t *testing.T) {
+	isInRole := func(claim any, ground any, backing any) (bool, any) {
+		return true, nil
+	}
+	g := NewGraph("test").
+		Warrant(isInRole, "admin", 1.0).
+		Warrant(isInRole, "editor", 1.0)
+	results, err := g.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results (same func, different backing), got %d", len(results))
+	}
+	if results[0].Verdict != 1.0 {
+		t.Errorf("admin: expected +1.0, got %f", results[0].Verdict)
+	}
+	if results[1].Verdict != 1.0 {
+		t.Errorf("editor: expected +1.0, got %f", results[1].Verdict)
+	}
+}
+
+func TestBackingInTrace(t *testing.T) {
+	isInRole := func(claim any, ground any, backing any) (bool, any) {
+		return true, nil
+	}
+	g := NewGraph("test").
+		Warrant(isInRole, "admin", 1.0)
+	results, err := g.EvaluateTrace(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if len(results[0].Trace) != 1 {
+		t.Fatalf("expected 1 trace entry, got %d", len(results[0].Trace))
+	}
+	if results[0].Trace[0].Backing != "admin" {
+		t.Errorf("expected backing 'admin', got %v", results[0].Trace[0].Backing)
+	}
+}
+
+func TestBackingNil(t *testing.T) {
+	g := NewGraph("test").
+		Warrant(WarrantA, nil, 1.0)
+	results, err := g.EvaluateTrace(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Trace[0].Backing != nil {
+		t.Errorf("expected backing nil, got %v", results[0].Trace[0].Backing)
+	}
+}
+
+func TestDefeatWithBacking(t *testing.T) {
+	isIPInList := func(claim any, ground any, backing any) (bool, any) {
+		return true, nil
+	}
+	isAuth := func(claim any, ground any, backing any) (bool, any) {
+		return true, nil
+	}
+	blocklist := "blocklist"
+	whitelist := "whitelist"
+	g := NewGraph("test").
+		Warrant(isAuth, nil, 1.0).
+		Rebuttal(isIPInList, blocklist, 1.0).
+		Defeater(isIPInList, whitelist, 1.0).
+		DefeatWith(isIPInList, blocklist, isAuth, nil).
+		DefeatWith(isIPInList, whitelist, isIPInList, blocklist)
+	results, err := g.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	expected := 1.0 / 3.0
+	if math.Abs(results[0].Verdict-expected) > 0.001 {
+		t.Errorf("expected ≈%f (whitelist defeats blocklist), got %f", expected, results[0].Verdict)
+	}
+}
+
+func TestLegacySignature(t *testing.T) {
+	legacyFn := func(claim any, ground any) (bool, any) { return true, nil }
+	g := NewGraph("test").
+		Warrant(legacyFn, nil, 1.0)
+	results, err := g.Evaluate(nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Verdict != 1.0 {
+		t.Errorf("expected +1.0, got %f", results[0].Verdict)
 	}
 }

@@ -18,7 +18,7 @@ func runEvaluate(cmd *cobra.Command, args []string) error {
 		Qualifier: 1.0,
 		Strength:  toulmin.Defeasible,
 		Backing:   "Bohm-Jacopini theorem",
-		Fn:        func(claim any, ground any) (bool, any) { return true, nil },
+		Fn:        func(claim any, ground any, backing any) (bool, any) { return true, nil },
 	})
 	eng.Register(toulmin.RuleMeta{
 		Name:      "TestFileException",
@@ -26,7 +26,7 @@ func runEvaluate(cmd *cobra.Command, args []string) error {
 		Strength:  toulmin.Defeater,
 		Defeats:   []string{"OneFileOneFunc"},
 		Backing:   "test files conventionally group multiple test funcs",
-		Fn:        func(claim any, ground any) (bool, any) { return true, nil },
+		Fn:        func(claim any, ground any, backing any) (bool, any) { return true, nil },
 	})
 	results, err := eng.Evaluate(nil, nil)
 	if err != nil {

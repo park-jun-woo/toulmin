@@ -10,7 +10,7 @@ func TestWarrantOnly(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(c any, g any) (bool, any) { return true, nil },
+		Fn: func(c any, g any, b any) (bool, any) { return true, nil },
 	})
 	results, err := eng.Evaluate(nil, nil)
 	if err != nil {
@@ -28,12 +28,12 @@ func TestWarrantWithDefeater(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(c any, g any) (bool, any) { return true, nil },
+		Fn: func(c any, g any, b any) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"W"},
-		Fn:      func(c any, g any) (bool, any) { return true, nil },
+		Fn:      func(c any, g any, b any) (bool, any) { return true, nil },
 	})
 	results, err := eng.Evaluate(nil, nil)
 	if err != nil {
@@ -51,17 +51,17 @@ func TestCompensation(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(c any, g any) (bool, any) { return true, nil },
+		Fn: func(c any, g any, b any) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D1", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"W"},
-		Fn:      func(c any, g any) (bool, any) { return true, nil },
+		Fn:      func(c any, g any, b any) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D2", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"D1"},
-		Fn:      func(c any, g any) (bool, any) { return true, nil },
+		Fn:      func(c any, g any, b any) (bool, any) { return true, nil },
 	})
 	results, err := eng.Evaluate(nil, nil)
 	if err != nil {
@@ -80,12 +80,12 @@ func TestStrictWarrant(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Strict,
-		Fn: func(c any, g any) (bool, any) { return true, nil },
+		Fn: func(c any, g any, b any) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"W"},
-		Fn:      func(c any, g any) (bool, any) { return true, nil },
+		Fn:      func(c any, g any, b any) (bool, any) { return true, nil },
 	})
 	results, err := eng.Evaluate(nil, nil)
 	if err != nil {
@@ -104,12 +104,12 @@ func TestCircularAttackError(t *testing.T) {
 	eng.Register(RuleMeta{
 		Name: "A", Qualifier: 1.0, Strength: Defeasible,
 		Defeats: []string{"B"},
-		Fn:      func(c any, g any) (bool, any) { return true, nil },
+		Fn:      func(c any, g any, b any) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "B", Qualifier: 1.0, Strength: Defeasible,
 		Defeats: []string{"A"},
-		Fn:      func(c any, g any) (bool, any) { return true, nil },
+		Fn:      func(c any, g any, b any) (bool, any) { return true, nil },
 	})
 	_, err := eng.Evaluate(nil, nil)
 	if err == nil {
@@ -121,7 +121,7 @@ func TestNilFuncGuard(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(c any, g any) (bool, any) { return true, nil },
+		Fn: func(c any, g any, b any) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "Ghost", Qualifier: 1.0, Strength: Defeasible,
@@ -141,8 +141,8 @@ func TestNilFuncGuard(t *testing.T) {
 }
 
 func TestEngineGraphBuilderConsistency(t *testing.T) {
-	w := func(c any, g any) (bool, any) { return true, nil }
-	r := func(c any, g any) (bool, any) { return true, nil }
+	w := func(c any, g any, b any) (bool, any) { return true, nil }
+	r := func(c any, g any, b any) (bool, any) { return true, nil }
 
 	eng := NewEngine()
 	eng.Register(RuleMeta{Name: "w", Qualifier: 1.0, Strength: Defeasible, Fn: w})
@@ -153,8 +153,8 @@ func TestEngineGraphBuilderConsistency(t *testing.T) {
 	}
 
 	g := NewGraph("test").
-		Warrant(w, 1.0).
-		Rebuttal(r, 0.8).
+		Warrant(w, nil, 1.0).
+		Rebuttal(r, nil, 0.8).
 		Defeat(r, w)
 	gbResults, err := g.Evaluate(nil, nil)
 	if err != nil {
@@ -183,7 +183,7 @@ func TestParseAnnotation(t *testing.T) {
 }
 
 func TestDeepDefeatChainEngine(t *testing.T) {
-	fn := func(c any, g any) (bool, any) { return true, nil }
+	fn := func(c any, g any, b any) (bool, any) { return true, nil }
 	eng := NewEngine()
 	eng.Register(RuleMeta{Name: "W", Qualifier: 1.0, Strength: Defeasible, Fn: fn})
 	prev := "W"

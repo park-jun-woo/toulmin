@@ -12,7 +12,7 @@ func (ctx *evalContext) calcTrace(id string, claim, ground any) float64 {
 	}
 	if !ctx.ran[id] {
 		ctx.ran[id] = true
-		ctx.active[id], ctx.evidence[id] = fn(claim, ground)
+		ctx.active[id], ctx.evidence[id] = fn(claim, ground, ctx.backingMap[id])
 		role := ctx.roleMap[id]
 		if role == "" {
 			role = inferRole(ctx.strMap, ctx.attackerSet, id)
@@ -23,6 +23,7 @@ func (ctx *evalContext) calcTrace(id string, claim, ground any) float64 {
 			Activated: ctx.active[id],
 			Qualifier: ctx.qualMap[id],
 			Evidence:  ctx.evidence[id],
+			Backing:   ctx.backingMap[id],
 		})
 	}
 	if !ctx.active[id] {

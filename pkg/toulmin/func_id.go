@@ -11,7 +11,7 @@ import (
 // funcID returns the full path name of a function from its pointer.
 // e.g. "github.com/example/pkg.IsAdult"
 // Returns a fallback string if runtime.FuncForPC returns nil.
-func funcID(fn func(any, any) (bool, any)) string {
+func funcID(fn any) string {
 	ptr := reflect.ValueOf(fn).Pointer()
 	f := runtime.FuncForPC(ptr)
 	if f == nil {

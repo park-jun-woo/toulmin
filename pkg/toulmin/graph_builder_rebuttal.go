@@ -2,18 +2,19 @@
 //ff:what Rebuttal — adds a rebuttal rule to the graph builder
 package toulmin
 
-// Rebuttal adds a rebuttal rule to the graph. Qualifier defaults to 1.0.
-func (b *GraphBuilder) Rebuttal(fn func(any, any) (bool, any), qualifier ...float64) *GraphBuilder {
-	q := 1.0
-	if len(qualifier) > 0 {
-		q = qualifier[0]
-	}
-	id := funcID(fn)
+// Rebuttal adds a rebuttal rule to the graph.
+// fn accepts both func(any,any,any)(bool,any) and legacy func(any,any)(bool,any).
+// backing is the rule's judgment criteria (Toulmin backing). Use nil if not needed.
+// qualifier is the rule's confidence weight.
+func (b *GraphBuilder) Rebuttal(fn any, backing any, qualifier float64) *GraphBuilder {
+	wrapped := toRuleFunc(fn)
+	id := ruleID(fn, backing)
 	b.rules = append(b.rules, RuleMeta{
 		Name:      id,
-		Qualifier: q,
+		Qualifier: qualifier,
 		Strength:  Defeasible,
-		Fn:        fn,
+		Backing:   backing,
+		Fn:        wrapped,
 	})
 	b.roles[id] = "rebuttal"
 	return b

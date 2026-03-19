@@ -7,19 +7,21 @@ package toulmin
 // Returns an error if the defeat graph contains a cycle.
 func newEvalContext(rules []RuleMeta, defeatEdges []defeatEdge, roleMap map[string]string) (*evalContext, error) {
 	ctx := &evalContext{
-		fnMap:    make(map[string]func(any, any) (bool, any)),
-		qualMap:  make(map[string]float64),
-		strMap:   make(map[string]Strength),
-		edges:    make(map[string][]string),
-		ran:      make(map[string]bool),
-		active:   make(map[string]bool),
-		evidence: make(map[string]any),
-		roleMap:  roleMap,
+		fnMap:      make(map[string]func(any, any, any) (bool, any)),
+		qualMap:    make(map[string]float64),
+		strMap:     make(map[string]Strength),
+		backingMap: make(map[string]any),
+		edges:      make(map[string][]string),
+		ran:        make(map[string]bool),
+		active:     make(map[string]bool),
+		evidence:   make(map[string]any),
+		roleMap:    roleMap,
 	}
 	for _, r := range rules {
 		ctx.fnMap[r.Name] = r.Fn
 		ctx.qualMap[r.Name] = r.Qualifier
 		ctx.strMap[r.Name] = r.Strength
+		ctx.backingMap[r.Name] = r.Backing
 	}
 	if defeatEdges != nil {
 		for _, d := range defeatEdges {
