@@ -13,6 +13,7 @@ required:
     approve: "approval workflow framework (multi-step, Flow)"
     price: "price judgment framework (discounts, coupons, promotions)"
     feature: "feature flag framework (rollout, toggle, percentage)"
+    moderate: "content moderation framework (hate speech, spam, NSFW)"
   type:
     command: "cobra command entrypoint"
     model: "domain struct (Claim, Ground, Rule, Node, Graph)"
