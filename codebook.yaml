@@ -25,7 +25,7 @@ required:
     util: "shared utility"
     rule: "individual judgment rule function"
     interface: "Go interface definition"
-    adapter: "framework adapter (Gin middleware, etc.)"
+    adapter: "HTTP middleware adapter (net/http)"
 
 optional:
   pattern:
