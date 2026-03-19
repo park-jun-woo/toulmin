@@ -201,7 +201,7 @@ team := g.Defeater(CheckMaxLines, &LinePolicy{Max: 50, Source: "team"}, 0.8)
 g.Defeat(team, corp)
 ```
 
-This separation means `//tm:backing` is the only annotation on the function itself — it documents why the rule exists. All structural metadata (role, qualifier, strength, defeats) belongs to the graph, not the function. Backing as a runtime value complements the annotation: the annotation explains the rationale in source code, while the runtime value carries the judgment criteria into the engine.
+This separation means all structural metadata (role, qualifier, strength, defeats) belongs to the graph, not the function. Functions contain only judgment logic.
 
 ### 4.3 Strength as Graph Constraint
 
@@ -302,17 +302,11 @@ defeats:
 toulmin graph file-structure.yaml   # generates graph_gen.go
 ```
 
-### 4.8 Metadata via Annotations
+### 4.8 Backing as First-Class Runtime Value
 
-The `//tm:backing` annotation documents **why** the rule exists — the rationale in human-readable form. Backing is also a first-class runtime value passed to the rule function via the Graph API (§4.2). The two mechanisms are complementary:
-
-- **`//tm:backing` annotation**: Static documentation visible in source code. Explains the authority or rationale behind the warrant (e.g., a theorem, a standard, a convention).
-- **Backing parameter**: Runtime value injected by the engine. Carries judgment criteria that the rule function can use in its logic (e.g., threshold values, configuration policies).
-
-When a rule's backing is purely documentary (no runtime data needed), the function receives `nil` as the backing parameter and the annotation alone suffices. When backing carries operational data, the annotation still documents the rationale while the runtime value provides the criteria:
+Backing is a first-class runtime value passed to the rule function via the Graph API (§4.2). `Warrant(fn, backing, qualifier)` accepts backing as the second argument; the engine injects it as the third parameter when calling the rule function. Rules that need no judgment criteria receive `nil`:
 
 ```go
-//tm:backing "Böhm-Jacopini theorem — all control flow reducible to sequence, selection, iteration"
 func CheckOneFileOneFunc(claim any, ground any, backing any) (bool, any) {
     gf := ground.(*FileGround)
     if len(gf.Funcs) > 1 {
@@ -320,17 +314,11 @@ func CheckOneFileOneFunc(claim any, ground any, backing any) (bool, any) {
     }
     return false, nil
 }
-
-//tm:backing "test files conventionally group multiple test funcs"
-func TestFileException(claim any, ground any, backing any) (bool, any) {
-    return strings.HasSuffix(claim.(string), "_test.go"), nil
-}
 ```
 
-When backing carries runtime data:
+Rules that need judgment criteria use backing directly:
 
 ```go
-//tm:backing "corporate coding standard — maximum lines per file"
 func CheckMaxLines(claim any, ground any, backing any) (bool, any) {
     policy := backing.(*LinePolicy)
     gf := ground.(*FileGround)
@@ -340,6 +328,8 @@ func CheckMaxLines(claim any, ground any, backing any) (bool, any) {
     return false, nil
 }
 ```
+
+Backing appears in EvaluateTrace output, enabling auditors to distinguish between nodes that use the same function with different judgment criteria. To document why a rule exists, use standard Go comments (`//`) — no special annotation syntax is needed.
 
 ---
 
@@ -369,7 +359,7 @@ Most rules are strict — code structure conventions inherently minimize excepti
 
 ### 5.4 Benefits of Toulmin Conversion
 
-1. **Backing as first-class value**: Why each rule exists ("Böhm-Jacopini theorem," "AI agent's read unit is a file") is both documented via `//tm:backing` annotations and passed as a runtime value to the rule function. When backing carries operational data (thresholds, policies), the same function can be registered multiple times with different backing values, each returning a distinct `*Rule` reference.
+1. **Backing as first-class value**: Judgment criteria (thresholds, policies) are passed as runtime backing values to rule functions. The same function registered with different backing values produces distinct rules, each returning a distinct `*Rule` reference.
 2. **Rebuttal/Defeater structured**: Exception conditions (F5 test files, F6 grouped consts) are explicit `defeats` relations, not if-branches buried in code.
 3. **Strength classification**: "This rule has no exceptions" (strict) vs "this rule may be defeated" (defeasible) is declaratively expressed.
 
@@ -401,7 +391,7 @@ allow if {
 ### 6.3 Toulmin Solution
 
 ```go
-//tm:backing "OWASP API Security Top 10 A2:2023"
+// OWASP API Security Top 10 A2:2023
 func AuthEndpointRequiresClaims(claim any, ground any, backing any) (bool, any) {
     g := ground.(*EndpointGround)
     if g.Security.Contains("bearerAuth") && !g.PolicyRule.References("claims") {
@@ -410,7 +400,7 @@ func AuthEndpointRequiresClaims(claim any, ground any, backing any) (bool, any) 
     return false, nil
 }
 
-//tm:backing "Public API endpoints do not require authentication by design"
+// Public API endpoints do not require authentication by design
 func PublicEndpointException(claim any, ground any, backing any) (bool, any) {
     g := ground.(*EndpointGround)
     return g.Annotation.Contains("x-public"), nil
@@ -454,7 +444,7 @@ This engine does not replace Rego, Drools, or Semgrep. It provides a **superordi
 
 For 60 years, software rule engines have treated validation targets as "facts" and built designs on this assumption. Toulmin's argumentation model (1958) already provided the correct structure — Claim (not Fact), Ground, Warrant, Backing, Qualifier, Rebuttal — but the disciplinary gap between philosophy and software engineering prevented its application.
 
-We implemented `toulmin`, a Go rule engine that bridges this gap. Rules are Go functions accepting `(claim, ground, backing)` and returning `(bool, evidence)` — judgment and its basis. Backing is a first-class runtime value carrying the judgment criteria for each rule, complementing the `//tm:backing` annotation that documents the rationale. The engine organizes rules into defeats graphs via the Graph API, evaluates them, and computes verdicts via Amgoud's h-Categoriser on a [-1, 1] scale. Nute's strict/defeasible/defeater classification controls attack edges in the graph. EvaluateTrace provides full explainability — which rules activated, in what role, under what backing, with what evidence.
+We implemented `toulmin`, a Go rule engine that bridges this gap. Rules are Go functions accepting `(claim, ground, backing)` and returning `(bool, evidence)` — judgment and its basis. Backing is a first-class runtime value carrying the judgment criteria for each rule. The engine organizes rules into defeats graphs via the Graph API, evaluates them, and computes verdicts via Amgoud's h-Categoriser on a [-1, 1] scale. Nute's strict/defeasible/defeater classification controls attack edges in the graph. EvaluateTrace provides full explainability — which rules activated, in what role, under what backing, with what evidence.
 
 The design requires no custom DSL — Go's type system handles claim-rule matching, and the engine core is under a few hundred lines. The same rule function can be reused across different graphs with different defeats relationships, separating rule logic from graph structure. Validation on filefunc's 22 rules across three projects demonstrates that the Toulmin model naturally accommodates rule strength classification, structured defeasibility, and explicit backing. fullend's cross-phase case demonstrates that Ground Adapters enable phase-optional rule reuse.
 

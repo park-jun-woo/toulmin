@@ -17,8 +17,7 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 ## How to Navigate
 
 1. Read `codebook.yaml` — project vocabulary
-2. `rg '//tm:backing'` — find why each rule exists
-3. Full read only the files you need, then work
+2. Full read only the files you need, then work
 
 ---
 
@@ -78,10 +77,7 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 
 ## Writing Rules
 
-`//tm:backing` documents why the rule exists. Actual backing value is passed via API.
-
 ```go
-//tm:backing "Böhm-Jacopini theorem"
 func CheckOneFileOneFunc(claim any, ground any, backing any) (bool, any) {
     gf := ground.(*FileGround)
     if len(gf.Funcs) > 1 {

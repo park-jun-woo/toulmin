@@ -169,18 +169,6 @@ func TestEngineGraphBuilderConsistency(t *testing.T) {
 	}
 }
 
-func TestParseAnnotation(t *testing.T) {
-	lines := []string{
-		`//tm:backing "Bohm-Jacopini theorem"`,
-	}
-	meta := ParseAnnotation(lines)
-	if meta.Backing != "Bohm-Jacopini theorem" {
-		t.Errorf("backing: expected 'Bohm-Jacopini theorem', got '%s'", meta.Backing)
-	}
-	if meta.Qualifier != 1.0 {
-		t.Errorf("qualifier: expected default 1.0, got %f", meta.Qualifier)
-	}
-}
 
 func TestDeepDefeatChainEngine(t *testing.T) {
 	fn := func(c any, g any, b any) (bool, any) { return true, nil }

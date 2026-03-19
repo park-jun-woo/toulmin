@@ -206,7 +206,7 @@ cr := contractGraph.Rebuttal(IsBankrupt, nil, 1.0)
 contractGraph.Defeat(cr, cw)
 ```
 
-이 분리는 `//tm:backing`만이 함수 자체에 부착되는 유일한 어노테이션임을 의미한다 — 규칙이 왜 존재하는지를 문서로 기록한다. 모든 구조적 메타데이터(역할, qualifier, strength, defeats)는 함수가 아니라 그래프에 속한다.
+이 분리는 모든 구조적 메타데이터(역할, qualifier, strength, defeats)가 함수가 아니라 그래프에 속함을 의미한다. 함수는 순수한 판정 로직만 담는다.
 
 ### 4.3 그래프 제약으로서의 Strength
 
@@ -307,22 +307,13 @@ defeats:
 toulmin graph file-structure.yaml   # graph_gen.go 생성
 ```
 
-### 4.8 어노테이션과 런타임 backing
+### 4.8 Backing: 1급 런타임 값
 
-`//tm:backing` 어노테이션은 규칙이 **왜 존재하는지**를 문서로 기록한다. 이 어노테이션은 여전히 유효하며, 코드 리뷰와 정적 분석에서 규칙의 정당성 근거를 즉시 파악할 수 있게 한다.
+backing은 **1급 런타임 값**이다. `Warrant(fn, backing, qualifier)`의 두 번째 인자로 전달된 backing은 엔진이 규칙 함수를 호출할 때 세 번째 매개변수로 주입된다. 이로써 같은 함수를 서로 다른 판정 기준으로 등록할 수 있다.
 
-backing은 동시에 **1급 런타임 값**이다. `Warrant(fn, backing, qualifier)`의 두 번째 인자로 전달된 backing은 엔진이 규칙 함수를 호출할 때 세 번째 매개변수로 주입된다. 이로써 같은 함수를 서로 다른 판정 기준으로 등록할 수 있다.
-
-**어노테이션(문서)과 런타임 값의 역할 분리:**
-
-| | `//tm:backing` 어노테이션 | 런타임 backing 값 |
-|--|--------------------------|------------------|
-| 역할 | 규칙의 존재 이유를 문서화 | 규칙의 판정 기준을 전달 |
-| 소비자 | 개발자, 코드 리뷰, 정적 분석 | 엔진, 규칙 함수, trace |
-| 예시 | "Böhm-Jacopini 정리" | `&LineLimit{Max: 100}` |
+backing이 필요 없는 규칙은 `nil`을 전달하고, 함수 안에서 세 번째 매개변수를 무시한다. backing이 필요한 규칙은 이를 판정 기준으로 사용한다:
 
 ```go
-//tm:backing "Böhm-Jacopini 정리 — 모든 제어 흐름은 sequence, selection, iteration으로 환원 가능"
 func CheckOneFileOneFunc(claim any, ground any, backing any) (bool, any) {
     gf := ground.(*FileGround)
     if len(gf.Funcs) > 1 {
@@ -331,16 +322,6 @@ func CheckOneFileOneFunc(claim any, ground any, backing any) (bool, any) {
     return false, nil
 }
 
-//tm:backing "테스트 파일은 관례적으로 여러 테스트 함수를 하나의 파일에 묶는다"
-func TestFileException(claim any, ground any, backing any) (bool, any) {
-    return strings.HasSuffix(claim.(string), "_test.go"), nil
-}
-```
-
-backing이 필요 없는 규칙은 세 번째 매개변수를 무시한다(위 예시). backing이 필요한 규칙은 이를 판정 기준으로 사용한다:
-
-```go
-//tm:backing "파일 길이 제한 — AI 에이전트의 read 단위는 파일"
 func CheckLineCount(claim any, ground any, backing any) (bool, any) {
     gf := ground.(*FileGround)
     limit := backing.(*LineLimit)
@@ -350,6 +331,10 @@ func CheckLineCount(claim any, ground any, backing any) (bool, any) {
     return false, nil
 }
 ```
+
+backing이 trace에 포함되므로, 동일 함수가 서로 다른 backing으로 등록된 경우에도 각 노드의 판정 기준을 구분할 수 있다.
+
+규칙의 존재 이유를 문서화하고 싶을 때는 일반 Go 주석(`//`)을 사용한다. 별도의 어노테이션 문법은 불필요하다.
 
 ---
 
@@ -379,7 +364,7 @@ filefunc은 LLM 네이티브 Go 개발을 위한 코드 구조 컨벤션 및 CLI
 
 ### 5.4 툴민 변환의 이점
 
-1. **Backing의 이중 역할**: 각 규칙이 왜 존재하는지("Böhm-Jacopini 정리")가 `//tm:backing` 어노테이션으로 기록되고, 판정 기준(임계값, 정책 등)이 런타임 backing 값으로 함수에 전달된다. 문서와 실행이 분리되지 않는다.
+1. **Backing의 1급 지위**: 판정 기준(임계값, 정책 등)이 런타임 backing 값으로 함수에 전달된다. 같은 함수를 다른 backing으로 등록하면 별개의 규칙이 된다.
 2. **Rebuttal/Defeater의 구조화**: 예외 조건(F5 테스트 파일, F6 그룹 상수)이 명시적 `defeats` 관계로 선언된다. 코드 속 if 분기에 매몰되지 않는다.
 3. **Strength 분류**: "이 규칙은 예외 없음"(strict) vs "이 규칙은 무력화 가능"(defeasible)이 선언적으로 표현된다.
 
@@ -411,7 +396,7 @@ allow if {
 ### 6.3 툴민 해법
 
 ```go
-//tm:backing "OWASP API Security Top 10 A2:2023"
+// OWASP API Security Top 10 A2:2023
 func AuthEndpointRequiresClaims(claim any, ground any, backing any) (bool, any) {
     g := ground.(*EndpointGround)
     if g.Security.Contains("bearerAuth") && !g.PolicyRule.References("claims") {
@@ -420,7 +405,7 @@ func AuthEndpointRequiresClaims(claim any, ground any, backing any) (bool, any) 
     return false, nil
 }
 
-//tm:backing "공개 API endpoint는 설계상 인증이 불필요하다"
+// 공개 API endpoint는 설계상 인증이 불필요하다
 func PublicEndpointException(claim any, ground any, backing any) (bool, any) {
     g := ground.(*EndpointGround)
     return g.Annotation.Contains("x-public"), nil
