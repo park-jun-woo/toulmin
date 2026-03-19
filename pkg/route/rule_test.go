@@ -21,7 +21,7 @@ func TestIsAuthenticated(t *testing.T) {
 	}
 }
 
-func TestHasRole(t *testing.T) {
+func TestIsInRole(t *testing.T) {
 	tests := []struct {
 		name string
 		role string
@@ -34,9 +34,9 @@ func TestHasRole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := HasRole(nil, tt.ctx, tt.role)
+			got, _ := IsInRole(nil, tt.ctx, tt.role)
 			if got != tt.want {
-				t.Errorf("HasRole(backing=%q) = %v, want %v", tt.role, got, tt.want)
+				t.Errorf("IsInRole(backing=%q) = %v, want %v", tt.role, got, tt.want)
 			}
 		})
 	}
@@ -66,41 +66,26 @@ func TestIsOwner(t *testing.T) {
 	}
 }
 
-func TestIsIPBlocked(t *testing.T) {
+func TestIsIPInList(t *testing.T) {
 	blocklist := func(ip string) bool { return ip == "1.2.3.4" }
-	tests := []struct {
-		name string
-		ip   string
-		want bool
-	}{
-		{"blocked", "1.2.3.4", true},
-		{"not blocked", "5.6.7.8", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, _ := IsIPBlocked(nil, &RouteContext{ClientIP: tt.ip}, blocklist)
-			if got != tt.want {
-				t.Errorf("IsIPBlocked(%q) = %v, want %v", tt.ip, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestIsWhitelisted(t *testing.T) {
 	whitelist := func(ip string) bool { return ip == "10.0.0.1" }
+
 	tests := []struct {
-		name string
-		ip   string
-		want bool
+		name    string
+		ip      string
+		list    func(string) bool
+		want    bool
 	}{
-		{"whitelisted", "10.0.0.1", true},
-		{"not whitelisted", "5.6.7.8", false},
+		{"blocked", "1.2.3.4", blocklist, true},
+		{"not blocked", "5.6.7.8", blocklist, false},
+		{"whitelisted", "10.0.0.1", whitelist, true},
+		{"not whitelisted", "5.6.7.8", whitelist, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := IsWhitelisted(nil, &RouteContext{ClientIP: tt.ip}, whitelist)
+			got, _ := IsIPInList(nil, &RouteContext{ClientIP: tt.ip}, tt.list)
 			if got != tt.want {
-				t.Errorf("IsWhitelisted(%q) = %v, want %v", tt.ip, got, tt.want)
+				t.Errorf("IsIPInList(%q) = %v, want %v", tt.ip, got, tt.want)
 			}
 		})
 	}

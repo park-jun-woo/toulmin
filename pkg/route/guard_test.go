@@ -29,7 +29,7 @@ func buildTestCtx(user *User, ip string, headers map[string]string) ContextBuild
 func TestGuard_AuthenticatedAdmin(t *testing.T) {
 	g := toulmin.NewGraph("test:admin").
 		Warrant(IsAuthenticated, nil, 1.0).
-		Warrant(HasRole, "admin", 1.0)
+		Warrant(IsInRole, "admin", 1.0)
 
 	r := gin.New()
 	r.GET("/admin", Guard(g, buildTestCtx(&User{ID: "u1", Role: "admin"}, "10.0.0.1", nil)), func(c *gin.Context) {
@@ -68,8 +68,8 @@ func TestGuard_IPBlocked(t *testing.T) {
 
 	g := toulmin.NewGraph("test:ip").
 		Warrant(IsAuthenticated, nil, 1.0).
-		Rebuttal(IsIPBlocked, blocklist, 1.0).
-		DefeatWith(IsIPBlocked, blocklist, IsAuthenticated, nil)
+		Rebuttal(IsIPInList, blocklist, 1.0).
+		DefeatWith(IsIPInList, blocklist, IsAuthenticated, nil)
 
 	r := gin.New()
 	r.GET("/api", Guard(g, buildTestCtx(&User{ID: "u1"}, "1.2.3.4", nil)), func(c *gin.Context) {
@@ -91,10 +91,10 @@ func TestGuard_IPBlocked_WhitelistDefeat(t *testing.T) {
 
 	g := toulmin.NewGraph("test:whitelist").
 		Warrant(IsAuthenticated, nil, 1.0).
-		Rebuttal(IsIPBlocked, blocklist, 1.0).
-		Defeater(IsWhitelisted, whitelist, 1.0).
-		DefeatWith(IsIPBlocked, blocklist, IsAuthenticated, nil).
-		DefeatWith(IsWhitelisted, whitelist, IsIPBlocked, blocklist)
+		Rebuttal(IsIPInList, blocklist, 1.0).
+		Defeater(IsIPInList, whitelist, 1.0).
+		DefeatWith(IsIPInList, blocklist, IsAuthenticated, nil).
+		DefeatWith(IsIPInList, whitelist, IsIPInList, blocklist)
 
 	r := gin.New()
 	r.GET("/api", Guard(g, buildTestCtx(&User{ID: "u1"}, "1.2.3.4", nil)), func(c *gin.Context) {
@@ -166,8 +166,8 @@ func TestGuardDebug_Forbidden_WithRebuttal(t *testing.T) {
 
 	g := toulmin.NewGraph("test:debug-deny").
 		Warrant(IsAuthenticated, nil, 1.0).
-		Rebuttal(IsIPBlocked, blocklist, 1.0).
-		DefeatWith(IsIPBlocked, blocklist, IsAuthenticated, nil)
+		Rebuttal(IsIPInList, blocklist, 1.0).
+		DefeatWith(IsIPInList, blocklist, IsAuthenticated, nil)
 
 	r := gin.New()
 	r.GET("/debug", GuardDebug(g, buildTestCtx(&User{ID: "u1"}, "1.2.3.4", nil)), func(c *gin.Context) {

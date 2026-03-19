@@ -1,4 +1,4 @@
-# Phase 013: 가격 판정 프레임워크 — pkg/price
+# Phase 015: 가격 판정 프레임워크 — pkg/price
 
 ## 목표
 
@@ -22,20 +22,22 @@ qualifier를 할인 강도로 활용하여 verdict가 최종 할인율을 나타
 - **qualifier = 할인 강도** (1.0이 아닌 실제 할인율)
 - 판정 근거 = EvaluateTrace (어떤 할인이 왜 적용/무효화됐는지)
 
-### claim/ground 분리 원칙
+### claim/ground/backing 분리 원칙
 
-toulmin의 `(claim any, ground any)` 시그니처가 프레임워크 확장성의 핵심이다.
+toulmin의 `(claim any, ground any, backing any)` 시그니처가 프레임워크 확장성의 핵심이다.
 
 - **claim = 뭘 판정하나**: 가격 프레임워크에서 claim은 구매 요청 (상품, 수량, 원가)
 - **ground = 판정 재료**: ground는 가격 판정에 필요한 컨텍스트 (사용자, 쿠폰, 프로모션)
+- **backing = 규칙의 판정 기준**: graph 구성 시 고정되는 값 (멤버십 등급, 최소 수량, 프로모션 이름)
 
-프레임워크는 Pricer 구조와 판정 흐름을 제공하고, **도메인 데이터는 ground로 사용자가 주입한다.**
+프레임워크는 Pricer 구조와 판정 흐름을 제공하고, **도메인 데이터는 ground로 사용자가 주입한다. 규칙의 판정 기준은 backing으로 선언 시점에 고정한다.**
 
 | 역할 | 가격 프레임워크에서 |
 |---|---|
 | claim | PurchaseRequest (ProductID, Quantity, BasePrice) |
 | ground | PriceContext (User, Coupons, Promotions, Metadata) |
-| rule 함수 | claim/ground에서 조건 하나만 판단 (1-2 depth) |
+| backing | 규칙의 판정 기준 (멤버십 등급 `"basic"`, 최소 수량 `100`, 프로모션 이름 `"blackfriday"`) |
+| rule 함수 | claim/ground/backing에서 조건 하나만 판단 (1-2 depth) |
 | graph | rule 간 관계 선언 (defeat = 할인 예외) |
 | qualifier | 할인 강도 (0.3 = 30% 할인) |
 | verdict | 최종 할인 강도 [-1, +1] |
@@ -91,9 +93,12 @@ type Promotion struct {
 
 ### 범용 rule 함수
 
+모든 rule 함수는 `func(claim any, ground any, backing any) (bool, any)` 시그니처를 따른다. 클로저 팩토리를 사용하지 않는다. 판정 기준은 backing으로 전달한다.
+
 ```go
 // pkg/price/rule_has_coupon.go
-func HasCoupon(claim any, ground any) (bool, any) {
+// backing: nil (쿠폰 존재 여부만 판정)
+func HasCoupon(claim any, ground any, backing any) (bool, any) {
     req := claim.(*PurchaseRequest)
     ctx := ground.(*PriceContext)
     for _, c := range ctx.Coupons {
@@ -105,45 +110,47 @@ func HasCoupon(claim any, ground any) (bool, any) {
 }
 
 // pkg/price/rule_is_member.go
-func IsMember(membership string) toulmin.RuleFunc {
-    return func(claim any, ground any) (bool, any) {
-        ctx := ground.(*PriceContext)
-        return ctx.User.Membership == membership, nil
-    }
+// backing: string (멤버십 등급 — "basic", "vip")
+func IsMember(claim any, ground any, backing any) (bool, any) {
+    ctx := ground.(*PriceContext)
+    membership := backing.(string)
+    return ctx.User.Membership == membership, nil
 }
 
 // pkg/price/rule_is_vip.go
-func IsVIP(claim any, ground any) (bool, any) {
+// backing: nil (VIP 여부만 판정)
+func IsVIP(claim any, ground any, backing any) (bool, any) {
     ctx := ground.(*PriceContext)
     return ctx.User.Membership == "vip", nil
 }
 
 // pkg/price/rule_has_active_promotion.go
-func HasActivePromotion(name string) toulmin.RuleFunc {
-    return func(claim any, ground any) (bool, any) {
-        ctx := ground.(*PriceContext)
-        for _, p := range ctx.Promotions {
-            if p.Name == name && p.Active {
-                return true, p
-            }
+// backing: string (프로모션 이름 — "blackfriday", "summer_sale")
+func HasActivePromotion(claim any, ground any, backing any) (bool, any) {
+    ctx := ground.(*PriceContext)
+    name := backing.(string)
+    for _, p := range ctx.Promotions {
+        if p.Name == name && p.Active {
+            return true, p
         }
-        return false, nil
     }
+    return false, nil
 }
 
 // pkg/price/rule_is_already_discounted.go
-func IsAlreadyDiscounted(claim any, ground any) (bool, any) {
+// backing: nil (이미 할인 적용 여부만 판정)
+func IsAlreadyDiscounted(claim any, ground any, backing any) (bool, any) {
     req := claim.(*PurchaseRequest)
     discounted, _ := req.Metadata["discounted"].(bool)
     return discounted, nil
 }
 
 // pkg/price/rule_is_bulk_order.go
-func IsBulkOrder(minQty int) toulmin.RuleFunc {
-    return func(claim any, ground any) (bool, any) {
-        req := claim.(*PurchaseRequest)
-        return req.Quantity >= minQty, nil
-    }
+// backing: int (최소 수량 — 100, 50)
+func IsBulkOrder(claim any, ground any, backing any) (bool, any) {
+    req := claim.(*PurchaseRequest)
+    minQty := backing.(int)
+    return req.Quantity >= minQty, nil
 }
 ```
 
@@ -178,32 +185,28 @@ type PriceResult struct {
 
 ### qualifier를 할인 강도로 사용
 
-**주의**: 클로저 rule은 변수에 저장 후 재사용해야 한다. Rebuttal만으로는 공격이 일어나지 않으며 반드시 Defeat edge를 선언해야 한다. 예외를 처리하는 rule은 Defeater로 등록해야 한다.
+**주의**: Rebuttal만으로는 공격이 일어나지 않으며 반드시 Defeat edge를 선언해야 한다. 예외를 처리하는 rule은 Defeater로 등록해야 한다.
 
 ```go
-// 클로저는 변수에 저장 후 재사용
-isMemberBasic := price.IsMember("basic")
-blackfriday := price.HasActivePromotion("blackfriday")
-bulkOrder := price.IsBulkOrder(100)
-
-// 쿠폰 30%, 멤버십 10%, 중복 할인 방지, VIP는 중복 허용
+// backing이 있는 rule은 Warrant에 backing을 직접 전달
+// backing이 없는 rule은 nil을 명시
 g := toulmin.NewGraph("product:discount").
-    Warrant(price.HasCoupon, 0.3).              // 30% 할인
-    Warrant(isMemberBasic, 0.1).                // 10% 할인
-    Warrant(blackfriday, 0.2).                  // 20% 할인
-    Rebuttal(price.IsAlreadyDiscounted, 1.0).   // 중복 할인 방지
-    Defeater(price.IsVIP, 1.0).                 // 예외 rule은 Defeater로 등록
-    Defeater(bulkOrder, 1.0).
-    Defeat(price.IsAlreadyDiscounted, price.HasCoupon).     // Rebuttal → Warrant 공격 edge 필수
-    Defeat(price.IsVIP, price.IsAlreadyDiscounted).         // VIP는 중복 할인 허용
-    Defeat(bulkOrder, price.IsAlreadyDiscounted)            // 대량 주문도 중복 허용
+    Warrant(price.HasCoupon, nil, 0.3).                        // 30% 할인, backing 불필요
+    Warrant(price.IsMember, "basic", 0.1).                     // 10% 할인, backing: 멤버십 등급
+    Warrant(price.HasActivePromotion, "blackfriday", 0.2).     // 20% 할인, backing: 프로모션 이름
+    Rebuttal(price.IsAlreadyDiscounted, nil, 1.0).             // 중복 할인 방지, backing 불필요
+    Defeater(price.IsVIP, nil, 1.0).                           // 예외 rule은 Defeater로 등록
+    Defeater(price.IsBulkOrder, 100, 1.0).                     // backing: 최소 수량
+    Defeat(price.IsAlreadyDiscounted, price.HasCoupon).        // Rebuttal -> Warrant 공격 edge 필수
+    Defeat(price.IsVIP, price.IsAlreadyDiscounted).            // VIP는 중복 할인 허용
+    DefeatWith(price.IsBulkOrder, 100, price.IsAlreadyDiscounted, nil)  // 대량 주문도 중복 허용
 
 pricer := price.NewPricer(g)
 
 result, err := pricer.Evaluate(req, ctx)
 // result.Discount: h-Categoriser가 계산한 최종 할인 강도
 // result.FinalPrice: BasePrice * (1 - Discount)
-// result.Trace: 어떤 할인이 적용/무효화됐는지
+// result.Trace: 어떤 할인이 적용/무효화됐는지 + backing 값
 ```
 
 ### 사용 예시
@@ -222,8 +225,9 @@ ctx := &price.PriceContext{
 }
 
 finalPrice, err := pricer.FinalPrice(req, ctx)
-// VIP이므로 중복 할인 허용 → 쿠폰 + 멤버십 + 프로모션 적용
+// VIP이므로 중복 할인 허용 -> 쿠폰 + 멤버십 + 프로모션 적용
 // h-Categoriser가 qualifier 기반으로 최종 할인 강도 계산
+// Trace에 각 rule의 backing 값 포함 (IsMember backing="basic", HasActivePromotion backing="blackfriday")
 ```
 
 ## 범위
@@ -232,7 +236,7 @@ finalPrice, err := pricer.FinalPrice(req, ctx)
 
 1. **PurchaseRequest, PriceContext 구조체**: 가격 판정에 필요한 요청/컨텍스트
 2. **User, Coupon, Promotion 구조체**: 도메인 모델
-3. **범용 rule 함수**: HasCoupon, IsMember, IsVIP, HasActivePromotion, IsAlreadyDiscounted, IsBulkOrder
+3. **범용 rule 함수**: HasCoupon, IsMember, IsVIP, HasActivePromotion, IsAlreadyDiscounted, IsBulkOrder — 모두 `(claim, ground, backing)` 시그니처, 클로저 없음
 4. **Pricer**: 가격 판정 실행 (Evaluate, FinalPrice)
 5. **PriceResult**: 판정 결과 (할인율, 최종 가격, trace)
 6. **테스트**: rule 함수 단위 테스트, Pricer 통합 테스트
@@ -254,12 +258,12 @@ pkg/
     user.go                        — User 구조체
     coupon.go                      — Coupon 구조체
     promotion.go                   — Promotion 구조체
-    rule_has_coupon.go             — HasCoupon
-    rule_is_member.go              — IsMember (클로저)
-    rule_is_vip.go                 — IsVIP
-    rule_has_active_promotion.go   — HasActivePromotion (클로저)
-    rule_is_already_discounted.go  — IsAlreadyDiscounted
-    rule_is_bulk_order.go          — IsBulkOrder (클로저)
+    rule_has_coupon.go             — HasCoupon (backing: nil)
+    rule_is_member.go              — IsMember (backing: string — 멤버십 등급)
+    rule_is_vip.go                 — IsVIP (backing: nil)
+    rule_has_active_promotion.go   — HasActivePromotion (backing: string — 프로모션 이름)
+    rule_is_already_discounted.go  — IsAlreadyDiscounted (backing: nil)
+    rule_is_bulk_order.go          — IsBulkOrder (backing: int — 최소 수량)
     pricer.go                      — Pricer (NewPricer, Evaluate, FinalPrice)
     price_result.go                — PriceResult 구조체
     rule_test.go                   — rule 함수 단위 테스트
@@ -277,24 +281,26 @@ pkg/
 
 - 각 rule 함수를 파일 하나에 하나씩 구현 (filefunc 규칙 준수)
 - 각 함수는 1-2 depth 유지
-- 클로저 rule: IsMember, HasActivePromotion, IsBulkOrder
+- 모든 rule은 `func(claim any, ground any, backing any) (bool, any)` 순수 함수
+- backing이 필요 없는 rule은 backing 인자를 무시
+- backing이 필요한 rule은 backing을 타입 어서션하여 사용
 
 ### Step 3: Pricer 구현
 
 - NewPricer: graph를 받아 Pricer 생성
-- Evaluate: graph.EvaluateTrace → verdict를 할인율로 변환 → PriceResult
-- FinalPrice: Evaluate → BasePrice * (1 - Discount)
+- Evaluate: graph.EvaluateTrace -> verdict를 할인율로 변환 -> PriceResult
+- FinalPrice: Evaluate -> BasePrice * (1 - Discount)
 
 ### Step 4: 테스트
 
-- rule 함수 단위 테스트: 각 조건별 true/false
+- rule 함수 단위 테스트: 각 조건별 true/false, backing 값 전달 확인
 - Pricer 통합 테스트:
-  - 쿠폰만 적용 → 30% 할인
-  - 쿠폰 + 멤버십 + 중복 방지 rebuttal → 하나만 적용
-  - VIP defeat → 중복 할인 허용
-  - 프로모션 비활성 → 할인 미적용
-  - 대량 주문 defeat → 중복 할인 허용
-  - trace에 각 rule의 activated/defeated 상태 포함
+  - 쿠폰만 적용 -> 30% 할인
+  - 쿠폰 + 멤버십 + 중복 방지 rebuttal -> 하나만 적용
+  - VIP defeat -> 중복 할인 허용
+  - 프로모션 비활성 -> 할인 미적용
+  - 대량 주문 defeat (DefeatWith) -> 중복 할인 허용
+  - trace에 각 rule의 activated/defeated 상태 + backing 값 포함
 
 ### Step 5: 전체 테스트 PASS 확인
 
@@ -302,15 +308,18 @@ pkg/
 
 ## 검증 기준
 
-1. HasCoupon, IsMember 등 rule 함수가 claim/ground에서 올바르게 판정한다
+1. HasCoupon, IsMember 등 rule 함수가 `(claim, ground, backing)` 시그니처로 올바르게 판정한다
 2. qualifier가 할인율로 작동한다 (0.3 = 30%)
 3. Pricer.Evaluate가 h-Categoriser verdict를 할인율로 변환한다
 4. Pricer.FinalPrice가 BasePrice * (1 - Discount)를 정확히 계산한다
 5. IsAlreadyDiscounted rebuttal이 중복 할인을 방지한다
 6. IsVIP defeat가 중복 할인 방지를 무효화한다
-7. PriceResult.Trace에 각 rule의 판정 근거가 포함된다
-8. 전체 테스트 PASS
+7. IsBulkOrder가 DefeatWith로 backing이 있는 rule 간 defeat를 수행한다
+8. PriceResult.Trace에 각 rule의 판정 근거와 backing 값이 포함된다
+9. 클로저 팩토리가 없다 — 모든 rule이 순수 함수이다
+10. 전체 테스트 PASS
 
 ## 의존성
 
 - Phase 001-009: toulmin 코어 (NewGraph, Evaluate, EvaluateTrace)
+- Phase 010: backing 일급 시민 (`(claim, ground, backing)` 시그니처, `Warrant(fn, backing, qualifier)`, DefeatWith)

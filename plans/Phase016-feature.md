@@ -1,4 +1,4 @@
-# Phase 014: 피처 플래그 프레임워크 — pkg/feature
+# Phase 016: 피처 플래그 프레임워크 — pkg/feature
 
 ## 목표
 
@@ -23,23 +23,25 @@ LaunchDarkly 같은 외부 SaaS 없이 Go 바이너리 안에서 피처 토글, 
 - 판정 근거 = EvaluateTrace (내장, 무료)
 - 외부 의존성 = 없음 (순수 Go)
 
-### claim/ground 분리 원칙
+### claim/ground/backing 분리 원칙
 
-toulmin의 `(claim any, ground any)` 시그니처가 프레임워크 확장성의 핵심이다.
+toulmin의 `(claim any, ground any, backing any)` 시그니처가 프레임워크 확장성의 핵심이다.
 
 - **claim = 뭘 판정하나**: 피처 프레임워크에서 claim은 피처 이름
 - **ground = 판정 재료**: ground는 피처 판정에 필요한 컨텍스트 (사용자 속성, 환경)
+- **backing = 규칙의 판정 기준**: graph 구성 시 고정되는 값 (지역명, 비율 임계값, 속성 키/값 등)
 
 프레임워크는 Flag 구조와 판정 흐름을 제공하고, **도메인 데이터는 ground로 사용자가 주입한다.**
 
-| 역할 | 피처 프레임워크에서 |
-|---|---|
-| claim | 피처 이름 (string) |
-| ground | UserContext (ID, Role, Region, Attributes) |
-| rule 함수 | ground에서 조건 하나만 판단 (1-2 depth) |
-| graph | rule 간 관계 선언 (defeat = 예외) |
-| qualifier | 롤아웃 비율 (0.3 = 30%) 또는 1.0 (전체) |
-| verdict | 활성화/비활성화 판정 |
+| 역할 | Toulmin 원래 의미 | 피처 프레임워크에서 |
+|---|---|---|
+| claim | 주장 | 피처 이름 (string) |
+| ground | 판정 대상의 사실 | UserContext (ID, Role, Region, Attributes) |
+| backing | 규칙의 판정 기준 | 지역명, 비율 임계값, 속성 키/값 등 (graph 구성 시 고정) |
+| rule 함수 | warrant/rebuttal/defeater | ground + backing으로 조건 하나만 판단 (1-2 depth) |
+| graph | defeats graph | rule 간 관계 선언 (defeat = 예외) |
+| qualifier | 확신도 | 롤아웃 비율 (0.3 = 30%) 또는 1.0 (전체) |
+| verdict | 판정 결과 | 활성화/비활성화 판정 |
 
 이전 프레임워크들과의 차이: price(Phase 013)에서 qualifier가 할인율이었다면, 여기서는 **qualifier가 롤아웃 비율**이 된다. 같은 메커니즘이 도메인에 따라 다른 의미를 갖는다.
 
@@ -59,50 +61,57 @@ type UserContext struct {
 
 ### 범용 rule 함수
 
+모든 rule 함수는 `func(claim any, ground any, backing any) (bool, any)` 시그니처를 따른다. 판정 기준은 backing으로 전달하며, 클로저 팩토리를 사용하지 않는다.
+
 ```go
 // pkg/feature/rule_is_beta_user.go
-func IsBetaUser(claim any, ground any) (bool, any) {
+// backing: nil (ground에서 판정)
+func IsBetaUser(claim any, ground any, backing any) (bool, any) {
     ctx := ground.(*UserContext)
     beta, _ := ctx.Attributes["beta"].(bool)
     return beta, nil
 }
 
 // pkg/feature/rule_is_internal_staff.go
-func IsInternalStaff(claim any, ground any) (bool, any) {
+// backing: nil (ground에서 판정)
+func IsInternalStaff(claim any, ground any, backing any) (bool, any) {
     ctx := ground.(*UserContext)
     return ctx.Role == "internal", nil
 }
 
 // pkg/feature/rule_is_region.go
-func IsRegion(region string) toulmin.RuleFunc {
-    return func(claim any, ground any) (bool, any) {
-        ctx := ground.(*UserContext)
-        return ctx.Region == region, nil
-    }
+// backing: string (지역명)
+func IsRegion(claim any, ground any, backing any) (bool, any) {
+    ctx := ground.(*UserContext)
+    region := backing.(string)
+    return ctx.Region == region, nil
 }
 
 // pkg/feature/rule_has_attribute.go
-func HasAttribute(key string, value any) toulmin.RuleFunc {
-    return func(claim any, ground any) (bool, any) {
-        ctx := ground.(*UserContext)
-        return ctx.Attributes[key] == value, nil
-    }
+// backing: [2]any{key, value} (속성 키/값 쌍)
+func HasAttribute(claim any, ground any, backing any) (bool, any) {
+    ctx := ground.(*UserContext)
+    pair := backing.([2]any)
+    key := pair[0].(string)
+    value := pair[1]
+    return ctx.Attributes[key] == value, nil
 }
 
 // pkg/feature/rule_is_legacy_browser.go
-func IsLegacyBrowser(claim any, ground any) (bool, any) {
+// backing: nil (ground에서 판정)
+func IsLegacyBrowser(claim any, ground any, backing any) (bool, any) {
     ctx := ground.(*UserContext)
     legacy, _ := ctx.Attributes["legacy_browser"].(bool)
     return legacy, nil
 }
 
 // pkg/feature/rule_is_user_in_percentage.go
+// backing: float64 (비율 임계값)
 // 사용자 ID 기반 결정론적 해시로 롤아웃 비율 판정 (rand 아님)
-func IsUserInPercentage(pct float64) toulmin.RuleFunc {
-    return func(claim any, ground any) (bool, any) {
-        ctx := ground.(*UserContext)
-        return hashPercentage(ctx.ID) < pct, nil
-    }
+func IsUserInPercentage(claim any, ground any, backing any) (bool, any) {
+    ctx := ground.(*UserContext)
+    pct := backing.(float64)
+    return hashPercentage(ctx.ID) < pct, nil
 }
 ```
 
@@ -155,29 +164,34 @@ func hashPercentage(userID string) float64
 
 ### 사용 예시
 
-**주의**: 클로저 rule은 변수에 저장 후 재사용해야 한다. Rebuttal만으로는 공격이 일어나지 않으며 반드시 Defeat edge를 선언해야 한다. 예외를 처리하는 rule은 Defeater로 등록해야 한다.
+backing이 있는 rule은 `Warrant(fn, backing, qualifier)` 형태로 선언한다. backing이 필요 없는 rule은 `nil`을 명시한다. 같은 함수를 다른 backing으로 재사용할 때 `DefeatWith`로 defeat edge를 선언한다.
 
 ```go
 flags := feature.NewFlags()
 
-// 클로저는 변수에 저장 후 재사용
-regionKR := feature.IsRegion("KR")
-pct10 := feature.IsUserInPercentage(0.1)
-
 flags.Register("dark-mode",
     toulmin.NewGraph("feature:dark-mode").
-        Warrant(feature.IsBetaUser, 1.0).
-        Warrant(regionKR, 0.3).                          // 한국 30% 롤아웃
-        Rebuttal(feature.IsLegacyBrowser, 1.0).
-        Defeater(feature.IsInternalStaff, 1.0).          // 예외 rule은 Defeater로 등록
-        Defeat(feature.IsLegacyBrowser, feature.IsBetaUser). // Rebuttal → Warrant 공격 edge 필수
-        Defeat(feature.IsInternalStaff, feature.IsLegacyBrowser), // Defeater → Rebuttal 예외 처리
+        Warrant(feature.IsBetaUser, nil, 1.0).
+        Warrant(feature.IsRegion, "KR", 0.3).              // 한국 30% 롤아웃, backing="KR"
+        Rebuttal(feature.IsLegacyBrowser, nil, 1.0).
+        Defeater(feature.IsInternalStaff, nil, 1.0).        // 예외 rule은 Defeater로 등록
+        Defeat(feature.IsLegacyBrowser, feature.IsBetaUser).       // Rebuttal → Warrant 공격 edge 필수
+        Defeat(feature.IsInternalStaff, feature.IsLegacyBrowser),  // Defeater → Rebuttal 예외 처리
 )
 
 flags.Register("new-checkout",
     toulmin.NewGraph("feature:new-checkout").
-        Warrant(pct10, 1.0).                             // 전체 10% 롤아웃
-        Warrant(feature.IsInternalStaff, 1.0),           // 내부 직원은 전원
+        Warrant(feature.IsUserInPercentage, 0.1, 1.0).     // 전체 10% 롤아웃, backing=0.1
+        Warrant(feature.IsInternalStaff, nil, 1.0),        // 내부 직원은 전원
+)
+
+// 같은 함수 + 다른 backing 예시
+flags.Register("multi-region",
+    toulmin.NewGraph("feature:multi-region").
+        Warrant(feature.IsRegion, "KR", 1.0).
+        Warrant(feature.IsRegion, "US", 1.0).
+        Rebuttal(feature.IsRegion, "CN", 1.0).
+        DefeatWith(feature.IsRegion, "CN", feature.IsRegion, "KR"),  // CN이 KR을 defeat
 )
 
 ctx := &feature.UserContext{
@@ -196,7 +210,10 @@ enabled, _ := flags.IsEnabled("dark-mode", ctx)
 // 판정 근거 추적
 result, _ := flags.EvaluateTrace("dark-mode", ctx)
 // result.Enabled: true
-// result.Trace: IsBetaUser=true, IsRegion(KR)=true, IsLegacyBrowser=false
+// result.Trace:
+//   IsBetaUser: activated=true, backing=nil
+//   IsRegion:   activated=true, backing="KR"
+//   IsLegacyBrowser: activated=false, backing=nil
 
 // 전체 활성 피처 목록
 active, _ := flags.List(ctx)
@@ -225,7 +242,7 @@ r.Use(feature.Inject(flags, buildCtx))  // 모든 핸들러에서 활성 피처 
 ### 포함
 
 1. **UserContext 구조체**: 피처 판정에 필요한 사용자 컨텍스트
-2. **범용 rule 함수**: IsBetaUser, IsInternalStaff, IsRegion, HasAttribute, IsLegacyBrowser, IsUserInPercentage
+2. **범용 rule 함수**: IsBetaUser, IsInternalStaff, IsRegion, HasAttribute, IsLegacyBrowser, IsUserInPercentage — 모두 `func(claim any, ground any, backing any) (bool, any)` 순수 함수
 3. **hashPercentage**: 결정론적 사용자 ID 해시 (롤아웃용)
 4. **Flags**: 피처 레지스트리 (Register, IsEnabled, Evaluate, EvaluateTrace, List)
 5. **FeatureResult**: 판정 결과 + trace
@@ -245,12 +262,12 @@ r.Use(feature.Inject(flags, buildCtx))  // 모든 핸들러에서 활성 피처 
 pkg/
   feature/
     user_context.go                — UserContext 구조체
-    rule_is_beta_user.go           — IsBetaUser
-    rule_is_internal_staff.go      — IsInternalStaff
-    rule_is_region.go              — IsRegion (클로저)
-    rule_has_attribute.go          — HasAttribute (클로저)
-    rule_is_legacy_browser.go      — IsLegacyBrowser
-    rule_is_user_in_percentage.go  — IsUserInPercentage (클로저)
+    rule_is_beta_user.go           — IsBetaUser (backing: nil)
+    rule_is_internal_staff.go      — IsInternalStaff (backing: nil)
+    rule_is_region.go              — IsRegion (backing: string — 지역명)
+    rule_has_attribute.go          — HasAttribute (backing: [2]any — 속성 키/값 쌍)
+    rule_is_legacy_browser.go      — IsLegacyBrowser (backing: nil)
+    rule_is_user_in_percentage.go  — IsUserInPercentage (backing: float64 — 비율 임계값)
     hash_percentage.go             — hashPercentage 결정론적 해시
     flags.go                       — Flags (NewFlags, Register, IsEnabled, Evaluate, EvaluateTrace, List)
     feature_result.go              — FeatureResult 구조체
@@ -277,33 +294,37 @@ pkg/
 
 - 각 rule 함수를 파일 하나에 하나씩 구현 (filefunc 규칙 준수)
 - 각 함수는 1-2 depth 유지
-- 클로저 rule: IsRegion, HasAttribute, IsUserInPercentage
+- 모든 함수가 `func(claim any, ground any, backing any) (bool, any)` 시그니처
+- backing이 필요한 rule: IsRegion(string), HasAttribute([2]any), IsUserInPercentage(float64)
+- backing이 불필요한 rule: IsBetaUser, IsInternalStaff, IsLegacyBrowser (backing=nil)
 
 ### Step 4: Flags 구현
 
 - NewFlags: 빈 레지스트리 생성
 - Register: 피처 이름 + graph 등록
-- IsEnabled: Evaluate → verdict >= 0이면 true
-- Evaluate: graph.Evaluate(featureName, ctx) → verdict
-- EvaluateTrace: graph.EvaluateTrace → FeatureResult
+- IsEnabled: Evaluate -> verdict >= 0이면 true
+- Evaluate: graph.Evaluate(featureName, ctx) -> verdict
+- EvaluateTrace: graph.EvaluateTrace -> FeatureResult
 - List: 등록된 전체 피처를 순회하여 활성 목록 반환
 
 ### Step 5: Gin 미들웨어 구현
 
-- Require: IsEnabled 판정 → 비활성이면 404 반환
+- Require: IsEnabled 판정 -> 비활성이면 404 반환
 - Inject: List 결과를 gin.Context에 저장
 
 ### Step 6: 테스트
 
-- rule 함수 단위 테스트: 각 조건별 true/false
+- rule 함수 단위 테스트: 각 조건별 true/false, backing 값 검증
 - hashPercentage 분포 테스트: 10000개 ID로 균등 분포 확인
 - Flags 통합 테스트:
-  - 베타 사용자 → 활성화
-  - 레거시 브라우저 → 비활성화
-  - 내부 직원 + 레거시 + defeat → 활성화
-  - 30% 롤아웃 → 해시 기반 결정론적 결과
-  - 미등록 피처 → 에러
-  - List → 활성 피처만 반환
+  - 베타 사용자 -> 활성화
+  - 레거시 브라우저 -> 비활성화
+  - 내부 직원 + 레거시 + defeat -> 활성화
+  - 30% 롤아웃 -> 해시 기반 결정론적 결과
+  - 미등록 피처 -> 에러
+  - List -> 활성 피처만 반환
+  - 같은 함수 + 다른 backing -> DefeatWith로 defeat 동작
+  - EvaluateTrace에 backing 값 포함 확인
 - Gin 미들웨어 테스트: Require 통과/거부, Inject 컨텍스트 주입
 
 ### Step 7: 전체 테스트 PASS 확인
@@ -312,15 +333,20 @@ pkg/
 
 ## 검증 기준
 
-1. IsBetaUser, IsRegion 등 rule 함수가 ground에서 올바르게 판정한다
-2. hashPercentage가 같은 ID에 대해 항상 같은 값을 반환한다 (결정론적)
-3. hashPercentage 분포가 10000개 샘플에서 ±5% 이내로 균등하다
-4. Flags.IsEnabled이 verdict >= 0이면 true를 반환한다
-5. defeat edge가 예외를 정확히 처리한다 (내부 직원 → 레거시 제외 무시)
-6. EvaluateTrace 결과에 각 rule의 판정 근거가 포함된다
-7. Gin Require 미들웨어가 비활성 피처에 대해 404를 반환한다
-8. 전체 테스트 PASS
+1. IsBetaUser, IsRegion 등 rule 함수가 `(claim, ground, backing)` 시그니처로 동작한다
+2. IsRegion은 backing으로 지역명을 받아 ground에서 판정한다
+3. IsUserInPercentage는 backing으로 비율 임계값을 받아 판정한다
+4. HasAttribute는 backing으로 속성 키/값 쌍을 받아 판정한다
+5. hashPercentage가 같은 ID에 대해 항상 같은 값을 반환한다 (결정론적)
+6. hashPercentage 분포가 10000개 샘플에서 +/-5% 이내로 균등하다
+7. Flags.IsEnabled이 verdict >= 0이면 true를 반환한다
+8. defeat edge가 예외를 정확히 처리한다 (내부 직원 -> 레거시 제외 무시)
+9. EvaluateTrace 결과에 각 rule의 판정 근거와 backing 값이 포함된다
+10. 같은 함수 + 다른 backing이 DefeatWith로 defeat 된다
+11. Gin Require 미들웨어가 비활성 피처에 대해 404를 반환한다
+12. 전체 테스트 PASS
 
 ## 의존성
 
 - Phase 001-009: toulmin 코어 (NewGraph, Evaluate, EvaluateTrace)
+- Phase 010: backing 일급 시민 (3-element rule 시그니처, Warrant(fn, backing, qualifier) API, DefeatWith)

@@ -13,12 +13,13 @@ import (
 type ContextBuilderFunc func(*gin.Context) *RouteContext
 
 // Guard returns a gin.HandlerFunc that evaluates the given graph.
-// claim is nil because route matching is already done by Gin.
-// All evaluation data comes from ground (RouteContext).
+// Uses Evaluate (lightweight, no trace). For debug trace, use GuardDebug.
+// claim is nil — route matching is already done by Gin.
+// verdict <= 0 is denied (security context: undecided is deny).
 func Guard(g *toulmin.GraphBuilder, ctxBuilder ContextBuilderFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := ctxBuilder(c)
-		results, err := g.EvaluateTrace(nil, ctx)
+		results, err := g.Evaluate(nil, ctx)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "route evaluation failed"})
 			return
