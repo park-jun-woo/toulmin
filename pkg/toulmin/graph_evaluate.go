@@ -6,13 +6,13 @@ package toulmin
 // lazily executing rule funcs only when reached. Returns verdicts
 // for warrant nodes. Funcs are cached across warrant evaluations.
 // Returns an error if the defeat graph contains a cycle.
-func (b *GraphBuilder) Evaluate(claim any, ground any) ([]EvalResult, error) {
-	ctx, err := newEvalContext(b.rules, b.defeats, b.roles)
+func (g *Graph) Evaluate(claim any, ground any) ([]EvalResult, error) {
+	ctx, err := newEvalContext(g.rules, g.defeats, g.roles)
 	if err != nil {
 		return nil, err
 	}
 	var results []EvalResult
-	for _, r := range b.rules {
+	for _, r := range g.rules {
 		if !isWarrant(ctx.attackerSet, r.Strength, r.Name) {
 			continue
 		}

@@ -19,12 +19,15 @@ if isAdult {
 }
 
 // toulmin — declare rules and relationships
-g := toulmin.NewGraph("voting").
-    Warrant(IsAdult, nil, 1.0).
-    Warrant(IsCitizen, nil, 1.0).
-    Rebuttal(HasCriminalRecord, nil, 1.0).
-    Rebuttal(IsSuspended, nil, 1.0).
-    Defeat(IsExpunged, HasCriminalRecord)
+g := toulmin.NewGraph("voting")
+auth := g.Warrant(IsAdult, nil, 1.0)
+citizen := g.Warrant(IsCitizen, nil, 1.0)
+criminal := g.Rebuttal(HasCriminalRecord, nil, 1.0)
+suspended := g.Rebuttal(IsSuspended, nil, 1.0)
+expunged := g.Defeater(IsExpunged, nil, 1.0)
+g.Defeat(criminal, auth)
+g.Defeat(suspended, auth)
+g.Defeat(expunged, criminal)
 ```
 
 Each rule function stays at 1-2 depth. Complexity lives in the graph, not in nesting.
@@ -44,16 +47,15 @@ go get github.com/park-jun-woo/toulmin/pkg/toulmin
 
 ## Usage
 
-### Graph Builder API
+### Graph API
 
-Functions are identifiers. No string names needed. Backing is passed as a second argument — use `nil` when the rule needs no external criteria.
+Functions are identifiers. No string names needed. Backing is passed as a second argument — use `nil` when the rule needs no external criteria. Each method returns a `*Rule` reference for use in `Defeat`.
 
 ```go
-g := toulmin.NewGraph("voting").
-    Warrant(IsAdult, nil, 1.0).
-    Warrant(IsCitizen, nil, 1.0).
-    Rebuttal(HasCriminalRecord, nil, 1.0).
-    Defeat(HasCriminalRecord, IsAdult)
+g := toulmin.NewGraph("voting")
+auth := g.Warrant(IsAdult, nil, 1.0)
+criminal := g.Rebuttal(HasCriminalRecord, nil, 1.0)
+g.Defeat(criminal, auth)
 
 // Evaluate — verdict + evidence
 results, err := g.Evaluate(claim, ground)
@@ -72,13 +74,13 @@ Backing is a first-class Toulmin element — judgment criteria passed as an argu
 
 ```go
 // Same function, different backing — "admin" vs "editor" role checks
-g := toulmin.NewGraph("admin").
-    Warrant(IsInRole, "admin", 1.0).
-    Warrant(IsAuthenticated, nil, 1.0)
+g := toulmin.NewGraph("admin")
+g.Warrant(IsInRole, "admin", 1.0)
+g.Warrant(IsAuthenticated, nil, 1.0)
 
-g := toulmin.NewGraph("editor").
-    Warrant(IsInRole, "editor", 1.0).
-    Warrant(IsAuthenticated, nil, 1.0)
+g := toulmin.NewGraph("editor")
+g.Warrant(IsInRole, "editor", 1.0)
+g.Warrant(IsAuthenticated, nil, 1.0)
 ```
 
 The rule function receives backing as the third argument:
@@ -91,15 +93,15 @@ func IsInRole(claim any, ground any, backing any) (bool, any) {
 }
 ```
 
-When two registrations use the same function but different backing, use `DefeatWith` to specify which defeats which:
+When two registrations use the same function but different backing, use the returned `*Rule` references to specify which defeats which:
 
 ```go
-g := toulmin.NewGraph("firewall").
-    Warrant(IsAuthenticated, nil, 1.0).
-    Rebuttal(IsIPInList, blocklist, 1.0).
-    Warrant(IsIPInList, whitelist, 1.0).
-    DefeatWith(IsIPInList, blocklist, IsAuthenticated, nil).
-    DefeatWith(IsIPInList, whitelist, IsIPInList, blocklist)
+g := toulmin.NewGraph("firewall")
+authenticated := g.Warrant(IsAuthenticated, nil, 1.0)
+blocked := g.Rebuttal(IsIPInList, blocklist, 1.0)
+whitelisted := g.Warrant(IsIPInList, whitelist, 1.0)
+g.Defeat(blocked, authenticated)
+g.Defeat(whitelisted, blocked)
 ```
 
 ### Rule Reuse
@@ -107,15 +109,15 @@ g := toulmin.NewGraph("firewall").
 Same function, different graphs, different defeats:
 
 ```go
-votingGraph := toulmin.NewGraph("voting").
-    Warrant(IsAdult, nil, 1.0).
-    Rebuttal(HasCriminalRecord, nil, 1.0).
-    Defeat(HasCriminalRecord, IsAdult)
+g1 := toulmin.NewGraph("voting")
+adult1 := g1.Warrant(IsAdult, nil, 1.0)
+criminal := g1.Rebuttal(HasCriminalRecord, nil, 1.0)
+g1.Defeat(criminal, adult1)
 
-contractGraph := toulmin.NewGraph("contract").
-    Warrant(IsAdult, nil, 1.0).
-    Rebuttal(IsBankrupt, nil, 1.0).
-    Defeat(IsBankrupt, IsAdult)
+g2 := toulmin.NewGraph("contract")
+adult2 := g2.Warrant(IsAdult, nil, 1.0)
+bankrupt := g2.Rebuttal(IsBankrupt, nil, 1.0)
+g2.Defeat(bankrupt, adult2)
 ```
 
 ### Qualifier
@@ -123,9 +125,9 @@ contractGraph := toulmin.NewGraph("contract").
 Defaults to 1.0. Set to 1.0 for simple pass/fail policies. Use fractional values for weighted judgment:
 
 ```go
-g := toulmin.NewGraph("example").
-    Warrant(IsAdult, nil, 1.0).
-    Warrant(IsCitizen, nil, 0.7)
+g := toulmin.NewGraph("example")
+g.Warrant(IsAdult, nil, 1.0)
+g.Warrant(IsCitizen, nil, 0.7)
 ```
 
 ### Engine API (Phase 001)

@@ -108,16 +108,18 @@ func TestFileException(claim any, ground any, backing any) (bool, any) {
 
 ## Using the Engine (Library)
 
-### Graph Builder API (recommended)
+### Graph API (recommended)
 
 Functions are identifiers — no string names needed. Defeats are declared on the graph, not the function. Same function can be reused across different graphs with different defeats. The API takes `fn any, backing any, qualifier float64` in that order.
 
+Warrant, Rebuttal, and Defeater return `*Rule` — an opaque reference used to declare defeat edges. There is no method chaining.
+
 ```go
-g := toulmin.NewGraph("voting").
-    Warrant(IsAdult, nil, 1.0).
-    Warrant(IsCitizen, nil, 1.0).
-    Rebuttal(HasCriminalRecord, nil, 1.0).
-    Defeat(HasCriminalRecord, IsAdult)
+g := toulmin.NewGraph("voting")
+w1 := g.Warrant(IsAdult, nil, 1.0)
+w2 := g.Warrant(IsCitizen, nil, 1.0)
+r := g.Rebuttal(HasCriminalRecord, nil, 1.0)
+g.Defeat(r, w1)
 
 // Evaluate — verdict only (lightweight)
 results, err := g.Evaluate(claim, ground)
@@ -171,40 +173,28 @@ type TraceEntry struct {
 
 ```go
 // Same IsAdult function, different graphs, different defeats
-votingGraph := toulmin.NewGraph("voting").
-    Warrant(IsAdult, nil, 1.0).
-    Rebuttal(HasCriminalRecord, nil, 1.0).
-    Defeat(HasCriminalRecord, IsAdult)
+votingGraph := toulmin.NewGraph("voting")
+w := votingGraph.Warrant(IsAdult, nil, 1.0)
+r := votingGraph.Rebuttal(HasCriminalRecord, nil, 1.0)
+votingGraph.Defeat(r, w)
 
-contractGraph := toulmin.NewGraph("contract").
-    Warrant(IsAdult, nil, 1.0).
-    Rebuttal(IsBankrupt, nil, 1.0).
-    Defeat(IsBankrupt, IsAdult)
+contractGraph := toulmin.NewGraph("contract")
+w2 := contractGraph.Warrant(IsAdult, nil, 1.0)
+r2 := contractGraph.Rebuttal(IsBankrupt, nil, 1.0)
+contractGraph.Defeat(r2, w2)
 ```
 
 #### Same Function, Different Backing
 
-The same function can be registered multiple times with different backing values. Each registration becomes a distinct rule identified by `ruleID = funcID + "#" + backing`. Use `DefeatWith` to reference rules by both function and backing.
+The same function can be registered multiple times with different backing values. Each registration becomes a distinct rule identified by `ruleID = funcID + "#" + backing`. Use `Defeat` with `*Rule` references to target specific registrations.
 
 ```go
 // Same CheckThreshold function, different backing values
-g := toulmin.NewGraph("limits").
-    Warrant(CheckThreshold, 100, 1.0).       // ruleID = "CheckThreshold#100"
-    Warrant(CheckThreshold, 200, 0.8).       // ruleID = "CheckThreshold#200"
-    Rebuttal(HasExemption, "vip", 1.0).
-    DefeatWith(HasExemption, "vip", CheckThreshold, 100)
-```
-
-#### DefeatWith
-
-`DefeatWith(fromFn, fromBacking, toFn, toBacking)` declares a defeat edge between rules identified by both function and backing. Use this when the same function is registered with different backing values.
-
-```go
-g := toulmin.NewGraph("example").
-    Warrant(CheckLimit, "daily", 1.0).
-    Warrant(CheckLimit, "monthly", 1.0).
-    Rebuttal(HasOverride, "daily", 1.0).
-    DefeatWith(HasOverride, "daily", CheckLimit, "daily")  // targets only the daily variant
+g := toulmin.NewGraph("limits")
+w1 := g.Warrant(CheckThreshold, 100, 1.0)       // ruleID = "CheckThreshold#100"
+w2 := g.Warrant(CheckThreshold, 200, 0.8)       // ruleID = "CheckThreshold#200"
+r := g.Rebuttal(HasExemption, "vip", 1.0)
+g.Defeat(r, w1)  // targets only the CheckThreshold#100 variant
 ```
 
 ### Engine API (Phase 001, still available)
@@ -254,7 +244,7 @@ toulmin evaluate                              # run example evaluation
 1. Reads YAML graph definition (or Go source file)
 2. Validates defeats references (unknown target → error, exit 1)
 3. Detects cycles in defeat graph (cycle → error, exit 1)
-4. Generates `graph_gen.go` with Graph Builder code (YAML only, skipped with --check)
+4. Generates `graph_gen.go` with Graph code (YAML only, skipped with --check)
 
 ### YAML Graph Definition
 
@@ -283,11 +273,14 @@ package mypkg
 
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
-var VotingGraph = toulmin.NewGraph("voting").
-    Warrant(IsAdult, nil, 1.0).
-    Warrant(IsCitizen, nil, 0.7).
-    Rebuttal(HasCriminalRecord, nil, 1.0).
-    Defeat(HasCriminalRecord, IsAdult)
+func NewVotingGraph() *toulmin.Graph {
+    g := toulmin.NewGraph("voting")
+    w0 := g.Warrant(IsAdult, nil, 1.0)
+    _ = g.Warrant(IsCitizen, nil, 0.7)
+    r0 := g.Rebuttal(HasCriminalRecord, nil, 1.0)
+    g.Defeat(r0, w0)
+    return g
+}
 ```
 
 ---
@@ -320,10 +313,14 @@ pkg/toulmin/                — public library (engine core)
   engine_register.go        — Engine.Register method
   engine_evaluate.go        — Engine.Evaluate method (verdict only)
   engine_evaluate_trace.go  — Engine.EvaluateTrace method (verdict + trace)
-  graph_builder.go          — GraphBuilder (NewGraph, Warrant, Rebuttal, Defeater, Defeat, DefeatWith)
-  graph_builder_evaluate.go — GraphBuilder.Evaluate method (verdict only)
-  graph_builder_evaluate_trace.go — GraphBuilder.EvaluateTrace method (verdict + trace)
-  graph_builder_defeat_with.go — DefeatWith method (defeat with explicit backing)
+  graph.go                  — Graph struct (NewGraph), Rule struct
+  graph_warrant.go          — Graph.Warrant method → returns *Rule
+  graph_rebuttal.go         — Graph.Rebuttal method → returns *Rule
+  graph_defeater.go         — Graph.Defeater method → returns *Rule
+  graph_defeat.go           — Graph.Defeat method (takes *Rule, *Rule)
+  graph_evaluate.go         — Graph.Evaluate method (verdict only)
+  graph_evaluate_trace.go   — Graph.EvaluateTrace method (verdict + trace)
+  rule.go                   — Rule struct: type Rule struct { id string }
   trace_entry.go            — TraceEntry struct (includes Backing field)
   infer_role.go             — role inference for Engine API
   func_name.go              — FuncName(any) → name extraction
@@ -344,9 +341,9 @@ pkg/toulmin/                — public library (engine core)
   parse_annotation.go       — //tm: annotation parser
 
 internal/graphdef/          — YAML graph definition parser + cycle validation
-internal/analyzer/          — Go AST analysis for GraphBuilder defeat extraction
+internal/analyzer/          — Go AST analysis for Graph defeat extraction
 internal/graph/             — defeats graph validation
-internal/codegen/           — code generation (Graph Builder + RegisterAll)
+internal/codegen/           — code generation (Graph + RegisterAll)
 internal/cli/               — cobra commands
 
 cmd/toulmin/                — CLI entrypoint
@@ -400,13 +397,14 @@ verdict(W) = +1.0 (unchanged)
 | Mistake | Fix |
 |---|---|
 | Missing `//tm:backing` | Optional, but recommended — document why the rule exists |
-| Declaring role/defeats on function | Role, defeats, qualifier, strength belong in Graph Builder or YAML |
+| Declaring role/defeats on function | Role, defeats, qualifier, strength belong in Graph declaration or YAML |
 | Rule func wrong signature | Must be `func(claim any, ground any, backing any) (bool, any)` (legacy 2-arg also accepted) |
 | Editing `graph_gen.go` manually | Re-run `toulmin graph` instead. File is generated |
-| Using fn in Defeat without registering it | Must register via Warrant/Rebuttal/Defeater first |
+| Using `*Rule` in Defeat without registering it | Must register via Warrant/Rebuttal/Defeater first to get a `*Rule` reference |
 | Treating verdict 0.0 as allow or deny | 0.0 is undecided — threshold is your framework's decision |
 | Confusing ground and backing | ground = per-request facts, backing = fixed judgment criteria at graph declaration |
 | Forgetting backing parameter | All Warrant/Rebuttal/Defeater calls require `(fn, backing, qualifier)`. Use `nil` when no backing is needed |
+| Chaining Warrant/Rebuttal/Defeater calls | These methods return `*Rule`, not `*Graph` — no chaining. Use separate statements |
 
 ### Backing Replaces Closures
 
@@ -416,10 +414,10 @@ Previously, parameterized rules required closure factories (e.g. `HasRole("admin
 // OLD (closure approach — no longer needed)
 hasAdmin := HasRole("admin")      // closure factory
 hasEditor := HasRole("editor")    // different function pointer
-g := toulmin.NewGraph("example").
-    Rebuttal(hasAdmin, nil, 1.0).
-    Rebuttal(hasEditor, nil, 1.0).
-    Defeat(hasAdmin, SomeWarrant)
+g := toulmin.NewGraph("example")
+r1 := g.Rebuttal(hasAdmin, nil, 1.0)
+r2 := g.Rebuttal(hasEditor, nil, 1.0)
+// ...
 
 // NEW (backing approach — recommended)
 func HasRole(claim any, ground any, backing any) (bool, any) {
@@ -428,31 +426,31 @@ func HasRole(claim any, ground any, backing any) (bool, any) {
     return user.HasRole(role), nil
 }
 
-g := toulmin.NewGraph("example").
-    Rebuttal(HasRole, "admin", 1.0).       // ruleID = "HasRole#admin"
-    Rebuttal(HasRole, "editor", 1.0).      // ruleID = "HasRole#editor"
-    DefeatWith(HasRole, "admin", SomeWarrant, nil)
+g := toulmin.NewGraph("example")
+r1 := g.Rebuttal(HasRole, "admin", 1.0)       // ruleID = "HasRole#admin"
+r2 := g.Rebuttal(HasRole, "editor", 1.0)      // ruleID = "HasRole#editor"
+g.Defeat(r1, someWarrant)
 ```
 
 ### Defeat Requires Registration
 
-A function referenced in `Defeat(fn, target)` must be registered in the graph via `Warrant`, `Rebuttal`, or `Defeater`. Unregistered functions are not in `fnMap` and will not execute.
+A rule referenced in `Defeat(from, to)` must be registered in the graph via `Warrant`, `Rebuttal`, or `Defeater`. Unregistered rules are not in the graph and will not execute.
 
 ```go
-// WRONG — whitelisted is not registered
-g := toulmin.NewGraph("example").
-    Warrant(IsAuthenticated, nil, 1.0).
-    Rebuttal(IsIPBlocked, nil, 1.0).
-    Defeat(IsIPBlocked, IsAuthenticated).
-    Defeat(IsWhitelisted, IsIPBlocked)          // IsWhitelisted not in fnMap!
+// WRONG — IsWhitelisted is not registered
+g := toulmin.NewGraph("example")
+w := g.Warrant(IsAuthenticated, nil, 1.0)
+r := g.Rebuttal(IsIPBlocked, nil, 1.0)
+g.Defeat(r, w)
+g.Defeat(???, r)          // no *Rule for IsWhitelisted — not registered!
 
-// CORRECT — register as Defeater
-g := toulmin.NewGraph("example").
-    Warrant(IsAuthenticated, nil, 1.0).
-    Rebuttal(IsIPBlocked, nil, 1.0).
-    Defeater(IsWhitelisted, nil, 1.0).
-    Defeat(IsIPBlocked, IsAuthenticated).
-    Defeat(IsWhitelisted, IsIPBlocked)
+// CORRECT — register as Defeater first
+g := toulmin.NewGraph("example")
+w := g.Warrant(IsAuthenticated, nil, 1.0)
+r := g.Rebuttal(IsIPBlocked, nil, 1.0)
+d := g.Defeater(IsWhitelisted, nil, 1.0)
+g.Defeat(r, w)
+g.Defeat(d, r)
 ```
 
 ### Verdict 0.0 Threshold Is Framework's Decision

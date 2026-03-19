@@ -16,7 +16,7 @@ type ContextBuilderFunc func(*gin.Context) *RouteContext
 // Uses Evaluate (lightweight, no trace). For debug trace, use GuardDebug.
 // claim is nil — route matching is already done by Gin.
 // verdict <= 0 is denied (security context: undecided is deny).
-func Guard(g *toulmin.GraphBuilder, ctxBuilder ContextBuilderFunc) gin.HandlerFunc {
+func Guard(g *toulmin.Graph, ctxBuilder ContextBuilderFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := ctxBuilder(c)
 		results, err := g.Evaluate(nil, ctx)

@@ -1,21 +1,21 @@
 //ff:func feature=engine type=engine control=sequence
-//ff:what Rebuttal — adds a rebuttal rule to the graph builder
+//ff:what Warrant — registers a warrant rule and returns its reference
 package toulmin
 
-// Rebuttal adds a rebuttal rule to the graph.
+// Warrant registers a warrant rule in the graph and returns a *Rule reference.
 // fn accepts both func(any,any,any)(bool,any) and legacy func(any,any)(bool,any).
 // backing is the rule's judgment criteria (Toulmin backing). Use nil if not needed.
 // qualifier is the rule's confidence weight.
-func (b *GraphBuilder) Rebuttal(fn any, backing any, qualifier float64) *GraphBuilder {
+func (g *Graph) Warrant(fn any, backing any, qualifier float64) *Rule {
 	wrapped := toRuleFunc(fn)
 	id := ruleID(fn, backing)
-	b.rules = append(b.rules, RuleMeta{
+	g.rules = append(g.rules, RuleMeta{
 		Name:      id,
 		Qualifier: qualifier,
 		Strength:  Defeasible,
 		Backing:   backing,
 		Fn:        wrapped,
 	})
-	b.roles[id] = "rebuttal"
-	return b
+	g.roles[id] = "warrant"
+	return &Rule{id: id}
 }

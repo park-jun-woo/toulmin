@@ -27,9 +27,9 @@ func buildTestCtx(user *User, ip string, headers map[string]string) ContextBuild
 }
 
 func TestGuard_AuthenticatedAdmin(t *testing.T) {
-	g := toulmin.NewGraph("test:admin").
-		Warrant(IsAuthenticated, nil, 1.0).
-		Warrant(IsInRole, "admin", 1.0)
+	g := toulmin.NewGraph("test:admin")
+	g.Warrant(IsAuthenticated, nil, 1.0)
+	g.Warrant(IsInRole, "admin", 1.0)
 
 	r := gin.New()
 	r.GET("/admin", Guard(g, buildTestCtx(&User{ID: "u1", Role: "admin"}, "10.0.0.1", nil)), func(c *gin.Context) {
@@ -46,8 +46,8 @@ func TestGuard_AuthenticatedAdmin(t *testing.T) {
 }
 
 func TestGuard_Unauthenticated(t *testing.T) {
-	g := toulmin.NewGraph("test:auth").
-		Warrant(IsAuthenticated, nil, 1.0)
+	g := toulmin.NewGraph("test:auth")
+	g.Warrant(IsAuthenticated, nil, 1.0)
 
 	r := gin.New()
 	r.GET("/protected", Guard(g, buildTestCtx(nil, "10.0.0.1", nil)), func(c *gin.Context) {
@@ -66,10 +66,10 @@ func TestGuard_Unauthenticated(t *testing.T) {
 func TestGuard_IPBlocked(t *testing.T) {
 	blocklist := func(ip string) bool { return ip == "1.2.3.4" }
 
-	g := toulmin.NewGraph("test:ip").
-		Warrant(IsAuthenticated, nil, 1.0).
-		Rebuttal(IsIPInList, blocklist, 1.0).
-		DefeatWith(IsIPInList, blocklist, IsAuthenticated, nil)
+	g := toulmin.NewGraph("test:ip")
+	auth := g.Warrant(IsAuthenticated, nil, 1.0)
+	blocked := g.Rebuttal(IsIPInList, blocklist, 1.0)
+	g.Defeat(blocked, auth)
 
 	r := gin.New()
 	r.GET("/api", Guard(g, buildTestCtx(&User{ID: "u1"}, "1.2.3.4", nil)), func(c *gin.Context) {
@@ -89,12 +89,12 @@ func TestGuard_IPBlocked_WhitelistDefeat(t *testing.T) {
 	blocklist := func(ip string) bool { return ip == "1.2.3.4" }
 	whitelist := func(ip string) bool { return ip == "1.2.3.4" }
 
-	g := toulmin.NewGraph("test:whitelist").
-		Warrant(IsAuthenticated, nil, 1.0).
-		Rebuttal(IsIPInList, blocklist, 1.0).
-		Defeater(IsIPInList, whitelist, 1.0).
-		DefeatWith(IsIPInList, blocklist, IsAuthenticated, nil).
-		DefeatWith(IsIPInList, whitelist, IsIPInList, blocklist)
+	g := toulmin.NewGraph("test:whitelist")
+	auth := g.Warrant(IsAuthenticated, nil, 1.0)
+	blocked := g.Rebuttal(IsIPInList, blocklist, 1.0)
+	allowed := g.Defeater(IsIPInList, whitelist, 1.0)
+	g.Defeat(blocked, auth)
+	g.Defeat(allowed, blocked)
 
 	r := gin.New()
 	r.GET("/api", Guard(g, buildTestCtx(&User{ID: "u1"}, "1.2.3.4", nil)), func(c *gin.Context) {
@@ -113,12 +113,12 @@ func TestGuard_IPBlocked_WhitelistDefeat(t *testing.T) {
 func TestGuard_RateLimited_InternalServiceDefeat(t *testing.T) {
 	limiter := &mockLimiter{limited: map[string]bool{"10.0.0.1": true}}
 
-	g := toulmin.NewGraph("test:ratelimit").
-		Warrant(IsAuthenticated, nil, 1.0).
-		Rebuttal(IsRateLimited, limiter, 1.0).
-		Defeater(IsInternalService, nil, 1.0).
-		DefeatWith(IsRateLimited, limiter, IsAuthenticated, nil).
-		DefeatWith(IsInternalService, nil, IsRateLimited, limiter)
+	g := toulmin.NewGraph("test:ratelimit")
+	auth := g.Warrant(IsAuthenticated, nil, 1.0)
+	limited := g.Rebuttal(IsRateLimited, limiter, 1.0)
+	internal := g.Defeater(IsInternalService, nil, 1.0)
+	g.Defeat(limited, auth)
+	g.Defeat(internal, limited)
 
 	headers := map[string]string{"X-Internal-Token": "secret"}
 	r := gin.New()
@@ -136,8 +136,8 @@ func TestGuard_RateLimited_InternalServiceDefeat(t *testing.T) {
 }
 
 func TestGuardDebug_Headers(t *testing.T) {
-	g := toulmin.NewGraph("test:debug").
-		Warrant(IsAuthenticated, nil, 1.0)
+	g := toulmin.NewGraph("test:debug")
+	g.Warrant(IsAuthenticated, nil, 1.0)
 
 	r := gin.New()
 	r.GET("/debug", GuardDebug(g, buildTestCtx(&User{ID: "u1"}, "10.0.0.1", nil)), func(c *gin.Context) {
@@ -164,10 +164,10 @@ func TestGuardDebug_Headers(t *testing.T) {
 func TestGuardDebug_Forbidden_WithRebuttal(t *testing.T) {
 	blocklist := func(ip string) bool { return ip == "1.2.3.4" }
 
-	g := toulmin.NewGraph("test:debug-deny").
-		Warrant(IsAuthenticated, nil, 1.0).
-		Rebuttal(IsIPInList, blocklist, 1.0).
-		DefeatWith(IsIPInList, blocklist, IsAuthenticated, nil)
+	g := toulmin.NewGraph("test:debug-deny")
+	auth := g.Warrant(IsAuthenticated, nil, 1.0)
+	blocked := g.Rebuttal(IsIPInList, blocklist, 1.0)
+	g.Defeat(blocked, auth)
 
 	r := gin.New()
 	r.GET("/debug", GuardDebug(g, buildTestCtx(&User{ID: "u1"}, "1.2.3.4", nil)), func(c *gin.Context) {

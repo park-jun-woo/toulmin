@@ -152,10 +152,10 @@ func TestEngineGraphBuilderConsistency(t *testing.T) {
 		t.Fatalf("engine error: %v", err)
 	}
 
-	g := NewGraph("test").
-		Warrant(w, nil, 1.0).
-		Rebuttal(r, nil, 0.8).
-		Defeat(r, w)
+	g := NewGraph("test")
+	wRule := g.Warrant(w, nil, 1.0)
+	rRule := g.Rebuttal(r, nil, 0.8)
+	g.Defeat(rRule, wRule)
 	gbResults, err := g.Evaluate(nil, nil)
 	if err != nil {
 		t.Fatalf("graph builder error: %v", err)

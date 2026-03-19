@@ -13,7 +13,7 @@ import (
 
 // GuardDebug returns a gin.HandlerFunc that evaluates the given graph
 // and exposes verdict and trace in response headers.
-func GuardDebug(g *toulmin.GraphBuilder, ctxBuilder ContextBuilderFunc) gin.HandlerFunc {
+func GuardDebug(g *toulmin.Graph, ctxBuilder ContextBuilderFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := ctxBuilder(c)
 		results, err := g.EvaluateTrace(nil, ctx)

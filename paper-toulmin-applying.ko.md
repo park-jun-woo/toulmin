@@ -114,7 +114,7 @@ JWT(RFC 7519)는 토큰 필드를 "facts"가 아니라 "claims"라 명명한다.
 
 툴민의 원래 모델에서 Qualifier는 **Claim에 부착**된다. "**아마도(presumably)** 이 환자에게 페니실린을 투여해야 한다" — Qualifier는 주장의 확신도를 표현하는 양상 한정사(modal qualifier)다. Warrant, Ground, Rebuttal을 종합하여 화자가 Claim에 부여하는 확신의 정도다.
 
-본 모델은 Qualifier를 Claim에서 **각 Rule(warrant, rebuttal, defeater)**로 재배치한다. 이것은 논증 이론에서 규칙 엔진으로의 적용에서 불가피한 공학적 교정이다.
+본 모델은 Qualifier를 Claim에서 **각 Rule(Warrant, Rebuttal, Defeater)**로 재배치한다. 이것은 논증 이론에서 규칙 엔진으로의 적용에서 불가피한 공학적 교정이다.
 
 규칙 엔진에서 claim은 검증 대상일 뿐이다. "이 파일에 함수가 3개다" — 사실 확인이며, 확신도가 붙을 대상이 아니다. 판정의 질을 결정하는 것은 **규칙의 확신도**다:
 
@@ -159,7 +159,7 @@ type Rule func(claim any, ground any, backing any) (bool, any)
 | 시점 | 요청마다 다름 | 선언 시점에 고정 |
 | 예시 | 파일의 함수 개수, 사용자의 역할 | 허용 함수 개수 임계값, 인가 정책 |
 
-이를 통해 엔진은 verdict를 연산할 뿐 아니라 **왜 그런 판정이 나왔는지를 설명**할 수 있다. backing이 1급 런타임 값이므로, 같은 함수를 다른 backing으로 등록하여 서로 다른 판정 기준의 규칙을 생성할 수 있다(`DefeatWith`, §4.2 참조).
+이를 통해 엔진은 verdict를 연산할 뿐 아니라 **왜 그런 판정이 나왔는지를 설명**할 수 있다. backing이 1급 런타임 값이므로, 같은 함수를 다른 backing으로 등록하여 서로 다른 판정 기준의 규칙을 생성할 수 있다(§4.2 참조).
 
 warrant, rebuttal, defeater의 구분은 함수 시그니처가 아니라 **defeats 그래프**에서의 위치에 의해 결정된다:
 
@@ -169,42 +169,41 @@ warrant, rebuttal, defeater의 구분은 함수 시그니처가 아니라 **defe
 | Rebuttal | warrant를 공격하는 노드 (자신의 결론을 가짐) |
 | Defeater | 자신의 결론 없이 공격만 하는 노드 |
 
-### 4.2 Graph Builder: 로직과 구조의 분리
+### 4.2 Graph API: 로직과 구조의 분리
 
-엔진은 두 가지 API를 제공한다. Graph Builder API(권장)는 규칙 로직(Go 함수)과 그래프 구조(defeats, qualifier, strength)를 분리한다:
-
-```go
-g := toulmin.NewGraph("file-structure").
-    Warrant(CheckOneFileOneFunc, nil, 1.0).
-    Defeater(TestFileException, nil, 1.0).
-    Defeat(TestFileException, CheckOneFileOneFunc)
-```
-
-`Warrant(fn, backing, qualifier)` — backing은 두 번째 인자다. 규칙에 고정된 판정 기준이 없을 때는 `nil`을 전달한다. backing이 있을 때:
+엔진은 두 가지 API를 제공한다. Graph API(권장)는 규칙 로직(Go 함수)과 그래프 구조(defeats, qualifier, strength)를 분리한다:
 
 ```go
-g := toulmin.NewGraph("line-limit").
-    Warrant(CheckLineCount, &LineLimit{Max: 100}, 0.7).
-    Warrant(CheckLineCount, &LineLimit{Max: 200}, 0.5).
-    DefeatWith(CheckLineCount, &LineLimit{Max: 200},
-               CheckLineCount, &LineLimit{Max: 100})
+g := toulmin.NewGraph("file-structure")
+w := g.Warrant(CheckOneFileOneFunc, nil, 1.0)
+d := g.Defeater(TestFileException, nil, 1.0)
+g.Defeat(d, w)
 ```
 
-같은 `CheckLineCount` 함수를 서로 다른 backing(`Max: 100`, `Max: 200`)으로 등록하면 별개의 노드가 된다. `DefeatWith`는 같은 함수의 서로 다른 backing 노드 간 defeats 관계를 선언한다.
+`Warrant(fn, backing, qualifier)` — backing은 두 번째 인자다. 규칙에 고정된 판정 기준이 없을 때는 `nil`을 전달한다. `Warrant`, `Rebuttal`, `Defeater`는 `*Rule` 참조를 반환하며, 이 참조를 `Defeat(from, to)`에 전달하여 defeats 관계를 선언한다. backing이 있을 때:
+
+```go
+g := toulmin.NewGraph("line-limit")
+strict := g.Warrant(CheckLineCount, &LineLimit{Max: 100}, 0.7)
+relaxed := g.Warrant(CheckLineCount, &LineLimit{Max: 200}, 0.5)
+g.Defeat(relaxed, strict)
+```
+
+같은 `CheckLineCount` 함수를 서로 다른 backing(`Max: 100`, `Max: 200`)으로 등록하면 별개의 노드가 된다. `*Rule` 참조가 각 노드를 고유하게 식별하므로, 같은 함수의 서로 다른 backing 노드 간 defeats 관계를 자연스럽게 선언할 수 있다.
 
 함수가 식별자다 — 문자열 이름이 필요 없다. 같은 함수를 다른 그래프에서 다른 역할과 defeats 관계로 재사용할 수 있다:
 
 ```go
 // 같은 IsAdult 함수, 다른 그래프, 다른 defeats
-votingGraph := toulmin.NewGraph("voting").
-    Warrant(IsAdult, nil, 1.0).
-    Rebuttal(HasCriminalRecord, nil, 1.0).
-    Defeat(HasCriminalRecord, IsAdult)
+votingGraph := toulmin.NewGraph("voting")
+vw := votingGraph.Warrant(IsAdult, nil, 1.0)
+vr := votingGraph.Rebuttal(HasCriminalRecord, nil, 1.0)
+votingGraph.Defeat(vr, vw)
 
-contractGraph := toulmin.NewGraph("contract").
-    Warrant(IsAdult, nil, 1.0).
-    Rebuttal(IsBankrupt, nil, 1.0).
-    Defeat(IsBankrupt, IsAdult)
+contractGraph := toulmin.NewGraph("contract")
+cw := contractGraph.Warrant(IsAdult, nil, 1.0)
+cr := contractGraph.Rebuttal(IsBankrupt, nil, 1.0)
+contractGraph.Defeat(cr, cw)
 ```
 
 이 분리는 `//tm:backing`만이 함수 자체에 부착되는 유일한 어노테이션임을 의미한다 — 규칙이 왜 존재하는지를 문서로 기록한다. 모든 구조적 메타데이터(역할, qualifier, strength, defeats)는 함수가 아니라 그래프에 속한다.
@@ -312,7 +311,7 @@ toulmin graph file-structure.yaml   # graph_gen.go 생성
 
 `//tm:backing` 어노테이션은 규칙이 **왜 존재하는지**를 문서로 기록한다. 이 어노테이션은 여전히 유효하며, 코드 리뷰와 정적 분석에서 규칙의 정당성 근거를 즉시 파악할 수 있게 한다.
 
-Phase 010에서 backing은 동시에 **1급 런타임 값**이 되었다. `Warrant(fn, backing, qualifier)`의 두 번째 인자로 전달된 backing은 엔진이 규칙 함수를 호출할 때 세 번째 매개변수로 주입된다. 이로써 같은 함수를 서로 다른 판정 기준으로 등록할 수 있다.
+backing은 동시에 **1급 런타임 값**이다. `Warrant(fn, backing, qualifier)`의 두 번째 인자로 전달된 backing은 엔진이 규칙 함수를 호출할 때 세 번째 매개변수로 주입된다. 이로써 같은 함수를 서로 다른 판정 기준으로 등록할 수 있다.
 
 **어노테이션(문서)과 런타임 값의 역할 분리:**
 
@@ -428,10 +427,10 @@ func PublicEndpointException(claim any, ground any, backing any) (bool, any) {
 }
 
 // 그래프 정의
-g := toulmin.NewGraph("endpoint-auth").
-    Warrant(AuthEndpointRequiresClaims, nil, 1.0).
-    Defeater(PublicEndpointException, nil, 1.0).
-    Defeat(PublicEndpointException, AuthEndpointRequiresClaims)
+g := toulmin.NewGraph("endpoint-auth")
+w := g.Warrant(AuthEndpointRequiresClaims, nil, 1.0)
+d := g.Defeater(PublicEndpointException, nil, 1.0)
+g.Defeat(d, w)
 ```
 
 **컴파일타임 Ground Adapter**: `EndpointGround.Security` ← OpenAPI 스펙 파싱, `EndpointGround.PolicyRule` ← Rego AST 파싱.
@@ -465,7 +464,7 @@ g := toulmin.NewGraph("endpoint-auth").
 
 60년간 소프트웨어 규칙 엔진은 검증 대상을 "fact"로 취급하고 이 전제 위에 설계를 구축해왔다. 툴민의 논증 모델(1958)이 이미 올바른 구조 — Claim(Fact가 아닌), Ground, Warrant, Backing, Qualifier, Rebuttal — 을 제공했지만, 철학과 소프트웨어 공학 사이의 학문적 장벽이 그 적용을 가로막았다.
 
-우리는 이 간극을 메우는 Go 규칙 엔진 `toulmin`을 구현했다. 규칙은 `func(claim, ground, backing) → (bool, evidence)` 시그니처의 Go 함수 — 판정과 그 근거다. backing은 규칙의 판정 기준으로서 선언 시점에 고정되어 런타임에 함수로 전달되며, ground는 요청마다 달라지는 판정 대상의 사실이다. 엔진은 Graph Builder API를 통해 규칙을 defeats 그래프로 조직하고, 평가하고, Amgoud의 h-Categoriser를 통해 [-1, 1] 스케일의 verdict를 연산한다. Nute의 strict/defeasible/defeater 분류가 그래프의 공격 간선을 제어한다. EvaluateTrace는 완전한 설명 가능성을 제공한다 — 어떤 규칙이 활성화되었고, 어떤 역할로, 어떤 backing과 증거와 함께.
+우리는 이 간극을 메우는 Go 규칙 엔진 `toulmin`을 구현했다. 규칙은 `func(claim, ground, backing) → (bool, evidence)` 시그니처의 Go 함수 — 판정과 그 근거다. backing은 규칙의 판정 기준으로서 선언 시점에 고정되어 런타임에 함수로 전달되며, ground는 요청마다 달라지는 판정 대상의 사실이다. 엔진은 Graph API를 통해 규칙을 defeats 그래프로 조직하고, 평가하고, Amgoud의 h-Categoriser를 통해 [-1, 1] 스케일의 verdict를 연산한다. Nute의 strict/defeasible/defeater 분류가 그래프의 공격 간선을 제어한다. EvaluateTrace는 완전한 설명 가능성을 제공한다 — 어떤 규칙이 활성화되었고, 어떤 역할로, 어떤 backing과 증거와 함께.
 
 설계에 별도의 DSL이 필요 없다 — Go의 타입 시스템이 claim-rule 매칭을 처리하고, 엔진 코어는 수백 줄 규모다. 같은 규칙 함수를 다른 그래프에서 다른 defeats 관계로, 또는 다른 backing으로 재사용할 수 있으며, 규칙 로직과 그래프 구조가 분리된다. filefunc의 22개 규칙에 대한 3개 프로젝트 검증은 툴민 모델이 규칙 강도 분류, 구조화된 defeasibility, 명시적 backing을 자연스럽게 수용함을 보여준다. fullend의 시점 통합 사례는 Ground Adapter가 시점 선택적 규칙 재사용을 가능하게 함을 시연한다.
 
