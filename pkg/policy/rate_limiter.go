@@ -1,6 +1,6 @@
-//ff:type feature=route type=interface
+//ff:type feature=policy type=interface
 //ff:what RateLimiter: rate limiting 추상화 인터페이스
-package route
+package policy
 
 // RateLimiter abstracts rate limiting logic.
 type RateLimiter interface {
