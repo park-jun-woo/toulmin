@@ -1,4 +1,4 @@
-# Phase 007: 공격자 목록 캐시 + funcID full path 도입
+# Phase 007: 공격자 목록 캐시 + funcID full path 도입 (구현 완료)
 
 ## 목표
 

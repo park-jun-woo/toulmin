@@ -1,4 +1,4 @@
-# Phase 008: 등록 시 순환 감지 + scanner 정리 + internal 테스트 보강
+# Phase 008: 등록 시 순환 감지 + scanner 정리 + internal 테스트 보강 (구현 완료)
 
 ## 목표
 

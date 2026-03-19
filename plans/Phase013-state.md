@@ -1,4 +1,4 @@
-# Phase 013: 상태 전이 프레임워크 — pkg/state
+# Phase 013: 상태 전이 프레임워크 — pkg/state (구현 완료)
 
 ## 목표
 

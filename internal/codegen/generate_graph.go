@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"strings"
 
 	"github.com/park-jun-woo/toulmin/internal/graphdef"
 )
@@ -48,10 +47,3 @@ func GenerateGraph(pkgName string, def *graphdef.GraphDef) (string, error) {
 	return string(formatted), nil
 }
 
-// ruleVarName converts a rule name to a Go variable name (camelCase).
-func ruleVarName(name string) string {
-	if len(name) == 0 {
-		return "r"
-	}
-	return strings.ToLower(name[:1]) + name[1:]
-}

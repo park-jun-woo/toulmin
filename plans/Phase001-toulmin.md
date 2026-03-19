@@ -1,4 +1,4 @@
-# Phase 001: toulmin 엔진 코어 + CLI
+# Phase 001: toulmin 엔진 코어 + CLI (구현 완료)
 
 ## 목표
 

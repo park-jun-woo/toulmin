@@ -16,7 +16,3 @@ func formatTrace(traces []toulmin.TraceEntry) string {
 	}
 	return strings.Join(parts, ", ")
 }
-
-func formatVerdict(v float64) string {
-	return fmt.Sprintf("%.2f", v)
-}

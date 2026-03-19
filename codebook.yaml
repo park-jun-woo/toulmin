@@ -6,8 +6,12 @@ required:
     ground: "ground type definition"
     cli: "cobra command entrypoint"
     graph: "defeats graph validation"
-    analyzer: "Go AST analysis for GraphBuilder defeat extraction"
+    analyzer: "Go AST analysis for Graph defeat extraction"
     codegen: "Go code generation for rule registration"
+    policy: "policy judgment framework (authentication, authorization, IP blocking)"
+    state: "state transition framework (Machine, transition guards)"
+    approve: "approval workflow framework (multi-step, Flow)"
+    price: "price judgment framework (discounts, coupons, promotions)"
   type:
     command: "cobra command entrypoint"
     model: "domain struct (Claim, Ground, Rule, Node, Graph)"
@@ -17,6 +21,9 @@ required:
     validator: "defeats graph validator"
     codegen: "code generator"
     util: "shared utility"
+    rule: "individual judgment rule function"
+    interface: "Go interface definition"
+    adapter: "framework adapter (Gin middleware, etc.)"
 
 optional:
   pattern:

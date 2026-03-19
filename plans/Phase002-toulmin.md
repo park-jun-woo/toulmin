@@ -1,4 +1,4 @@
-# Phase 002: toulmin graph — 소스 스캔 + 등록 코드 생성
+# Phase 002: toulmin graph — 소스 스캔 + 등록 코드 생성 (구현 완료)
 
 ## 목표
 

@@ -1,4 +1,4 @@
-# Phase 009: CLI 순환 감지 — YAML/Go 파일 그래프 검증
+# Phase 009: CLI 순환 감지 — YAML/Go 파일 그래프 검증 (구현 완료)
 
 ## 목표
 

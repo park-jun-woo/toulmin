@@ -1,4 +1,4 @@
-# Phase 013: 정책 프레임워크 — pkg/policy (구현 완료)
+# Phase 012: 정책 프레임워크 — pkg/policy (구현 완료)
 
 ## 목표
 

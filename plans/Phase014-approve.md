@@ -1,4 +1,4 @@
-# Phase 015: 승인 워크플로우 프레임워크 — pkg/approve
+# Phase 014: 승인 워크플로우 프레임워크 — pkg/approve
 
 ## 목표
 

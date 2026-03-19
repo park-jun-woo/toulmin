@@ -1,4 +1,4 @@
-# Phase 003: Graph Builder API — 함수 기반 그래프 조립 + Rule 재활용
+# Phase 003: Graph Builder API — 함수 기반 그래프 조립 + Rule 재활용 (구현 완료)
 
 ## 목표
 
