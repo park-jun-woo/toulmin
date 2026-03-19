@@ -1,4 +1,4 @@
-# Phase 016: 피처 플래그 프레임워크 — pkg/feature
+# Phase 017: 피처 플래그 프레임워크 — pkg/feature
 
 ## 목표
 
@@ -164,35 +164,34 @@ func hashPercentage(userID string) float64
 
 ### 사용 예시
 
-backing이 있는 rule은 `Warrant(fn, backing, qualifier)` 형태로 선언한다. backing이 필요 없는 rule은 `nil`을 명시한다. 같은 함수를 다른 backing으로 재사용할 때 `DefeatWith`로 defeat edge를 선언한다.
+backing이 있는 rule은 `Warrant(fn, backing, qualifier)` 형태로 선언한다. backing이 필요 없는 rule은 `nil`을 명시한다. Warrant/Rebuttal/Defeater는 `*Rule` 참조를 반환하며, `Defeat(*Rule, *Rule)`로 관계를 선언한다. 체이닝은 사용하지 않는다.
 
 ```go
 flags := feature.NewFlags()
 
-flags.Register("dark-mode",
-    toulmin.NewGraph("feature:dark-mode").
-        Warrant(feature.IsBetaUser, nil, 1.0).
-        Warrant(feature.IsRegion, "KR", 0.3).              // 한국 30% 롤아웃, backing="KR"
-        Rebuttal(feature.IsLegacyBrowser, nil, 1.0).
-        Defeater(feature.IsInternalStaff, nil, 1.0).        // 예외 rule은 Defeater로 등록
-        Defeat(feature.IsLegacyBrowser, feature.IsBetaUser).       // Rebuttal → Warrant 공격 edge 필수
-        Defeat(feature.IsInternalStaff, feature.IsLegacyBrowser),  // Defeater → Rebuttal 예외 처리
-)
+// dark-mode — 정의와 관계 분리
+darkMode := toulmin.NewGraph("feature:dark-mode")
+betaUser := darkMode.Warrant(feature.IsBetaUser, nil, 1.0)
+regionKR := darkMode.Warrant(feature.IsRegion, "KR", 0.3)           // 한국 30% 롤아웃, backing="KR"
+legacy   := darkMode.Rebuttal(feature.IsLegacyBrowser, nil, 1.0)
+internal := darkMode.Defeater(feature.IsInternalStaff, nil, 1.0)    // 예외 rule은 Defeater로 등록
+darkMode.Defeat(legacy, betaUser)                                    // Rebuttal → Warrant 공격 edge
+darkMode.Defeat(internal, legacy)                                    // Defeater → Rebuttal 예외 처리
+flags.Register("dark-mode", darkMode)
 
-flags.Register("new-checkout",
-    toulmin.NewGraph("feature:new-checkout").
-        Warrant(feature.IsUserInPercentage, 0.1, 1.0).     // 전체 10% 롤아웃, backing=0.1
-        Warrant(feature.IsInternalStaff, nil, 1.0),        // 내부 직원은 전원
-)
+// new-checkout
+checkout := toulmin.NewGraph("feature:new-checkout")
+checkout.Warrant(feature.IsUserInPercentage, 0.1, 1.0)              // 전체 10% 롤아웃, backing=0.1
+checkout.Warrant(feature.IsInternalStaff, nil, 1.0)                 // 내부 직원은 전원
+flags.Register("new-checkout", checkout)
 
-// 같은 함수 + 다른 backing 예시
-flags.Register("multi-region",
-    toulmin.NewGraph("feature:multi-region").
-        Warrant(feature.IsRegion, "KR", 1.0).
-        Warrant(feature.IsRegion, "US", 1.0).
-        Rebuttal(feature.IsRegion, "CN", 1.0).
-        DefeatWith(feature.IsRegion, "CN", feature.IsRegion, "KR"),  // CN이 KR을 defeat
-)
+// 같은 함수 + 다른 backing 예시 — *Rule 참조로 구분
+multiRegion := toulmin.NewGraph("feature:multi-region")
+kr := multiRegion.Warrant(feature.IsRegion, "KR", 1.0)
+multiRegion.Warrant(feature.IsRegion, "US", 1.0)
+cn := multiRegion.Rebuttal(feature.IsRegion, "CN", 1.0)
+multiRegion.Defeat(cn, kr)                                          // CN이 KR을 defeat
+flags.Register("multi-region", multiRegion)
 
 ctx := &feature.UserContext{
     ID:     "user-123",
@@ -323,7 +322,7 @@ pkg/
   - 30% 롤아웃 -> 해시 기반 결정론적 결과
   - 미등록 피처 -> 에러
   - List -> 활성 피처만 반환
-  - 같은 함수 + 다른 backing -> DefeatWith로 defeat 동작
+  - 같은 함수 + 다른 backing -> `*Rule` 참조로 Defeat 동작
   - EvaluateTrace에 backing 값 포함 확인
 - Gin 미들웨어 테스트: Require 통과/거부, Inject 컨텍스트 주입
 
@@ -342,11 +341,12 @@ pkg/
 7. Flags.IsEnabled이 verdict >= 0이면 true를 반환한다
 8. defeat edge가 예외를 정확히 처리한다 (내부 직원 -> 레거시 제외 무시)
 9. EvaluateTrace 결과에 각 rule의 판정 근거와 backing 값이 포함된다
-10. 같은 함수 + 다른 backing이 DefeatWith로 defeat 된다
+10. 같은 함수 + 다른 backing이 `*Rule` 참조로 구분되어 Defeat로 defeat 된다
 11. Gin Require 미들웨어가 비활성 피처에 대해 404를 반환한다
 12. 전체 테스트 PASS
 
 ## 의존성
 
 - Phase 001-009: toulmin 코어 (NewGraph, Evaluate, EvaluateTrace)
-- Phase 010: backing 일급 시민 (3-element rule 시그니처, Warrant(fn, backing, qualifier) API, DefeatWith)
+- Phase 010: backing 일급 시민 (3-element rule 시그니처, Warrant(fn, backing, qualifier) API)
+- Phase 012: Rule 참조 반환 + 체이닝 제거 (Warrant/Rebuttal/Defeater → `*Rule`, Defeat(`*Rule`, `*Rule`), GraphBuilder → Graph, DefeatWith 제거)

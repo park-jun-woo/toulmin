@@ -113,7 +113,7 @@ type Machine struct {
 func NewMachine() *Machine
 
 // Add — 전이 하나에 대한 판정 graph 등록
-func (m *Machine) Add(from, event, to string, g *toulmin.Graph) *Machine
+func (m *Machine) Add(from, event, to string, g *toulmin.Graph)
 
 // Can — 전이 가능 여부 판정 (verdict 반환)
 func (m *Machine) Can(req *TransitionRequest, ctx *TransitionContext) (float64, error)
@@ -137,7 +137,7 @@ type TraceResult struct {
 
 ### 사용 예시
 
-**주의**: 클로저를 사용하지 않는다. backing으로 판정 기준을 명시적으로 전달한다. Rebuttal만으로는 공격이 일어나지 않으며 반드시 Defeat edge를 선언해야 한다. 예외를 처리하는 rule은 Defeater로 등록해야 한다. verdict <= 0이면 전이를 거부한다.
+**주의**: 클로저를 사용하지 않는다. backing으로 판정 기준을 명시적으로 전달한다. Warrant/Rebuttal/Defeater는 `*Rule`을 반환하며 체이닝하지 않는다. Rebuttal만으로는 공격이 일어나지 않으며 반드시 Defeat edge를 선언해야 한다. 예외를 처리하는 rule은 Defeater로 등록해야 한다. verdict <= 0이면 전이를 거부한다.
 
 ```go
 m := state.NewMachine()
@@ -150,24 +150,22 @@ ownerBacking := &state.OwnerBacking{
 expiryFunc := func(r any) time.Time { return r.(*Proposal).ExpiresAt }
 
 // pending → accepted 전이
-m.Add("pending", "accept", "accepted",
-    toulmin.NewGraph("proposal:accept").
-        Warrant(state.IsCurrentState, nil, 1.0).
-        Warrant(state.IsOwner, ownerBacking, 1.0).
-        Warrant(isAuthenticated, nil, 1.0).
-        Rebuttal(state.IsExpired, expiryFunc, 1.0).
-        Defeater(isAdminOverride, nil, 1.0).
-        Defeat(state.IsExpired, state.IsCurrentState).
-        Defeat(isAdminOverride, state.IsExpired),
-)
+g := toulmin.NewGraph("proposal:accept")
+current := g.Warrant(state.IsCurrentState, nil, 1.0)
+owner := g.Warrant(state.IsOwner, ownerBacking, 1.0)
+auth := g.Warrant(isAuthenticated, nil, 1.0)
+expired := g.Rebuttal(state.IsExpired, expiryFunc, 1.0)
+override := g.Defeater(isAdminOverride, nil, 1.0)
+g.Defeat(expired, current)
+g.Defeat(override, expired)
+m.Add("pending", "accept", "accepted", g)
 
 // pending → rejected 전이
-m.Add("pending", "reject", "rejected",
-    toulmin.NewGraph("proposal:reject").
-        Warrant(state.IsCurrentState, nil, 1.0).
-        Warrant(state.IsOwner, ownerBacking, 1.0).
-        Warrant(isAuthenticated, nil, 1.0),
-)
+g2 := toulmin.NewGraph("proposal:reject")
+g2.Warrant(state.IsCurrentState, nil, 1.0)
+g2.Warrant(state.IsOwner, ownerBacking, 1.0)
+g2.Warrant(isAuthenticated, nil, 1.0)
+m.Add("pending", "reject", "rejected", g2)
 
 // 전이 판정
 req := &state.TransitionRequest{From: "pending", To: "accepted", Event: "accept"}
@@ -184,7 +182,7 @@ verdict, err := m.Can(req, ctx)
 
 ### 같은 함수 + 다른 backing이 필요한 경우
 
-같은 rule 함수를 다른 backing으로 사용할 때는 `DefeatWith`로 구분한다:
+Warrant/Rebuttal/Defeater가 `*Rule`을 반환하므로, 같은 함수를 다른 backing으로 등록하면 다른 `*Rule` 참조를 얻는다. Defeat는 `*Rule` 참조로 관계를 선언한다:
 
 ```go
 // 두 가지 소유권 검증이 필요한 경우
@@ -197,10 +195,10 @@ approverBacking := &state.OwnerBacking{
     UserIDFunc:  func(u any) string { return u.(*User).ID },
 }
 
-g := toulmin.NewGraph("doc:approve").
-    Warrant(state.IsOwner, approverBacking, 1.0).
-    Rebuttal(state.IsOwner, creatorBacking, 1.0).
-    DefeatWith(state.IsOwner, creatorBacking, state.IsOwner, approverBacking)
+g := toulmin.NewGraph("doc:approve")
+approver := g.Warrant(state.IsOwner, approverBacking, 1.0)
+creator := g.Rebuttal(state.IsOwner, creatorBacking, 1.0)
+g.Defeat(creator, approver)
 ```
 
 ### 상태 다이어그램 추출
@@ -316,4 +314,5 @@ pkg/
 ## 의존성
 
 - Phase 001-009: toulmin 코어 (NewGraph, Evaluate, EvaluateTrace)
-- Phase 010: backing 일급 시민 — rule 시그니처 `(claim, ground, backing)`, API `(fn, backing, qualifier)`, DefeatWith
+- Phase 010: backing 일급 시민 — rule 시그니처 `(claim, ground, backing)`, API `(fn, backing, qualifier)`
+- Phase 012: Rule 참조 반환 + 체이닝 제거 — Warrant/Rebuttal/Defeater가 `*Rule` 반환, Defeat는 `*Rule` 참조, GraphBuilder → Graph, DefeatWith 제거

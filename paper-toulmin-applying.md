@@ -22,7 +22,7 @@ Verification targets are **claims** — assertions that may be true or false, wh
 
 ### 1.2 The Missing Link
 
-Toulmin analyzed the structure of argumentation into six elements in 1958 [1]: Claim, Ground, Warrant, Backing, Qualifier, and Rebuttal. In the same period, rule engines emerged — CLIPS (1985), Jess (1995), Drools (2001), Rego (2016) — all sharing the fact-based design. Toulmin's model already provided the correct structure, yet it was never applied as the design foundation for software rule engines.
+Toulmin analyzed the structure of argumentation into six elements in 1958 [1]: Claim, Ground, Warrant, Backing, Qualifier, and Rebuttal. In subsequent decades, rule engines emerged — CLIPS (1985), Jess (1995), Drools (2001), Rego (2016) — all sharing the fact-based design. Toulmin's model already provided the correct structure, yet it was never applied as the design foundation for software rule engines.
 
 The gap exists because Toulmin's work was published in philosophy and rhetoric, not in software engineering. Rule engine developers had no reason to consult argumentation theory. Meanwhile, each rule engine independently reinvented fragments of Toulmin's model: LegalRuleML added defeasibility mechanisms (Rebuttal), OPA added `# METADATA` annotations (partial Backing), Drools added salience (partial Qualifier). None referenced Toulmin.
 
@@ -47,7 +47,7 @@ Toulmin [1] analyzed arguments into six elements:
 - **Qualifier**: The degree of certainty ("certainly," "presumably," "possibly").
 - **Rebuttal**: Conditions under which the claim does not hold.
 
-Gabriel et al. [4] implemented five of these elements (excluding Backing) in a BDI agent system using AgentSpeak/Jason, with a qualify function computing confidence as SWW - SWR (sum of warrant weights minus sum of rebuttal weights). This is the only prior software implementation of Toulmin's model.
+Gabriel et al. [4] implemented five of these elements (excluding Backing) in a BDI agent system using AgentSpeak/Jason, with a qualify function computing confidence as SWW - SWR (sum of warrant weights minus sum of rebuttal weights). This is the only prior software implementation of Toulmin's model we are aware of.
 
 ### 2.2 Defeasible Reasoning
 
@@ -197,7 +197,7 @@ Since each registration call returns a distinct `*Rule` reference, the same func
 ```go
 g := toulmin.NewGraph("line-limit")
 corp := g.Warrant(CheckMaxLines, &LinePolicy{Max: 100, Source: "corporate"}, 1.0)
-team := g.Rebuttal(CheckMaxLines, &LinePolicy{Max: 50, Source: "team"}, 0.8)
+team := g.Defeater(CheckMaxLines, &LinePolicy{Max: 50, Source: "team"}, 0.8)
 g.Defeat(team, corp)
 ```
 
@@ -486,16 +486,3 @@ The `toulmin` library is available under MIT License.
 
 [11] Kelsen, H. *Reine Rechtslehre (Pure Theory of Law)*. Franz Deuticke, Wien, 1934.
 
-[12] Besnard, P., and Hunter, A. "A Logic-Based Theory of Deductive Arguments." *Artificial Intelligence*, 128(1-2):203–235, 2001.
-
-[13] Amgoud, L., and Ben-Naim, J. "Weighted Bipolar Argumentation Graphs: Axioms and Semantics." *IJCAI 2017*, pp. 5194–5198, 2017.
-
-[14] The Open Policy Agent Authors. "Rego Policy Language." https://www.openpolicyagent.org/docs/latest/policy-language/, 2024.
-
-[15] Hahn, U., and Oaksford, M. "A Normative Theory of Argument Strength." *Informal Logic*, 26(1):1–22, 2006.
-
-[16] Prakken, H. "Probabilistic Strength of Arguments with Structure." *KR 2018*, pp. 158–167, 2018.
-
-[17] Kelly, T.P. "Arguing Safety — A Systematic Approach to Managing Safety Cases." PhD Thesis, University of York, 1998.
-
-[18] Palmirani, M., et al. "LegalRuleML: Design principles and foundations." *The 14th International Conference on AI and Law*, 2013.

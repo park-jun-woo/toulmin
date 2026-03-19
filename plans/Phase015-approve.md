@@ -1,4 +1,4 @@
-# Phase 014: 승인 워크플로우 프레임워크 — pkg/approve
+# Phase 015: 승인 워크플로우 프레임워크 — pkg/approve
 
 ## 목표
 
@@ -200,34 +200,39 @@ type StepResult struct {
 
 ### 사용 예시
 
-클로저 팩토리를 사용하지 않는다. 판정 기준은 `Warrant(fn, backing, qualifier)` 형태로 backing 인자에 직접 전달한다. backing이 불필요한 rule은 `nil`을 명시적으로 전달한다. Rebuttal만으로는 공격이 일어나지 않으며 반드시 Defeat edge를 선언해야 한다. 예외를 처리하는 rule은 Defeater로 등록해야 한다.
+클로저 팩토리를 사용하지 않는다. 판정 기준은 `Warrant(fn, backing, qualifier)` 형태로 backing 인자에 직접 전달한다. backing이 불필요한 rule은 `nil`을 명시적으로 전달한다. Warrant/Rebuttal/Defeater는 `*Rule` 참조를 반환하며 체이닝하지 않는다. Defeat는 `*Rule` 참조 두 개를 받아 관계를 선언한다. Rebuttal만으로는 공격이 일어나지 않으며 반드시 Defeat edge를 선언해야 한다. 예외를 처리하는 rule은 Defeater로 등록해야 한다.
 
 ```go
 // 경비 승인 워크플로우
 // 클로저 없음 — backing으로 판정 기준 명시
+// 체이닝 없음 — 정의와 관계 분리 (Phase 012 참조 패턴)
+
+// Step 1: manager 단계 graph 구성
+mgrGraph := toulmin.NewGraph("expense:manager")
+mgrDirect  := mgrGraph.Warrant(approve.IsDirectManager, nil, 1.0)
+mgrBudget  := mgrGraph.Warrant(approve.IsUnderBudget, nil, 1.0)
+mgrFrozen  := mgrGraph.Rebuttal(approve.IsBudgetFrozen, nil, 1.0)
+mgrUrgent  := mgrGraph.Defeater(approve.IsUrgent, nil, 1.0)              // 예외 rule은 Defeater로 등록
+mgrGraph.Defeat(mgrFrozen, mgrBudget)                                     // Rebuttal -> Warrant 공격 edge 필수
+mgrGraph.Defeat(mgrUrgent, mgrFrozen)                                     // Defeater -> Rebuttal 예외 처리
+
+// Step 2: finance 단계 graph 구성
+finGraph := toulmin.NewGraph("expense:finance")
+finRole    := finGraph.Warrant(approve.HasApprovalRole, "finance", 1.0)   // backing: "finance" (role명)
+finBudget  := finGraph.Warrant(approve.IsUnderBudget, nil, 1.0)
+finFrozen  := finGraph.Rebuttal(approve.IsBudgetFrozen, nil, 1.0)
+finCEO     := finGraph.Defeater(approve.IsCEOOverride, nil, 1.0)
+finGraph.Defeat(finFrozen, finBudget)
+finGraph.Defeat(finCEO, finFrozen)
+
+// Flow 구성
 f := approve.NewFlow("expense").
-    Step("manager",
-        toulmin.NewGraph("expense:manager").
-            Warrant(approve.IsDirectManager, nil, 1.0).
-            Warrant(approve.IsUnderBudget, nil, 1.0).
-            Rebuttal(approve.IsBudgetFrozen, nil, 1.0).
-            Defeater(approve.IsUrgent, nil, 1.0).                         // 예외 rule은 Defeater로 등록
-            Defeat(approve.IsBudgetFrozen, approve.IsUnderBudget).        // Rebuttal -> Warrant 공격 edge 필수
-            Defeat(approve.IsUrgent, approve.IsBudgetFrozen),             // Defeater -> Rebuttal 예외 처리
-    ).
-    Step("finance",
-        toulmin.NewGraph("expense:finance").
-            Warrant(approve.HasApprovalRole, "finance", 1.0).             // backing: "finance" (role명)
-            Warrant(approve.IsUnderBudget, nil, 1.0).
-            Rebuttal(approve.IsBudgetFrozen, nil, 1.0).
-            Defeater(approve.IsCEOOverride, nil, 1.0).
-            Defeat(approve.IsBudgetFrozen, approve.IsUnderBudget).
-            Defeat(approve.IsCEOOverride, approve.IsBudgetFrozen),
-    )
+    Step("manager", mgrGraph).
+    Step("finance", finGraph)
 
 // 소액 자동 승인 -- backing으로 금액 임계값 전달
-autoApprove := toulmin.NewGraph("expense:auto").
-    Warrant(approve.IsSmallAmount, float64(10000), 1.0)                   // backing: 10000 (금액 임계값)
+autoGraph := toulmin.NewGraph("expense:auto")
+_ = autoGraph.Warrant(approve.IsSmallAmount, float64(10000), 1.0)         // backing: 10000 (금액 임계값)
 
 req := &approve.ApprovalRequest{
     Amount:      50000,
@@ -256,16 +261,16 @@ result, err := f.Evaluate(req, func(stepName string) *approve.ApprovalContext {
 // result.Steps[0].Trace: 각 단계별 판정 근거 (backing 값 포함)
 ```
 
-### backing이 있는 rule 간 DefeatWith 예시
+### backing이 있는 rule 간 Defeat 예시
 
-같은 함수를 다른 backing으로 등록한 경우, `DefeatWith`로 defeat edge를 선언한다:
+같은 함수를 다른 backing으로 등록한 경우, 각각의 `*Rule` 참조로 Defeat edge를 선언한다. DefeatWith는 불필요하다 (Phase 012에서 제거됨):
 
 ```go
 // 레벨 3 이상이면 승인, 레벨 5 이상이면 레벨 3 규칙을 무시
-g := toulmin.NewGraph("level-override").
-    Warrant(approve.IsAboveLevel, 3, 1.0).         // backing: 3 (최소 레벨)
-    Rebuttal(approve.IsAboveLevel, 5, 1.0).        // backing: 5 (상위 레벨)
-    DefeatWith(approve.IsAboveLevel, 5, approve.IsAboveLevel, 3)
+g := toulmin.NewGraph("level-override")
+level3 := g.Warrant(approve.IsAboveLevel, 3, 1.0)    // backing: 3 (최소 레벨)
+level5 := g.Rebuttal(approve.IsAboveLevel, 5, 1.0)   // backing: 5 (상위 레벨)
+g.Defeat(level5, level3)                               // *Rule 참조로 직접 지정
 ```
 
 ## 범위
@@ -339,7 +344,7 @@ pkg/
   - defeat edge 동작 (예산 동결 + 긴급 -> 승인)
   - CEO 오버라이드 동작
   - 소액 자동 승인 graph 동작 (backing으로 금액 임계값 전달)
-  - backing이 있는 rule 간 DefeatWith 동작
+  - backing이 있는 rule 간 *Rule 참조 Defeat 동작
 
 ### Step 5: 전체 테스트 PASS 확인
 
@@ -352,7 +357,7 @@ pkg/
 3. 클로저 팩토리가 존재하지 않는다
 4. `Warrant(fn, backing, qualifier)` 형태로 backing을 명시적으로 전달한다
 5. backing이 nil인 rule은 `Warrant(fn, nil, qualifier)` 로 명시적 선언한다
-6. `DefeatWith`로 같은 함수 + 다른 backing을 가진 rule 간 defeat가 동작한다
+6. 같은 함수 + 다른 backing을 가진 rule이 `*Rule` 참조로 구분되어 `Defeat`로 동작한다
 7. Flow.Evaluate가 모든 단계를 순차 실행하고 결과를 집계한다
 8. 중간 단계에서 거부되면 이후 단계를 실행하지 않는다
 9. StepContextFunc으로 단계별 다른 ground를 주입할 수 있다
@@ -364,4 +369,5 @@ pkg/
 ## 의존성
 
 - Phase 001-009: toulmin 코어 (NewGraph, Evaluate, EvaluateTrace)
-- Phase 010: backing 일급 시민 (`func(claim, ground, backing)` 시그니처, `Warrant(fn, backing, qualifier)` API, DefeatWith)
+- Phase 010: backing 일급 시민 (`func(claim, ground, backing)` 시그니처, `Warrant(fn, backing, qualifier)` API)
+- Phase 012: Rule 참조 반환 + 체이닝 제거 (Warrant/Rebuttal/Defeater → `*Rule`, `Defeat(*Rule, *Rule)`, GraphBuilder → Graph, DefeatWith 제거)

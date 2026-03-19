@@ -188,18 +188,20 @@ type PriceResult struct {
 **주의**: Rebuttal만으로는 공격이 일어나지 않으며 반드시 Defeat edge를 선언해야 한다. 예외를 처리하는 rule은 Defeater로 등록해야 한다.
 
 ```go
-// backing이 있는 rule은 Warrant에 backing을 직접 전달
-// backing이 없는 rule은 nil을 명시
-g := toulmin.NewGraph("product:discount").
-    Warrant(price.HasCoupon, nil, 0.3).                        // 30% 할인, backing 불필요
-    Warrant(price.IsMember, "basic", 0.1).                     // 10% 할인, backing: 멤버십 등급
-    Warrant(price.HasActivePromotion, "blackfriday", 0.2).     // 20% 할인, backing: 프로모션 이름
-    Rebuttal(price.IsAlreadyDiscounted, nil, 1.0).             // 중복 할인 방지, backing 불필요
-    Defeater(price.IsVIP, nil, 1.0).                           // 예외 rule은 Defeater로 등록
-    Defeater(price.IsBulkOrder, 100, 1.0).                     // backing: 최소 수량
-    Defeat(price.IsAlreadyDiscounted, price.HasCoupon).        // Rebuttal -> Warrant 공격 edge 필수
-    Defeat(price.IsVIP, price.IsAlreadyDiscounted).            // VIP는 중복 할인 허용
-    DefeatWith(price.IsBulkOrder, 100, price.IsAlreadyDiscounted, nil)  // 대량 주문도 중복 허용
+g := toulmin.NewGraph("product:discount")
+
+// 정의 — 각 rule이 *Rule 참조를 반환
+hasCoupon       := g.Warrant(price.HasCoupon, nil, 0.3)                    // 30% 할인, backing 불필요
+isMember        := g.Warrant(price.IsMember, "basic", 0.1)                 // 10% 할인, backing: 멤버십 등급
+hasPromotion    := g.Warrant(price.HasActivePromotion, "blackfriday", 0.2) // 20% 할인, backing: 프로모션 이름
+alreadyDiscount := g.Rebuttal(price.IsAlreadyDiscounted, nil, 1.0)        // 중복 할인 방지, backing 불필요
+isVIP           := g.Defeater(price.IsVIP, nil, 1.0)                      // 예외 rule은 Defeater로 등록
+isBulkOrder     := g.Defeater(price.IsBulkOrder, 100, 1.0)                // backing: 최소 수량
+
+// 관계 — *Rule 참조로 가리킴
+g.Defeat(alreadyDiscount, hasCoupon)     // Rebuttal -> Warrant 공격 edge 필수
+g.Defeat(isVIP, alreadyDiscount)         // VIP는 중복 할인 허용
+g.Defeat(isBulkOrder, alreadyDiscount)   // 대량 주문도 중복 허용
 
 pricer := price.NewPricer(g)
 
@@ -299,7 +301,7 @@ pkg/
   - 쿠폰 + 멤버십 + 중복 방지 rebuttal -> 하나만 적용
   - VIP defeat -> 중복 할인 허용
   - 프로모션 비활성 -> 할인 미적용
-  - 대량 주문 defeat (DefeatWith) -> 중복 할인 허용
+  - 대량 주문 defeat -> 중복 할인 허용
   - trace에 각 rule의 activated/defeated 상태 + backing 값 포함
 
 ### Step 5: 전체 테스트 PASS 확인
@@ -314,7 +316,7 @@ pkg/
 4. Pricer.FinalPrice가 BasePrice * (1 - Discount)를 정확히 계산한다
 5. IsAlreadyDiscounted rebuttal이 중복 할인을 방지한다
 6. IsVIP defeat가 중복 할인 방지를 무효화한다
-7. IsBulkOrder가 DefeatWith로 backing이 있는 rule 간 defeat를 수행한다
+7. IsBulkOrder가 Defeat로 *Rule 참조를 사용하여 defeat를 수행한다
 8. PriceResult.Trace에 각 rule의 판정 근거와 backing 값이 포함된다
 9. 클로저 팩토리가 없다 — 모든 rule이 순수 함수이다
 10. 전체 테스트 PASS
@@ -322,4 +324,5 @@ pkg/
 ## 의존성
 
 - Phase 001-009: toulmin 코어 (NewGraph, Evaluate, EvaluateTrace)
-- Phase 010: backing 일급 시민 (`(claim, ground, backing)` 시그니처, `Warrant(fn, backing, qualifier)`, DefeatWith)
+- Phase 010: backing 일급 시민 (`(claim, ground, backing)` 시그니처, `Warrant(fn, backing, qualifier)`)
+- Phase 012: Rule 참조 반환 + 체이닝 제거 (Warrant/Rebuttal/Defeater → `*Rule`, `Defeat(*Rule, *Rule)`, DefeatWith 제거, GraphBuilder → Graph)
