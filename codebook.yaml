@@ -12,6 +12,7 @@ required:
     state: "state transition framework (Machine, transition guards)"
     approve: "approval workflow framework (multi-step, Flow)"
     price: "price judgment framework (discounts, coupons, promotions)"
+    feature: "feature flag framework (rollout, toggle, percentage)"
   type:
     command: "cobra command entrypoint"
     model: "domain struct (Claim, Ground, Rule, Node, Graph)"
