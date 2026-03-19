@@ -2,6 +2,18 @@
 
 Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine builds defeats graph and computes verdict via h-Categoriser.
 
+## Framework Packages
+
+| Package | Description | README |
+|---|---|---|
+| `pkg/toulmin` | Core engine (Graph, Rule, Evaluate, h-Categoriser) | — |
+| `pkg/policy` | Policy judgment (auth, IP, rate limit, Gin Guard) | `pkg/policy/README.md` |
+| `pkg/state` | State transition (Machine, Mermaid diagram) | `pkg/state/README.md` |
+| `pkg/approve` | Approval workflow (multi-step Flow) | `pkg/approve/README.md` |
+| `pkg/price` | Price judgment (DiscountBacking, Pricer) | `pkg/price/README.md` |
+| `pkg/feature` | Feature flags (Flags, rollout, Gin Require/Inject) | `pkg/feature/README.md` |
+| `pkg/moderate` | Content moderation (Classifier, 3-level action) | `pkg/moderate/README.md` |
+
 ## How to Navigate
 
 1. Read `codebook.yaml` — project vocabulary
