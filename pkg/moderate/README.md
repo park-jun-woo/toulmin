@@ -2,7 +2,7 @@
 
 **Stop nesting if-else for content moderation. Declare rules, exceptions, and context.**
 
-Content moderation framework built on toulmin defeats graph. Hate speech, spam, NSFW detection as rebuttals. News context, education, trusted users as defeaters. AI classifiers plug in via backing. Audit trail is built-in.
+Content moderation framework built on toulmin defeats graph. Hate speech, spam, NSFW detection as rebuttals. News context, education, trusted users as defeaters. AI classifiers plug in via backing. Audit trail is built-in. Framework independent (net/http).
 
 ## Install
 
@@ -32,7 +32,7 @@ result, _ := mod.Review(content, ctx)
 
 | Action | Verdict | HTTP |
 |---|---|---|
-| `allow` | > 0.3 | c.Next() |
+| `allow` | > 0.3 | 200 (next) |
 | `flag` | 0 < v <= 0.3 | 202 (manual review) |
 | `block` | <= 0 | 403 |
 
@@ -60,9 +60,33 @@ type Classifier interface {
 
 Plug in any AI model, LLM, keyword matcher, or external API.
 
-## Gin Middleware
+## Middleware (net/http)
 
 ```go
-r.POST("/posts", moderate.Guard(mod, extractPost), handler)
+mux.Handle("/posts", moderate.Guard(mod, extractPost)(handler))
 // Block → 403, Flag → 202, Allow → next
+```
+
+## Web Framework Integration
+
+```go
+// Gin
+r.POST("/posts", func(c *gin.Context) {
+    content, ctx := extractPostFromGin(c)
+    result, _ := mod.Review(content, ctx)
+    switch result.Action {
+    case moderate.ActionBlock:
+        c.AbortWithStatusJSON(403, gin.H{"error": "blocked"})
+    case moderate.ActionFlag:
+        c.AbortWithStatusJSON(202, gin.H{"status": "flagged"})
+    default:
+        c.Next()
+    }
+})
+
+// Chi
+r.Use(moderate.Guard(mod, extractPost))
+
+// Echo
+e.Use(echo.WrapMiddleware(moderate.Guard(mod, extractPost)))
 ```

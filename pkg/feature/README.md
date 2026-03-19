@@ -2,7 +2,7 @@
 
 **Stop nesting if-else for feature flags. Declare conditions, exceptions, and rollouts.**
 
-Feature flag framework built on toulmin defeats graph. Toggle, percentage rollout, regional targeting, exception handling — all declarative. No SaaS dependency.
+Feature flag framework built on toulmin defeats graph. Toggle, percentage rollout, regional targeting, exception handling — all declarative. No SaaS dependency. Framework independent (net/http).
 
 ## Install
 
@@ -47,11 +47,38 @@ flags.EvaluateTrace(name, ctx)   // FeatureResult with trace
 flags.List(ctx)                  // all enabled feature names
 ```
 
-## Gin Middleware
+## Middleware (net/http)
 
 ```go
-r.GET("/v2/checkout", feature.Require(flags, "new-checkout", buildCtx), handler)
-r.Use(feature.Inject(flags, buildCtx))  // sets "features" in gin.Context
+// Require — returns 404 if feature is disabled
+mux.Handle("/v2/checkout", feature.Require(flags, "new-checkout", buildCtx)(handler))
+
+// Inject — stores enabled features in request context
+mux.Handle("/", feature.Inject(flags, buildCtx)(handler))
+
+// Retrieve injected features
+active := feature.ActiveFeatures(r)
+```
+
+## Web Framework Integration
+
+```go
+// Gin
+r.GET("/v2/checkout", func(c *gin.Context) {
+    ctx := buildCtxFromGin(c)
+    enabled, _ := flags.IsEnabled("new-checkout", ctx)
+    if !enabled {
+        c.AbortWithStatus(404)
+        return
+    }
+    c.Next()
+})
+
+// Chi
+r.Use(feature.Require(flags, "new-checkout", buildCtx))
+
+// Echo
+e.Use(echo.WrapMiddleware(feature.Require(flags, "new-checkout", buildCtx)))
 ```
 
 ## Deterministic Rollout

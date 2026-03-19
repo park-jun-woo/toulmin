@@ -2,7 +2,7 @@
 
 **Stop nesting if-else for access control. Declare rules and relationships.**
 
-Policy judgment built on toulmin defeats graph. Authentication, authorization, IP blocking, rate limiting — all as declarative rule relationships. Works with Gin.
+Policy judgment built on toulmin defeats graph. Authentication, authorization, IP blocking, rate limiting — all as declarative rule relationships. Framework independent (net/http).
 
 User is `any` — the framework does not impose a concrete User type. Field access is done via backing (extraction functions).
 
@@ -28,8 +28,8 @@ allowed := g.Defeater(policy.IsIPInList, whitelist, 1.0)
 g.Defeat(blocked, auth)
 g.Defeat(allowed, blocked)
 
-r := gin.Default()
-r.GET("/admin/users", policy.Guard(g, buildCtx), handler)
+mux := http.NewServeMux()
+mux.Handle("/admin/users", policy.Guard(g, buildCtx)(adminHandler))
 ```
 
 ## Rules
@@ -71,17 +71,42 @@ type IPListBacking struct {
 | Evaluation | `Evaluate` | `EvaluateTrace` |
 | Headers | None | `X-Policy-Verdict`, `X-Policy-Trace` |
 | 403 body | `{"error":"forbidden"}` | `{"error":"forbidden","trace":"..."}` |
+| Signature | `func(http.Handler) http.Handler` | `func(http.Handler) http.Handler` |
 
 Both deny when `verdict <= 0`.
 
-## ContextBuilderFunc
+## ContextFunc
 
 ```go
-func buildCtx(c *gin.Context) *policy.RequestContext {
+func buildCtx(r *http.Request) *policy.RequestContext {
     return &policy.RequestContext{
-        User:     getUserFromJWT(c),  // your domain User type
-        ClientIP: c.ClientIP(),
-        Headers:  extractHeaders(c),
+        User:     getUserFromJWT(r),  // your domain User type
+        ClientIP: r.RemoteAddr,
+        Headers:  extractHeaders(r),
     }
 }
+```
+
+## Web Framework Integration
+
+```go
+// net/http
+mux.Handle("/admin", policy.Guard(g, buildCtx)(handler))
+
+// Gin
+r.GET("/admin", func(c *gin.Context) {
+    rc := buildCtxFromGin(c)
+    results, _ := g.Evaluate(nil, rc)
+    if results[0].Verdict <= 0 {
+        c.AbortWithStatusJSON(403, gin.H{"error": "forbidden"})
+        return
+    }
+    c.Next()
+})
+
+// Chi
+r.Use(policy.Guard(g, buildCtx))
+
+// Echo
+e.Use(echo.WrapMiddleware(policy.Guard(g, buildCtx)))
 ```
