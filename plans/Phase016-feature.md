@@ -1,4 +1,4 @@
-# Phase 016: 피처 플래그 프레임워크 — pkg/feature
+# Phase 016: 피처 플래그 프레임워크 — pkg/feature (구현 완료)
 
 ## 목표
 

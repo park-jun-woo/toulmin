@@ -1,4 +1,4 @@
-# Phase 017: 콘텐츠 모더레이션 프레임워크 — pkg/moderate
+# Phase 017: 콘텐츠 모더레이션 프레임워크 — pkg/moderate (구현 완료)
 
 ## 목표
 

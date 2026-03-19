@@ -1,4 +1,4 @@
-# Phase 015: 가격 판정 프레임워크 — pkg/price
+# Phase 015: 가격 판정 프레임워크 — pkg/price (구현 완료)
 
 ## 목표
 
