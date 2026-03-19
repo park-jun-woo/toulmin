@@ -3,8 +3,9 @@
 package approve
 
 // ApprovalContext holds per-step facts for approval evaluation.
+// Approver is any — the framework does not impose a concrete Approver type.
 type ApprovalContext struct {
-	Approver *Approver
+	Approver any
 	Budget   *Budget
 	OrgTree  OrgTree
 	Metadata map[string]any

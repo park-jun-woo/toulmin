@@ -3,9 +3,10 @@
 package policy
 
 // RequestContext holds per-request facts for policy evaluation.
-// Judgment criteria (IP lists, role names, thresholds) belong in backing, not here.
+// User is any — the framework does not impose a concrete User type.
+// Field access is done via backing (extraction functions).
 type RequestContext struct {
-	User            *User
+	User            any
 	ClientIP        string
 	ResourceOwnerID string
 	Headers         map[string]string

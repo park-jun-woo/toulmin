@@ -2,6 +2,11 @@ package price
 
 import "testing"
 
+type testUser struct {
+	ID         string
+	Membership string
+}
+
 func TestHasCoupon(t *testing.T) {
 	db := &DiscountBacking{Name: "SAVE30", Rate: 0.3}
 	tests := []struct {
@@ -27,26 +32,36 @@ func TestHasCoupon(t *testing.T) {
 }
 
 func TestIsMemberLevel(t *testing.T) {
+	memberFunc := func(u any) string { return u.(*testUser).Membership }
 	tests := []struct {
 		name       string
 		membership string
-		backing    string
+		level      string
 		want       bool
 	}{
 		{"basic match", "basic", "basic", true},
 		{"vip match", "vip", "vip", true},
 		{"mismatch", "basic", "gold", false},
-		{"none", "none", "basic", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &PriceContext{User: &User{Membership: tt.membership}}
-			db := &DiscountBacking{Name: tt.backing, Rate: 0.1}
-			got, _ := IsMemberLevel(nil, ctx, db)
+			ctx := &PriceContext{User: &testUser{Membership: tt.membership}}
+			mb := &MemberBacking{Level: tt.level, MembershipFunc: memberFunc, Discount: &DiscountBacking{Name: tt.level, Rate: 0.1}}
+			got, _ := IsMemberLevel(nil, ctx, mb)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestIsMemberLevel_NilUser(t *testing.T) {
+	memberFunc := func(u any) string { return u.(*testUser).Membership }
+	ctx := &PriceContext{User: nil}
+	mb := &MemberBacking{Level: "basic", MembershipFunc: memberFunc, Discount: &DiscountBacking{}}
+	got, _ := IsMemberLevel(nil, ctx, mb)
+	if got {
+		t.Error("expected false for nil user")
 	}
 }
 

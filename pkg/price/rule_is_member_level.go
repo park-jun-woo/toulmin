@@ -1,10 +1,18 @@
 //ff:func feature=price type=rule control=sequence
-//ff:what IsMemberLevel: backing(DiscountBacking).Name과 사용자 멤버십 등급 비교
+//ff:what IsMemberLevel: backing(MemberBacking)으로 사용자 멤버십 등급 비교
 package price
 
-// IsMemberLevel checks if the user's membership matches backing.Name.
+// IsMemberLevel checks if the user's membership matches backing.Level.
+// MembershipFunc extracts the membership from the domain User type.
+// Returns the Discount as evidence if matched.
 func IsMemberLevel(claim any, ground any, backing any) (bool, any) {
 	ctx := ground.(*PriceContext)
-	db := backing.(*DiscountBacking)
-	return ctx.User.Membership == db.Name, db
+	mb := backing.(*MemberBacking)
+	if ctx.User == nil {
+		return false, nil
+	}
+	if mb.MembershipFunc(ctx.User) == mb.Level {
+		return true, mb.Discount
+	}
+	return false, nil
 }

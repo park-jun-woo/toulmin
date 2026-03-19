@@ -2,8 +2,14 @@ package approve
 
 import "testing"
 
+type testApprover struct {
+	ID    string
+	Role  string
+	Level int
+}
+
 type mockOrgTree struct {
-	managers map[string]string // requesterID → managerID
+	managers map[string]string
 }
 
 func (m *mockOrgTree) IsDirectManager(approverID, requesterID string) bool {
@@ -11,21 +17,28 @@ func (m *mockOrgTree) IsDirectManager(approverID, requesterID string) bool {
 }
 func (m *mockOrgTree) Level(userID string) int { return 0 }
 
+var testAB = &ApproverBacking{
+	IDFunc:    func(a any) string { return a.(*testApprover).ID },
+	RoleFunc:  func(a any) string { return a.(*testApprover).Role },
+	LevelFunc: func(a any) int { return a.(*testApprover).Level },
+}
+
 func TestIsDirectManager(t *testing.T) {
 	org := &mockOrgTree{managers: map[string]string{"emp-1": "mgr-1"}}
+	ab := &ApproverBacking{IDFunc: testAB.IDFunc}
 	tests := []struct {
 		name     string
-		approver string
+		approver *testApprover
 		want     bool
 	}{
-		{"is manager", "mgr-1", true},
-		{"not manager", "mgr-2", false},
+		{"is manager", &testApprover{ID: "mgr-1"}, true},
+		{"not manager", &testApprover{ID: "mgr-2"}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := &ApprovalRequest{RequesterID: "emp-1"}
-			ctx := &ApprovalContext{Approver: &Approver{ID: tt.approver}, OrgTree: org}
-			got, _ := IsDirectManager(req, ctx, nil)
+			ctx := &ApprovalContext{Approver: tt.approver, OrgTree: org}
+			got, _ := IsDirectManager(req, ctx, ab)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}
@@ -88,8 +101,9 @@ func TestHasApprovalRole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &ApprovalContext{Approver: &Approver{Role: tt.have}}
-			got, _ := HasApprovalRole(nil, ctx, tt.role)
+			ab := &ApproverBacking{Role: tt.role, RoleFunc: testAB.RoleFunc}
+			ctx := &ApprovalContext{Approver: &testApprover{Role: tt.have}}
+			got, _ := HasApprovalRole(nil, ctx, ab)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}
@@ -110,8 +124,9 @@ func TestIsAboveLevel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &ApprovalContext{Approver: &Approver{Level: tt.level}}
-			got, _ := IsAboveLevel(nil, ctx, tt.min)
+			ab := &ApproverBacking{Level: tt.min, LevelFunc: testAB.LevelFunc}
+			ctx := &ApprovalContext{Approver: &testApprover{Level: tt.level}}
+			got, _ := IsAboveLevel(nil, ctx, ab)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}
@@ -173,8 +188,9 @@ func TestIsCEOOverride(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &ApprovalContext{Approver: &Approver{Role: tt.role}}
-			got, _ := IsCEOOverride(nil, ctx, nil)
+			ab := &ApproverBacking{RoleFunc: testAB.RoleFunc}
+			ctx := &ApprovalContext{Approver: &testApprover{Role: tt.role}}
+			got, _ := IsCEOOverride(nil, ctx, ab)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

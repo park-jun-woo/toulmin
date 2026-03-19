@@ -3,7 +3,9 @@
 package approve
 
 // IsCEOOverride checks if the approver is the CEO.
+// backing is *ApproverBacking — RoleFunc extracts approver role.
 func IsCEOOverride(claim any, ground any, backing any) (bool, any) {
 	ctx := ground.(*ApprovalContext)
-	return ctx.Approver.Role == "ceo", nil
+	ab := backing.(*ApproverBacking)
+	return ab.RoleFunc(ctx.Approver) == "ceo", nil
 }
