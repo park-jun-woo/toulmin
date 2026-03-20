@@ -4,48 +4,112 @@
 
 A rule engine for Go. Rules are Go functions. Exceptions are graph edges. No DSL. No sidecar. No new language.
 
+Rules are Go functions. Each stays at 1-2 depth:
+
 ```go
-// Rules are plain Go functions
 func isAuthenticated(claim, ground, backing any) (bool, any) {
-    return ground.(*Request).User != nil, nil
+    return ground.(*Req).User != nil, nil
 }
 func isIPBlocked(claim, ground, backing any) (bool, any) {
-    ip := ground.(*Request).IP
-    return blockedIPs[ip], ip
+    return blockedIPs[ground.(*Req).IP], nil
 }
 func isInternalIP(claim, ground, backing any) (bool, any) {
-    return strings.HasPrefix(ground.(*Request).IP, "10."), nil
+    return strings.HasPrefix(ground.(*Req).IP, "10."), nil
 }
+func isRateLimited(claim, ground, backing any) (bool, any) { /* ... */ }
+func isPremiumUser(claim, ground, backing any) (bool, any) { /* ... */ }
+func isIncidentMode(claim, ground, backing any) (bool, any) { /* ... */ }
+```
 
-// Declare relationships — don't nest conditions
+Requirements evolve. Watch how each side handles it:
+
+```go
+// Monday: "authenticated users can access, but block banned IPs,
+//          except internal network is exempt from IP blocking"
 g := toulmin.NewGraph("api:access")
-auth    := g.Warrant(isAuthenticated, nil, 1.0)    // claim: authenticated
-blocked := g.Rebuttal(isIPBlocked, nil, 1.0)       // rebuttal: IP blocked
-exempt  := g.Defeater(isInternalIP, nil, 1.0)      // exception: internal network
-g.Defeat(blocked, auth)    // blocked attacks auth
-g.Defeat(exempt, blocked)  // internal network neutralizes block
+auth    := g.Warrant(isAuthenticated, nil, 1.0)
+blocked := g.Rebuttal(isIPBlocked, nil, 1.0)
+exempt  := g.Defeater(isInternalIP, nil, 1.0)
+g.Defeat(blocked, auth)
+g.Defeat(exempt, blocked)
 
-results, _ := g.Evaluate(nil, &Request{User: user, IP: ip})
+// Tuesday: "add rate limiting"
+limited := g.Rebuttal(isRateLimited, nil, 1.0)
+g.Defeat(limited, auth)
+
+// Wednesday: "premium users bypass rate limit"
+premium := g.Defeater(isPremiumUser, nil, 1.0)
+g.Defeat(premium, limited)
+
+// Thursday: "but not during incident response"
+incident := g.Rebuttal(isIncidentMode, nil, 1.0)
+g.Defeat(incident, premium)
+
+results, _ := g.Evaluate(nil, req)
 // results[0].Verdict > 0: allow
 ```
 
-The same logic with if-else:
+Each day: 2 lines added, nothing else changes. Now the same evolution with if-else:
 
 ```go
+// Monday
 if user != nil {
     if blockedIPs[ip] {
         if strings.HasPrefix(ip, "10.") {
-            allow = true  // exception buried deep in nesting
+            allow = true
         }
     } else {
         allow = true
     }
 }
-// Where do you insert a new rule?
-// What about exceptions to exceptions? 3-4 levels deep?
+
+// Tuesday: "add rate limiting" — where does it go?
+if user != nil {
+    if blockedIPs[ip] {
+        if strings.HasPrefix(ip, "10.") {
+            allow = true
+        }
+    } else if isRateLimited(ip) {
+        allow = false
+    } else {
+        allow = true
+    }
+}
+
+// Wednesday: "premium users bypass rate limit"
+if user != nil {
+    if blockedIPs[ip] {
+        if strings.HasPrefix(ip, "10.") {
+            allow = true
+        }
+    } else if isRateLimited(ip) {
+        if isPremium(user) {       // 3 levels deep
+            allow = true
+        }
+    } else {
+        allow = true
+    }
+}
+
+// Thursday: "but not during incident response"
+if user != nil {
+    if blockedIPs[ip] {
+        if strings.HasPrefix(ip, "10.") {
+            allow = true
+        }
+    } else if isRateLimited(ip) {
+        if isPremium(user) {
+            if !incidentMode {     // 4 levels, losing track
+                allow = true
+            }
+        }
+    } else {
+        allow = true
+    }
+}
 ```
 
-With toulmin, it's one line: `g.Defeat(newRule, existingRule)`. Nesting depth stays flat.
+toulmin: **2 lines per requirement, structure never changes.** if-else: **restructure everything, every time.**
 
 ## Install
 
@@ -140,6 +204,26 @@ for _, t := range results[0].Trace {
 ```
 
 Moderation logs, audit trails, debugging — built into the engine, no extra logging.
+
+## Dynamic Loading
+
+`LoadGraph` builds a live graph from a definition + function registry. Graph structure and backing change without redeployment — functions stay compiled.
+
+```go
+// Register compiled functions once at startup
+funcs := map[string]any{
+    "isAuthenticated": isAuthenticated,
+    "isIPBlocked":     isIPBlocked,
+    "isRateLimited":   isRateLimited,
+}
+
+// Load graph structure from YAML, DB, or API — no recompilation
+backings := map[string]any{"isIPBlocked": fetchBlocklistFromRedis()}
+g, err := toulmin.LoadGraph(def, funcs, backings)
+results, _ := g.Evaluate(nil, req)
+```
+
+Compiled execution speed + dynamic rule updates. No DSL parser, no interpreter, no VM — just graph rewiring.
 
 ## Framework Packages
 

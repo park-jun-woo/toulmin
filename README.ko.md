@@ -4,48 +4,111 @@
 
 Go 룰 엔진. 규칙은 Go 함수다. 예외는 그래프 엣지다. DSL 없음. 사이드카 없음. 새 언어 없음.
 
+규칙은 Go 함수다. 각 함수는 1-2 depth:
+
 ```go
-// 규칙은 그냥 Go 함수
 func isAuthenticated(claim, ground, backing any) (bool, any) {
-    return ground.(*Request).User != nil, nil
+    return ground.(*Req).User != nil, nil
 }
 func isIPBlocked(claim, ground, backing any) (bool, any) {
-    ip := ground.(*Request).IP
-    return blockedIPs[ip], ip
+    return blockedIPs[ground.(*Req).IP], nil
 }
 func isInternalIP(claim, ground, backing any) (bool, any) {
-    return strings.HasPrefix(ground.(*Request).IP, "10."), nil
+    return strings.HasPrefix(ground.(*Req).IP, "10."), nil
 }
+func isRateLimited(claim, ground, backing any) (bool, any) { /* ... */ }
+func isPremiumUser(claim, ground, backing any) (bool, any) { /* ... */ }
+func isIncidentMode(claim, ground, backing any) (bool, any) { /* ... */ }
+```
 
-// 관계를 선언한다 — 조건을 중첩하지 않는다
+요구사항은 진화한다. 양쪽이 어떻게 대응하는지 보라:
+
+```go
+// 월요일: "인증된 사용자만 접근, IP 차단 적용, 내부망은 차단 면제"
 g := toulmin.NewGraph("api:access")
-auth    := g.Warrant(isAuthenticated, nil, 1.0)    // 주장: 인증됨
-blocked := g.Rebuttal(isIPBlocked, nil, 1.0)       // 반박: IP 차단
-exempt  := g.Defeater(isInternalIP, nil, 1.0)      // 예외: 내부망
-g.Defeat(blocked, auth)    // 차단이 인증을 공격
-g.Defeat(exempt, blocked)  // 내부망이 차단을 무력화
+auth    := g.Warrant(isAuthenticated, nil, 1.0)
+blocked := g.Rebuttal(isIPBlocked, nil, 1.0)
+exempt  := g.Defeater(isInternalIP, nil, 1.0)
+g.Defeat(blocked, auth)
+g.Defeat(exempt, blocked)
 
-results, _ := g.Evaluate(nil, &Request{User: user, IP: ip})
+// 화요일: "Rate limiting 추가"
+limited := g.Rebuttal(isRateLimited, nil, 1.0)
+g.Defeat(limited, auth)
+
+// 수요일: "프리미엄 사용자는 Rate limit 면제"
+premium := g.Defeater(isPremiumUser, nil, 1.0)
+g.Defeat(premium, limited)
+
+// 목요일: "장애 대응 중에는 프리미엄도 제한"
+incident := g.Rebuttal(isIncidentMode, nil, 1.0)
+g.Defeat(incident, premium)
+
+results, _ := g.Evaluate(nil, req)
 // results[0].Verdict > 0: 허용
 ```
 
-같은 로직을 if-else로 짜면:
+매일 2줄 추가, 기존 코드 변경 없음. 같은 진화를 if-else로:
 
 ```go
+// 월요일
 if user != nil {
     if blockedIPs[ip] {
         if strings.HasPrefix(ip, "10.") {
-            allow = true  // 예외가 중첩 깊숙이 묻힌다
+            allow = true
         }
     } else {
         allow = true
     }
 }
-// 규칙을 추가할 때마다 어디에 끼워넣지?
-// 예외의 예외는? 3중 4중 중첩?
+
+// 화요일: "Rate limiting 추가" — 어디에 끼워넣지?
+if user != nil {
+    if blockedIPs[ip] {
+        if strings.HasPrefix(ip, "10.") {
+            allow = true
+        }
+    } else if isRateLimited(ip) {
+        allow = false
+    } else {
+        allow = true
+    }
+}
+
+// 수요일: "프리미엄 사용자는 Rate limit 면제"
+if user != nil {
+    if blockedIPs[ip] {
+        if strings.HasPrefix(ip, "10.") {
+            allow = true
+        }
+    } else if isRateLimited(ip) {
+        if isPremium(user) {       // 3중 중첩
+            allow = true
+        }
+    } else {
+        allow = true
+    }
+}
+
+// 목요일: "장애 대응 중에는 프리미엄도 제한"
+if user != nil {
+    if blockedIPs[ip] {
+        if strings.HasPrefix(ip, "10.") {
+            allow = true
+        }
+    } else if isRateLimited(ip) {
+        if isPremium(user) {
+            if !incidentMode {     // 4중 중첩, 구조 파악 불가
+                allow = true
+            }
+        }
+    } else {
+        allow = true
+    }
+}
 ```
 
-toulmin에서는 `g.Defeat(newRule, existingRule)` 한 줄이다. 중첩 깊이는 변하지 않는다.
+toulmin: **요구사항당 2줄, 구조 불변.** if-else: **매번 전체 구조를 뜯어고친다.**
 
 ## 설치
 
@@ -140,6 +203,26 @@ for _, t := range results[0].Trace {
 ```
 
 모더레이션 로그, 감사 추적, 디버깅 — 별도 로깅 없이 엔진이 제공한다.
+
+## 동적 로딩
+
+`LoadGraph`는 정의 + 함수 레지스트리로 라이브 그래프를 생성한다. 그래프 구조와 backing은 재배포 없이 변경 가능 — 함수는 컴파일된 채로 유지.
+
+```go
+// 기동 시 컴파일된 함수 등록
+funcs := map[string]any{
+    "isAuthenticated": isAuthenticated,
+    "isIPBlocked":     isIPBlocked,
+    "isRateLimited":   isRateLimited,
+}
+
+// YAML, DB, API에서 그래프 구조 로드 — 재컴파일 불필요
+backings := map[string]any{"isIPBlocked": fetchBlocklistFromRedis()}
+g, err := toulmin.LoadGraph(def, funcs, backings)
+results, _ := g.Evaluate(nil, req)
+```
+
+컴파일 실행 속도 + 동적 규칙 업데이트. DSL 파서 없음, 인터프리터 없음, VM 없음 — 그래프 재배선만.
 
 ## 프레임워크 패키지
 

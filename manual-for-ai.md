@@ -133,6 +133,33 @@ r := g.Rebuttal(HasExemption, "vip", 1.0)
 g.Defeat(r, w1)
 ```
 
+### LoadGraph — Dynamic Graph from Definition
+
+Builds a live `*Graph` from a `GraphDef`, function registry, and optional backing registry. No code generation, no recompilation.
+
+```go
+funcs := map[string]any{
+    "isAuthenticated": isAuthenticated,
+    "isIPBlocked":     isIPBlocked,
+}
+backings := map[string]any{
+    "isIPBlocked": fetchBlocklistFromRedis(),
+}
+
+g, err := toulmin.LoadGraph(def, funcs, backings)
+results, _ := g.Evaluate(claim, ground)
+```
+
+`GraphDef` can come from YAML, DB, or API — graph structure and backing change without redeployment. Functions stay compiled.
+
+```go
+type GraphDef struct {
+    Graph   string
+    Rules   []GraphRuleDef   // Name, Role, Qualifier
+    Defeats []GraphEdgeDef   // From, To
+}
+```
+
 ### Engine API (legacy)
 
 `Engine.Register(RuleMeta{...})` + `Engine.Evaluate()` — string-based names, still available.
