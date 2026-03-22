@@ -1,3 +1,5 @@
+//ff:func feature=state type=engine control=sequence
+//ff:what TestMermaid — tests Mermaid diagram generation
 package state
 
 import (
