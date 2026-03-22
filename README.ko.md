@@ -216,13 +216,58 @@ funcs := map[string]any{
     "isRateLimited":   isRateLimited,
 }
 
-// YAML, DB, API에서 그래프 구조 로드 — 재컴파일 불필요
+// YAML에서 그래프 로드 — 한 줄
 backings := map[string]any{"isIPBlocked": fetchBlocklistFromRedis()}
-g, err := toulmin.LoadGraph(def, funcs, backings)
+g, err := toulmin.LoadGraphYAML("policy.yaml", funcs, backings)
 results, _ := g.Evaluate(nil, req)
 ```
 
+`LoadGraphYAML`은 YAML 파싱과 그래프 생성을 한 번에 처리한다. DB나 API에서 로드할 때는 `LoadGraph(def, funcs, backings)`를 직접 사용.
+
 컴파일 실행 속도 + 동적 규칙 업데이트. DSL 파서 없음, 인터프리터 없음, VM 없음 — 그래프 재배선만.
+
+### YAML 그래프 스키마
+
+```yaml
+graph: <이름>              # 그래프 이름 (필수)
+rules:                     # 규칙 목록 (필수)
+  - name: <규칙명>          # 규칙 이름, 함수 레지스트리 키와 일치 (필수)
+    role: <역할>            # warrant | rebuttal | defeater (필수)
+    qualifier: <실수>       # 0.0–1.0, 생략 시 기본값 1.0 (선택)
+defeats:                   # defeat 엣지 목록 (선택)
+  - from: <공격자>          # 공격하는 규칙 이름 (rules에 존재해야 함)
+    to: <대상>              # 공격 대상 규칙 이름 (rules에 존재해야 함)
+```
+
+예시 — 위의 접근 제어 그래프를 YAML로:
+
+```yaml
+graph: api:access
+rules:
+  - name: isAuthenticated
+    role: warrant
+  - name: isIPBlocked
+    role: rebuttal
+  - name: isInternalIP
+    role: defeater
+  - name: isRateLimited
+    role: rebuttal
+  - name: isPremiumUser
+    role: defeater
+  - name: isIncidentMode
+    role: rebuttal
+defeats:
+  - from: isIPBlocked
+    to: isAuthenticated
+  - from: isInternalIP
+    to: isIPBlocked
+  - from: isRateLimited
+    to: isAuthenticated
+  - from: isPremiumUser
+    to: isRateLimited
+  - from: isIncidentMode
+    to: isPremiumUser
+```
 
 ## 프레임워크 패키지
 

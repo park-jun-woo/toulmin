@@ -217,13 +217,58 @@ funcs := map[string]any{
     "isRateLimited":   isRateLimited,
 }
 
-// Load graph structure from YAML, DB, or API — no recompilation
+// Load graph structure from YAML — one line
 backings := map[string]any{"isIPBlocked": fetchBlocklistFromRedis()}
-g, err := toulmin.LoadGraph(def, funcs, backings)
+g, err := toulmin.LoadGraphYAML("policy.yaml", funcs, backings)
 results, _ := g.Evaluate(nil, req)
 ```
 
+`LoadGraphYAML` parses YAML and builds a live graph in one call. Or use `LoadGraph(def, funcs, backings)` with a `GraphDef` from DB or API.
+
 Compiled execution speed + dynamic rule updates. No DSL parser, no interpreter, no VM — just graph rewiring.
+
+### YAML Graph Schema
+
+```yaml
+graph: <name>              # graph name (required)
+rules:                     # rule list (required)
+  - name: <rule_name>      # rule name, matches function registry key (required)
+    role: <role>           # warrant | rebuttal | defeater (required)
+    qualifier: <float>     # 0.0–1.0, default 1.0 if omitted (optional)
+defeats:                   # defeat edge list (optional)
+  - from: <attacker_name>  # rule name of attacker (must exist in rules)
+    to: <target_name>      # rule name of target (must exist in rules)
+```
+
+Example — the same access control graph from above:
+
+```yaml
+graph: api:access
+rules:
+  - name: isAuthenticated
+    role: warrant
+  - name: isIPBlocked
+    role: rebuttal
+  - name: isInternalIP
+    role: defeater
+  - name: isRateLimited
+    role: rebuttal
+  - name: isPremiumUser
+    role: defeater
+  - name: isIncidentMode
+    role: rebuttal
+defeats:
+  - from: isIPBlocked
+    to: isAuthenticated
+  - from: isInternalIP
+    to: isIPBlocked
+  - from: isRateLimited
+    to: isAuthenticated
+  - from: isPremiumUser
+    to: isRateLimited
+  - from: isIncidentMode
+    to: isPremiumUser
+```
 
 ## Framework Packages
 

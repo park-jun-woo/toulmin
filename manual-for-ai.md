@@ -160,6 +160,55 @@ type GraphDef struct {
 }
 ```
 
+### YAML Graph Schema
+
+```yaml
+graph: <name>              # graph name (required)
+rules:                     # rule list (required)
+  - name: <rule_name>      # rule name, matches function registry key (required)
+    role: <role>           # warrant | rebuttal | defeater (required)
+    qualifier: <float>     # 0.0–1.0, default 1.0 if omitted (optional)
+defeats:                   # defeat edge list (optional)
+  - from: <attacker_name>  # rule name of attacker (must exist in rules)
+    to: <target_name>      # rule name of target (must exist in rules)
+```
+
+Example:
+
+```yaml
+graph: api:access
+rules:
+  - name: isAuthenticated
+    role: warrant
+  - name: isIPBlocked
+    role: rebuttal
+  - name: isInternalIP
+    role: defeater
+    qualifier: 0.8
+defeats:
+  - from: isIPBlocked
+    to: isAuthenticated
+  - from: isInternalIP
+    to: isIPBlocked
+```
+
+### LoadGraphYAML — YAML File to Live Graph
+
+Parses YAML and builds a live graph in one call. Combines `ParseYAML` + `LoadGraph`.
+
+```go
+funcs := map[string]any{
+    "isAuthenticated": isAuthenticated,
+    "isIPBlocked":     isIPBlocked,
+}
+backings := map[string]any{
+    "isIPBlocked": fetchBlocklistFromRedis(),
+}
+
+g, err := toulmin.LoadGraphYAML("policy.yaml", funcs, backings)
+results, _ := g.Evaluate(nil, req)
+```
+
 ### Engine API (legacy)
 
 `Engine.Register(RuleMeta{...})` + `Engine.Evaluate()` — string-based names, still available.
