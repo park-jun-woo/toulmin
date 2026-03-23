@@ -27,14 +27,13 @@ var g = toulmin.NewGraph("check").
 		t.Fatalf("expected 1 graph, got %d", len(graphs))
 	}
 	dg := graphs[0]
-	if dg.Name != "check" {
-		t.Errorf("expected graph name 'check', got %q", dg.Name)
+	if dg.Graph != "check" {
+		t.Errorf("expected graph name 'check', got %q", dg.Graph)
 	}
 	if len(dg.Rules) != 2 {
 		t.Errorf("expected 2 rules, got %d", len(dg.Rules))
 	}
-	attackers, ok := dg.Defeats["W"]
-	if !ok || len(attackers) != 1 || attackers[0] != "R" {
-		t.Errorf("expected Defeats[W]=[R], got %v", dg.Defeats)
+	if len(dg.Defeats) != 1 || dg.Defeats[0].From != "R" || dg.Defeats[0].To != "W" {
+		t.Errorf("expected Defeats=[{R W}], got %v", dg.Defeats)
 	}
 }

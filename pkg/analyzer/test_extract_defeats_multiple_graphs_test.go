@@ -34,7 +34,7 @@ var g2 = toulmin.NewGraph("second").
 	}
 	names := map[string]bool{}
 	for _, g := range graphs {
-		names[g.Name] = true
+		names[g.Graph] = true
 	}
 	if !names["first"] || !names["second"] {
 		t.Errorf("expected graphs 'first' and 'second', got %v", names)

@@ -2,10 +2,14 @@
 //ff:what collectDefeatEdge — extracts defeat edge from Defeat call arguments
 package analyzer
 
-import "go/ast"
+import (
+	"go/ast"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 // collectDefeatEdge extracts from/to identifiers from a Defeat(from, to) call.
-func collectDefeatEdge(call *ast.CallExpr, dg *DefeatGraph) {
+func collectDefeatEdge(call *ast.CallExpr, gc *graphCollector) {
 	if len(call.Args) < 2 {
 		return
 	}
@@ -14,5 +18,8 @@ func collectDefeatEdge(call *ast.CallExpr, dg *DefeatGraph) {
 	if !fromOk || !toOk {
 		return
 	}
-	dg.Defeats[toIdent.Name] = append(dg.Defeats[toIdent.Name], fromIdent.Name)
+	gc.def.Defeats = append(gc.def.Defeats, toulmin.GraphEdgeDef{
+		From: fromIdent.Name,
+		To:   toIdent.Name,
+	})
 }

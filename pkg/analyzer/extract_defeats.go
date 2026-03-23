@@ -5,28 +5,29 @@ package analyzer
 import (
 	"go/parser"
 	"go/token"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
 )
 
 // ExtractDefeats parses a Go source file and extracts GraphBuilder
-// defeat relationships. Returns one DefeatGraph per NewGraph call found.
-func ExtractDefeats(path string) ([]DefeatGraph, error) {
+// defeat relationships. Returns one GraphDef per NewGraph call found.
+func ExtractDefeats(path string) ([]toulmin.GraphDef, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, path, nil, 0)
 	if err != nil {
 		return nil, err
 	}
-	var graphs []DefeatGraph
+	var graphs []toulmin.GraphDef
 	for _, call := range findGraphCalls(f) {
 		name := extractGraphName(call)
 		if name == "" {
 			continue
 		}
-		dg := DefeatGraph{
-			Name:    name,
-			Defeats: make(map[string][]string),
+		dg := &graphCollector{
+			def: toulmin.GraphDef{Graph: name},
 		}
-		collectChain(call, &dg)
-		graphs = append(graphs, dg)
+		collectChain(call, dg)
+		graphs = append(graphs, dg.def)
 	}
 	return graphs, nil
 }

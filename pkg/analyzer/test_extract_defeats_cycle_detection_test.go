@@ -1,4 +1,4 @@
-//ff:func feature=analyzer type=analyzer control=sequence
+//ff:func feature=analyzer type=analyzer control=iteration dimension=1
 //ff:what TestExtractDefeatsCycleDetection — tests that cyclic defeat graphs are detected
 package analyzer
 
@@ -29,7 +29,11 @@ var g = toulmin.NewGraph("cyclic").
 	if len(graphs) != 1 {
 		t.Fatalf("expected 1 graph, got %d", len(graphs))
 	}
-	if err := toulmin.DetectCycle(graphs[0].Defeats); err == nil {
+	edges := make(map[string][]string)
+	for _, d := range graphs[0].Defeats {
+		edges[d.To] = append(edges[d.To], d.From)
+	}
+	if err := toulmin.DetectCycle(edges); err == nil {
 		t.Fatal("expected cycle detection error")
 	}
 }

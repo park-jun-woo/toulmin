@@ -23,12 +23,16 @@ func runGraphGo(cmd *cobra.Command, goPath string) error {
 	}
 	hasError := false
 	for _, g := range graphs {
-		if err := toulmin.DetectCycle(g.Defeats); err != nil {
-			fmt.Fprintf(cmd.OutOrStderr(), "graph %q: %v\n", g.Name, err)
+		edges := make(map[string][]string)
+		for _, d := range g.Defeats {
+			edges[d.To] = append(edges[d.To], d.From)
+		}
+		if err := toulmin.DetectCycle(edges); err != nil {
+			fmt.Fprintf(cmd.OutOrStderr(), "graph %q: %v\n", g.Graph, err)
 			hasError = true
 		} else {
 			fmt.Fprintf(cmd.OutOrStdout(), "graph %q: no cycles detected (%d rules, %d defeats)\n",
-				g.Name, len(g.Rules), len(g.Defeats))
+				g.Graph, len(g.Rules), len(g.Defeats))
 		}
 	}
 	if hasError {

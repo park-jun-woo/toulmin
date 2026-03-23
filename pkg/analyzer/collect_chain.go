@@ -5,20 +5,20 @@ package analyzer
 import "go/ast"
 
 // collectChain walks up a method chain collecting Warrant/Rebuttal/Defeater/Defeat calls.
-func collectChain(call *ast.CallExpr, dg *DefeatGraph) {
+func collectChain(call *ast.CallExpr, gc *graphCollector) {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
 		return
 	}
 	switch sel.Sel.Name {
 	case "Warrant", "Rebuttal", "Defeater":
-		collectRuleName(call, dg)
+		collectRuleName(call, gc, sel.Sel.Name)
 	case "Defeat":
-		collectDefeatEdge(call, dg)
+		collectDefeatEdge(call, gc)
 	}
 	inner, ok := sel.X.(*ast.CallExpr)
 	if !ok {
 		return
 	}
-	collectChain(inner, dg)
+	collectChain(inner, gc)
 }
