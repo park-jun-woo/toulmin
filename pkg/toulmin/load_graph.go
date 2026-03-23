@@ -1,13 +1,15 @@
 //ff:func feature=engine type=engine control=iteration dimension=1
-//ff:what LoadGraph — builds a live Graph from a GraphDef and function/backing registries
+//ff:what LoadGraph — validates GraphDef and builds a live Graph
 package toulmin
 
 import "fmt"
 
-// LoadGraph builds a *Graph from a GraphDef, a function registry, and an optional backing registry.
-// Functions maps rule names to rule functions. Backings maps rule names to backing values (nil if absent).
-// Returns an error if a rule name is not found in the registry or a defeat edge references an unknown rule.
+// LoadGraph validates a GraphDef, then builds a *Graph using the provided function and backing registries.
+// Returns an error if validation fails or a rule name is not found in the function registry.
 func LoadGraph(def GraphDef, functions map[string]any, backings map[string]any) (*Graph, error) {
+	if err := ValidateGraphDef(def); err != nil {
+		return nil, err
+	}
 	g := NewGraph(def.Graph)
 	refs := make(map[string]*Rule, len(def.Rules))
 
@@ -35,22 +37,12 @@ func LoadGraph(def GraphDef, functions map[string]any, backings map[string]any) 
 			rule = g.Rebuttal(fn, backing, q)
 		case "defeater":
 			rule = g.Defeater(fn, backing, q)
-		default:
-			return nil, fmt.Errorf("toulmin: rule %q has unknown role %q", rd.Name, rd.Role)
 		}
 		refs[rd.Name] = rule
 	}
 
 	for _, ed := range def.Defeats {
-		from, ok := refs[ed.From]
-		if !ok {
-			return nil, fmt.Errorf("toulmin: defeat edge from %q not found", ed.From)
-		}
-		to, ok := refs[ed.To]
-		if !ok {
-			return nil, fmt.Errorf("toulmin: defeat edge to %q not found", ed.To)
-		}
-		g.Defeat(from, to)
+		g.Defeat(refs[ed.From], refs[ed.To])
 	}
 
 	return g, nil
