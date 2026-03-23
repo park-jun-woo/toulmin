@@ -8,7 +8,8 @@ import (
 
 func TestLoadGraph_WithBacking(t *testing.T) {
 	fn := func(c any, g any, b any) (bool, any) {
-		return b.(string) == "admin", b
+		tb, ok := b.(*testBacking)
+		return ok && tb.Value == "admin", b
 	}
 
 	def := GraphDef{
@@ -19,7 +20,7 @@ func TestLoadGraph_WithBacking(t *testing.T) {
 	}
 
 	funcs := map[string]any{"checkRole": fn}
-	backings := map[string]any{"checkRole": "admin"}
+	backings := map[string]Backing{"checkRole": &testBacking{Value: "admin"}}
 
 	g, err := LoadGraph(def, funcs, backings)
 	if err != nil {

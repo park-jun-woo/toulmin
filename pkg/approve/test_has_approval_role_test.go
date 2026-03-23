@@ -16,8 +16,8 @@ func TestHasApprovalRole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ab := &ApproverBacking{Role: tt.role, RoleFunc: testAB.RoleFunc}
-			ctx := &ApprovalContext{Approver: &testApprover{Role: tt.have}}
+			ab := &ApproverBacking{Role: tt.role}
+			ctx := &ApprovalContext{Approver: &testApprover{Role: tt.have}, ApproverRole: tt.have}
 			got, _ := HasApprovalRole(nil, ctx, ab)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)

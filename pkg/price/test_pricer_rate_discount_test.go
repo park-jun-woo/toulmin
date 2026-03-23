@@ -9,8 +9,6 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/toulmin"
 )
 
-var memberFunc = func(u any) string { return u.(*testUser).Membership }
-
 func TestPricer_RateDiscount(t *testing.T) {
 	g := toulmin.NewGraph("test:rate")
 	g.Warrant(HasCoupon, &DiscountBacking{Name: "SAVE30", Rate: 0.3}, 1.0)

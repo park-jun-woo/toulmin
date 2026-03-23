@@ -6,5 +6,5 @@ package approve
 func HasApprovalRole(claim any, ground any, backing any) (bool, any) {
 	ctx := ground.(*ApprovalContext)
 	ab := backing.(*ApproverBacking)
-	return ab.RoleFunc(ctx.Approver) == ab.Role, nil
+	return ctx.ApproverRole == ab.Role, nil
 }

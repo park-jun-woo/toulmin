@@ -168,7 +168,7 @@ The distinction between warrant, rebuttal, and defeater is not in the function s
 
 ### 4.2 Graph: Separating Logic from Structure
 
-The engine provides two APIs. The Graph API (recommended) separates rule logic (Go functions) from graph structure (defeats, qualifier, strength). The `Warrant`, `Rebuttal`, and `Defeater` methods accept `(fn, backing, qualifier)` and return a `*Rule` reference. The `Defeat` method accepts two `*Rule` references — backing is the second argument to registration methods, and `nil` when no backing is needed:
+The engine provides two APIs. The Graph API (recommended) separates rule logic (Go functions) from graph structure (defeats, qualifier, strength). The `Warrant`, `Rebuttal`, and `Defeater` methods accept `(fn, backing Backing, qualifier)` and return a `*Rule` reference, where `Backing` is an interface requiring `BackingName() string` and `Validate() error`. The `Defeat` method accepts two `*Rule` references — backing is the second argument to registration methods, and `nil` when no backing is needed:
 
 ```go
 g := toulmin.NewGraph("file-structure")
@@ -232,15 +232,19 @@ Judgment: `verdict > 0` → violation, `verdict == 0` → undecided, `verdict < 
 
 ### 4.5 Evaluate and EvaluateTrace
 
-The engine provides two evaluation modes:
+The engine provides two evaluation modes, each with an optional method selector:
 
 ```go
-// Evaluate — verdict + evidence (lightweight)
+// Evaluate — verdict + evidence (default: matrix)
 results, err := g.Evaluate(claim, ground)
+results, err  = g.Evaluate(claim, ground, toulmin.Recursive) // recursive h-Categoriser
 
 // EvaluateTrace — verdict + evidence + full trace (explainability)
 results, err := g.EvaluateTrace(claim, ground)
+results, err  = g.EvaluateTrace(claim, ground, toulmin.Recursive)
 ```
+
+`Matrix` (default) uses matrix multiplication for verdict computation. `Recursive` uses the proven recursive h-Categoriser traversal.
 
 EvalResult:
 
@@ -304,7 +308,7 @@ toulmin graph file-structure.yaml   # generates graph_gen.go
 
 ### 4.8 Backing as First-Class Runtime Value
 
-Backing is a first-class runtime value passed to the rule function via the Graph API (§4.2). `Warrant(fn, backing, qualifier)` accepts backing as the second argument; the engine injects it as the third parameter when calling the rule function. Rules that need no judgment criteria receive `nil`:
+Backing is a first-class runtime value passed to the rule function via the Graph API (§4.2). `Warrant(fn, backing Backing, qualifier)` accepts backing as the second argument, where `Backing` is an interface requiring `BackingName() string` and `Validate() error`; the engine injects it as the third parameter when calling the rule function. Rules that need no judgment criteria receive `nil`:
 
 ```go
 func CheckOneFileOneFunc(claim any, ground any, backing any) (bool, any) {

@@ -3,7 +3,7 @@
 package toulmin
 
 // Defeater registers a defeater rule in the graph and returns a *Rule reference.
-func (g *Graph) Defeater(fn any, backing any, qualifier float64) *Rule {
+func (g *Graph) Defeater(fn any, backing Backing, qualifier float64) *Rule {
 	wrapped := toRuleFunc(fn)
 	id := ruleID(fn, backing)
 	g.rules = append(g.rules, RuleMeta{

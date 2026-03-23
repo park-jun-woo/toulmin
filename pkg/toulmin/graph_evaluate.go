@@ -1,12 +1,11 @@
 //ff:func feature=engine type=engine control=iteration dimension=1
-//ff:what Evaluate — lazily evaluates rules by graph traversal and returns verdicts
+//ff:what Evaluate — evaluates rules by graph traversal and returns verdicts
 package toulmin
 
-// Evaluate traverses the defeats graph from each warrant node,
-// lazily executing rule funcs only when reached. Returns verdicts
-// for warrant nodes. Funcs are cached across warrant evaluations.
+// Evaluate traverses the defeats graph from each warrant node and returns verdicts.
+// Default method is Matrix. Pass Recursive for proven h-Categoriser traversal.
 // Returns an error if the defeat graph contains a cycle.
-func (g *Graph) Evaluate(claim any, ground any) ([]EvalResult, error) {
+func (g *Graph) Evaluate(claim any, ground any, opts ...EvalOption) ([]EvalResult, error) {
 	ctx, err := newEvalContext(g.rules, g.defeats, g.roles)
 	if err != nil {
 		return nil, err

@@ -8,6 +8,6 @@ type RuleMeta struct {
 	Qualifier float64
 	Strength  Strength
 	Defeats   []string
-	Backing   any
+	Backing   Backing
 	Fn        func(claim any, ground any, backing any) (bool, any)
 }

@@ -9,8 +9,8 @@ import (
 func TestBackingSameFunc(t *testing.T) {
 	isInRole := func(claim any, ground any, backing any) (bool, any) { return true, nil }
 	g := NewGraph("test")
-	g.Warrant(isInRole, "admin", 1.0)
-	g.Warrant(isInRole, "editor", 1.0)
+	g.Warrant(isInRole, &testBacking{Value: "admin"}, 1.0)
+	g.Warrant(isInRole, &testBacking{Value: "editor"}, 1.0)
 	results, err := g.Evaluate(nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

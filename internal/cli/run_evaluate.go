@@ -17,7 +17,7 @@ func runEvaluate(cmd *cobra.Command, args []string) error {
 		Name:      "OneFileOneFunc",
 		Qualifier: 1.0,
 		Strength:  toulmin.Defeasible,
-		Backing:   "Bohm-Jacopini theorem",
+		Backing:   &demoBacking{Value: "Bohm-Jacopini theorem"},
 		Fn:        func(claim any, ground any, backing any) (bool, any) { return true, nil },
 	})
 	eng.Register(toulmin.RuleMeta{
@@ -25,7 +25,7 @@ func runEvaluate(cmd *cobra.Command, args []string) error {
 		Qualifier: 1.0,
 		Strength:  toulmin.Defeater,
 		Defeats:   []string{"OneFileOneFunc"},
-		Backing:   "test files conventionally group multiple test funcs",
+		Backing:   &demoBacking{Value: "test files conventionally group multiple test funcs"},
 		Fn:        func(claim any, ground any, backing any) (bool, any) { return true, nil },
 	})
 	results, err := eng.Evaluate(nil, nil)

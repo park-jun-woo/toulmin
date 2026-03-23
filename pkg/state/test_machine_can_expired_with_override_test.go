@@ -11,11 +11,11 @@ import (
 
 func TestMachine_Can_ExpiredWithOverride(t *testing.T) {
 	m := NewMachine()
-	expiryFunc := func(r any) time.Time { return r.(*testResource).ExpiresAt }
+	expiresAt := time.Now().Add(-1 * time.Hour) // expired
 
 	g := toulmin.NewGraph("proposal:accept")
 	current := g.Warrant(IsCurrentState, nil, 1.0)
-	expired := g.Rebuttal(IsExpired, expiryFunc, 1.0)
+	expired := g.Rebuttal(IsExpired, &ExpiryBacking{ExpiresAt: expiresAt}, 1.0)
 	override := g.Defeater(isAdmin, nil, 1.0)
 	g.Defeat(expired, current)
 	g.Defeat(override, expired)
@@ -25,7 +25,7 @@ func TestMachine_Can_ExpiredWithOverride(t *testing.T) {
 	req := &TransitionRequest{From: "pending", To: "accepted", Event: "accept"}
 	ctx := &TransitionContext{
 		CurrentState: "pending",
-		Resource:     &testResource{ExpiresAt: time.Now().Add(-1 * time.Hour)}, // expired
+		Resource:     &testResource{ExpiresAt: expiresAt},
 	}
 
 	verdict, err := m.Can(req, ctx)

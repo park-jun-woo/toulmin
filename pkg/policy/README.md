@@ -4,7 +4,7 @@
 
 Policy judgment built on toulmin defeats graph. Authentication, authorization, IP blocking, rate limiting — all as declarative rule relationships. Framework independent (net/http).
 
-User is `any` — the framework does not impose a concrete User type. Field access is done via backing (extraction functions).
+User is `any` — the framework does not impose a concrete User type. Field access is done via `RequestContext` fields.
 
 ## Install
 
@@ -15,16 +15,11 @@ import "github.com/park-jun-woo/toulmin/pkg/policy"
 ## Quick Start
 
 ```go
-roleFunc := func(u any) string { return u.(*MyUser).Role }
-
-blocklist := &policy.IPListBacking{Purpose: "blocklist", Check: isBlocked}
-whitelist := &policy.IPListBacking{Purpose: "whitelist", Check: isWhitelisted}
-
 g := toulmin.NewGraph("admin:users")
 auth := g.Warrant(policy.IsAuthenticated, nil, 1.0)
-admin := g.Warrant(policy.IsInRole, &policy.RoleBacking{Role: "admin", RoleFunc: roleFunc}, 1.0)
-blocked := g.Rebuttal(policy.IsIPInList, blocklist, 1.0)
-allowed := g.Defeater(policy.IsIPInList, whitelist, 1.0)
+admin := g.Warrant(policy.IsInRole, &policy.RoleBacking{Role: "admin"}, 1.0)
+blocked := g.Rebuttal(policy.IsIPInList, &policy.IPListBacking{Purpose: "blocklist"}, 1.0)
+allowed := g.Defeater(policy.IsIPInList, &policy.IPListBacking{Purpose: "whitelist"}, 1.0)
 g.Defeat(blocked, auth)
 g.Defeat(allowed, blocked)
 
@@ -39,28 +34,27 @@ mux.Handle("/admin/users", policy.Guard(g, buildCtx)(adminHandler))
 | Rule | Backing | Description |
 |---|---|---|
 | `IsAuthenticated` | nil | User is not nil |
-| `IsInRole` | *RoleBacking | User role matches backing.Role (via RoleFunc) |
-| `IsOwner` | *OwnerBacking | User ID matches resource owner (via extraction funcs) |
-| `IsIPInList` | *IPListBacking | Client IP in list (purpose + check) |
+| `IsInRole` | *RoleBacking | User role matches backing.Role (via RequestContext.Role) |
+| `IsOwner` | *OwnerBacking | User ID matches resource owner (via RequestContext.UserID/ResourceOwner) |
+| `IsIPInList` | *IPListBacking | Client IP in list (via RequestContext.IPBlocked) |
 | `IsRateLimited` | nil | Client IP is rate limited |
 | `HasHeader` | string | Named header exists and is non-empty |
 
 ### Backing Types
 
+All backing types implement `BackingName() string` and `Validate() error`. Func fields are forbidden.
+
 ```go
 type RoleBacking struct {
-    Role     string
-    RoleFunc func(any) string  // extracts role from domain User
+    Role string
 }
 
 type OwnerBacking struct {
-    UserIDFunc     func(any) string  // extracts user ID
-    ResourceIDFunc func(any) string  // extracts resource owner ID
+    OwnerField string  // field name to match against UserID
 }
 
 type IPListBacking struct {
-    Purpose string             // "blocklist", "whitelist"
-    Check   func(string) bool
+    Purpose string  // "blocklist", "whitelist"
 }
 ```
 
@@ -79,10 +73,15 @@ Both deny when `verdict <= 0`.
 
 ```go
 func buildCtx(r *http.Request) *policy.RequestContext {
+    user := getUserFromJWT(r)
     return &policy.RequestContext{
-        User:     getUserFromJWT(r),  // your domain User type
-        ClientIP: r.RemoteAddr,
-        Headers:  extractHeaders(r),
+        User:          user,              // your domain User type
+        Role:          user.Role,         // extracted role string
+        UserID:        user.ID,           // extracted user ID
+        ResourceOwner: getOwnerID(r),     // resource owner ID
+        ClientIP:      r.RemoteAddr,
+        IPBlocked:     isBlocked(r.RemoteAddr),
+        Headers:       extractHeaders(r),
     }
 }
 ```

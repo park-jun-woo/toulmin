@@ -12,7 +12,7 @@ import (
 func TestGuard_AuthenticatedAdmin(t *testing.T) {
 	g := toulmin.NewGraph("test:admin")
 	g.Warrant(IsAuthenticated, nil, 1.0)
-	g.Warrant(IsInRole, &RoleBacking{Role: "admin", RoleFunc: testRoleFunc}, 1.0)
+	g.Warrant(IsInRole, &RoleBacking{Role: "admin"}, 1.0)
 
 	handler := Guard(g, buildTestCtxFn(&testUser{ID: "u1", Role: "admin"}, "10.0.0.1", nil))(okHandler)
 

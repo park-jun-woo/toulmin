@@ -3,15 +3,14 @@
 package price
 
 // IsMemberLevel checks if the user's membership matches backing.Level.
-// MembershipFunc extracts the membership from the domain User type.
 // Returns the Discount as evidence if matched.
 func IsMemberLevel(claim any, ground any, backing any) (bool, any) {
 	ctx := ground.(*PriceContext)
 	mb := backing.(*MemberBacking)
-	if ctx.User == nil {
+	if ctx.Membership == "" {
 		return false, nil
 	}
-	if mb.MembershipFunc(ctx.User) == mb.Level {
+	if ctx.Membership == mb.Level {
 		return true, mb.Discount
 	}
 	return false, nil

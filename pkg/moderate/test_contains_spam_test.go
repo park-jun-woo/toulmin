@@ -5,8 +5,8 @@ package moderate
 import "testing"
 
 func TestContainsSpam(t *testing.T) {
-	c := &mockClassifier{scores: map[string]float64{"spam": 0.9}}
-	got, _ := ContainsSpam(&Content{Body: "test"}, nil, c)
+	cb := &ClassifierBacking{Classifier: &mockClassifier{scores: map[string]float64{"spam": 0.9}}}
+	got, _ := ContainsSpam(&Content{Body: "test"}, nil, cb)
 	if !got {
 		t.Error("expected spam detected")
 	}

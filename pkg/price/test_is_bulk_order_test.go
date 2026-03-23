@@ -18,7 +18,7 @@ func TestIsBulkOrder(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := &PurchaseRequest{Quantity: tt.qty}
-			got, _ := IsBulkOrder(req, nil, tt.min)
+			got, _ := IsBulkOrder(req, nil, &BulkOrderBacking{MinQuantity: tt.min})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

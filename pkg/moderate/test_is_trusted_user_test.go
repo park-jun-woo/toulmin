@@ -18,7 +18,7 @@ func TestIsTrustedUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := &ContentContext{Author: &Author{TrustScore: tt.score}}
-			got, _ := IsTrustedUser(nil, ctx, tt.min)
+			got, _ := IsTrustedUser(nil, ctx, &TrustScoreBacking{MinScore: tt.min})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

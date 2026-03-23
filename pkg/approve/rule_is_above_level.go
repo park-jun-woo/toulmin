@@ -6,5 +6,5 @@ package approve
 func IsAboveLevel(claim any, ground any, backing any) (bool, any) {
 	ctx := ground.(*ApprovalContext)
 	ab := backing.(*ApproverBacking)
-	return ab.LevelFunc(ctx.Approver) >= ab.Level, nil
+	return ctx.ApproverLevel >= ab.Level, nil
 }

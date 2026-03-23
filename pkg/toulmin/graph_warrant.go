@@ -6,7 +6,7 @@ package toulmin
 // fn accepts both func(any,any,any)(bool,any) and legacy func(any,any)(bool,any).
 // backing is the rule's judgment criteria (Toulmin backing). Use nil if not needed.
 // qualifier is the rule's confidence weight.
-func (g *Graph) Warrant(fn any, backing any, qualifier float64) *Rule {
+func (g *Graph) Warrant(fn any, backing Backing, qualifier float64) *Rule {
 	wrapped := toRuleFunc(fn)
 	id := ruleID(fn, backing)
 	g.rules = append(g.rules, RuleMeta{

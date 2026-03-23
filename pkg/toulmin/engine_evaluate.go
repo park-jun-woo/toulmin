@@ -6,7 +6,7 @@ package toulmin
 // lazily executing rule funcs only when reached. Returns verdicts
 // for warrant nodes. Funcs are cached across warrant evaluations.
 // Returns an error if the defeat graph contains a cycle.
-func (e *Engine) Evaluate(claim any, ground any) ([]EvalResult, error) {
+func (e *Engine) Evaluate(claim any, ground any, opts ...EvalOption) ([]EvalResult, error) {
 	ctx, err := newEvalContext(e.rules, nil, nil)
 	if err != nil {
 		return nil, err

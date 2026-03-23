@@ -10,7 +10,7 @@ import (
 
 func TestFlow_StepRejected(t *testing.T) {
 	org := &mockOrgTree{managers: map[string]string{"emp-1": "mgr-1"}}
-	ab := &ApproverBacking{IDFunc: flowAB.IDFunc}
+	ab := &ApproverBacking{}
 
 	g := toulmin.NewGraph("expense:manager")
 	g.Warrant(IsDirectManager, ab, 1.0)
@@ -20,8 +20,9 @@ func TestFlow_StepRejected(t *testing.T) {
 	req := &ApprovalRequest{RequesterID: "emp-1"}
 	result, err := f.Evaluate(req, func(step string) *ApprovalContext {
 		return &ApprovalContext{
-			Approver: &testApprover{ID: "mgr-2"},
-			OrgTree:  org,
+			Approver:   &testApprover{ID: "mgr-2"},
+			ApproverID: "mgr-2",
+			OrgTree:    org,
 		}
 	})
 	if err != nil {

@@ -32,6 +32,17 @@ func(claim any, ground any, backing any) (bool, any)
 
 Returns `(judgment, evidence)`. `backing` receives judgment criteria from graph declaration. Legacy `func(any, any) (bool, any)` supported via internal wrapping.
 
+### Backing Interface
+
+```go
+type Backing interface {
+    BackingName() string
+    Validate() error
+}
+```
+
+Backing structs must implement `BackingName()` (returns identifier for ruleID) and `Validate()` (validates fields at registration time). `nil` backing is allowed for rules that don't need criteria. Func fields in Backing structs are forbidden — `Validate()` rejects them.
+
 ### Ground vs Backing
 
 | | Ground | Backing |
@@ -96,13 +107,22 @@ Warrant/Rebuttal/Defeater return `*Rule` reference. Defeat takes two `*Rule`. No
 
 ```go
 g := toulmin.NewGraph("voting")
-w := g.Warrant(IsAdult, nil, 1.0)
-r := g.Rebuttal(HasCriminalRecord, nil, 1.0)
+w := g.Warrant(IsAdult, nil, 1.0)            // backing is Backing (nil allowed)
+r := g.Rebuttal(HasCriminalRecord, nil, 1.0) // backing is Backing (nil allowed)
 g.Defeat(r, w)
 
-results, err := g.Evaluate(claim, ground)       // verdict only
-results, err = g.EvaluateTrace(claim, ground)    // verdict + trace
+results, err := g.Evaluate(claim, ground)                        // default (matrix)
+results, err = g.Evaluate(claim, ground, toulmin.Recursive)      // recursive h-Categoriser
+results, err = g.EvaluateTrace(claim, ground)                    // default + trace
+results, err = g.EvaluateTrace(claim, ground, toulmin.Recursive) // recursive + trace
 ```
+
+### EvalOption
+
+| Option | Description |
+|---|---|
+| `Matrix` (default) | Matrix multiplication verdict computation |
+| `Recursive` | Proven recursive h-Categoriser traversal |
 
 ### EvalResult / TraceEntry
 
@@ -128,9 +148,9 @@ type TraceEntry struct {
 
 ```go
 g := toulmin.NewGraph("limits")
-w1 := g.Warrant(CheckThreshold, 100, 1.0)
-w2 := g.Warrant(CheckThreshold, 200, 0.8)
-r := g.Rebuttal(HasExemption, "vip", 1.0)
+w1 := g.Warrant(CheckThreshold, &ThresholdBacking{Max: 100}, 1.0)
+w2 := g.Warrant(CheckThreshold, &ThresholdBacking{Max: 200}, 0.8)
+r := g.Rebuttal(HasExemption, &ExemptionBacking{Type: "vip"}, 1.0)
 g.Defeat(r, w1)
 ```
 
@@ -143,7 +163,7 @@ funcs := map[string]any{
     "isAuthenticated": isAuthenticated,
     "isIPBlocked":     isIPBlocked,
 }
-backings := map[string]any{
+backings := map[string]toulmin.Backing{
     "isIPBlocked": fetchBlocklistFromRedis(),
 }
 
@@ -259,6 +279,7 @@ toulmin evaluate                              # run example
 | Verdict 0.0 as allow/deny | 0.0 = undecided — threshold is framework's decision |
 | Confusing ground and backing | ground = per-request facts, backing = fixed criteria at declaration |
 | Forgetting backing | Use `nil` when no backing needed |
+| Func field in Backing struct | `Validate()` rejects func fields — use plain data fields only |
 
 ### Backing Replaces Closures
 
@@ -266,8 +287,8 @@ Same function + different backing values — no closure factories needed. `ruleI
 
 ```go
 g := toulmin.NewGraph("example")
-r1 := g.Rebuttal(HasRole, "admin", 1.0)   // ruleID = "HasRole#admin"
-r2 := g.Rebuttal(HasRole, "editor", 1.0)  // ruleID = "HasRole#editor"
+r1 := g.Rebuttal(HasRole, &RoleBacking{Role: "admin"}, 1.0)   // ruleID = "HasRole#admin"
+r2 := g.Rebuttal(HasRole, &RoleBacking{Role: "editor"}, 1.0)  // ruleID = "HasRole#editor"
 g.Defeat(r1, someWarrant)
 ```
 

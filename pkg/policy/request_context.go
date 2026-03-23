@@ -3,8 +3,6 @@
 package policy
 
 // RequestContext holds per-request facts for policy evaluation.
-// User is any — the framework does not impose a concrete User type.
-// Field access is done via backing (extraction functions).
 type RequestContext struct {
 	User            any
 	ClientIP        string
@@ -12,4 +10,8 @@ type RequestContext struct {
 	Headers         map[string]string
 	RateLimiter     RateLimiter
 	Metadata        map[string]any
+	Role            string
+	UserID          string
+	ResourceOwner   string
+	IPBlocked       bool
 }

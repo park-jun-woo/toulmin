@@ -179,17 +179,35 @@ Not binary. **The framework interprets**:
 - Moderation: `verdict ≤ 0` → block, `0 < v ≤ 0.3` → flag, `> 0.3` → allow
 - Feature flags: `verdict > 0` → enabled
 
+### Evaluation Method
+
+```go
+results, _ := g.Evaluate(nil, req)                        // default (matrix)
+results, _ = g.Evaluate(nil, req, toulmin.Recursive)      // recursive h-Categoriser
+```
+
+`Matrix` (default): matrix multiplication verdict computation. `Recursive`: proven recursive h-Categoriser traversal. Both available for `Evaluate` and `EvaluateTrace`.
+
 ### Backing
+
+Backing values must implement the `Backing` interface:
+
+```go
+type Backing interface {
+    BackingName() string
+    Validate() error
+}
+```
 
 Same function + different backing = different rule. Reuse without closure factories:
 
 ```go
 g := toulmin.NewGraph("access")
-admin  := g.Warrant(isInRole, "admin", 1.0)
-editor := g.Warrant(isInRole, "editor", 0.8)
+admin  := g.Warrant(isInRole, &RoleBacking{Role: "admin"}, 1.0)
+editor := g.Warrant(isInRole, &RoleBacking{Role: "editor"}, 0.8)
 ```
 
-`nil` backing means the rule needs no judgment criteria.
+`nil` backing means the rule needs no judgment criteria. Func fields in Backing structs are forbidden — `Validate()` rejects them.
 
 ## Trace
 
@@ -220,7 +238,7 @@ funcs := map[string]any{
 // Parse YAML into GraphDef, validate, then build live graph
 def, _ := toulmin.ParseYAML("policy.yaml")
 toulmin.ValidateGraphDef(def)
-backings := map[string]any{"isIPBlocked": fetchBlocklistFromRedis()}
+backings := map[string]toulmin.Backing{"isIPBlocked": fetchBlocklistFromRedis()}
 g, err := toulmin.LoadGraph(def, funcs, backings)
 results, _ := g.Evaluate(nil, req)
 ```

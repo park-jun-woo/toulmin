@@ -5,7 +5,6 @@ package price
 import "testing"
 
 func TestIsMemberLevel(t *testing.T) {
-	memberFunc := func(u any) string { return u.(*testUser).Membership }
 	tests := []struct {
 		name       string
 		membership string
@@ -18,8 +17,8 @@ func TestIsMemberLevel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &PriceContext{User: &testUser{Membership: tt.membership}}
-			mb := &MemberBacking{Level: tt.level, MembershipFunc: memberFunc, Discount: &DiscountBacking{Name: tt.level, Rate: 0.1}}
+			ctx := &PriceContext{User: &testUser{Membership: tt.membership}, Membership: tt.membership}
+			mb := &MemberBacking{Level: tt.level, Discount: &DiscountBacking{Name: tt.level, Rate: 0.1}}
 			got, _ := IsMemberLevel(nil, ctx, mb)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)

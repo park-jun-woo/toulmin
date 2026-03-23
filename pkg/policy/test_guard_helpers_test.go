@@ -4,14 +4,17 @@ package policy
 
 import "net/http"
 
-var testRoleFunc = func(u any) string { return u.(*testUser).Role }
-
 func buildTestCtxFn(user any, ip string, headers map[string]string) ContextFunc {
+	role := ""
+	if u, ok := user.(*testUser); ok {
+		role = u.Role
+	}
 	return func(r *http.Request) *RequestContext {
 		return &RequestContext{
 			User:     user,
 			ClientIP: ip,
 			Headers:  headers,
+			Role:     role,
 		}
 	}
 }

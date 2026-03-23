@@ -9,7 +9,7 @@ import (
 )
 
 func TestFlow_CEOOverride(t *testing.T) {
-	ab := &ApproverBacking{RoleFunc: flowAB.RoleFunc}
+	ab := &ApproverBacking{}
 
 	g := toulmin.NewGraph("expense:finance")
 	budget := g.Warrant(IsUnderBudget, nil, 1.0)
@@ -23,8 +23,9 @@ func TestFlow_CEOOverride(t *testing.T) {
 	req := &ApprovalRequest{Amount: 5000}
 	result, err := f.Evaluate(req, func(step string) *ApprovalContext {
 		return &ApprovalContext{
-			Approver: &testApprover{Role: "ceo"},
-			Budget:   &Budget{Remaining: 10000, Frozen: true},
+			Approver:     &testApprover{Role: "ceo"},
+			ApproverRole: "ceo",
+			Budget:       &Budget{Remaining: 10000, Frozen: true},
 		}
 	})
 	if err != nil {

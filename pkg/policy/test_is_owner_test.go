@@ -5,23 +5,21 @@ package policy
 import "testing"
 
 func TestIsOwner(t *testing.T) {
-	ob := &OwnerBacking{
-		UserIDFunc:     func(u any) string { return u.(*testUser).ID },
-		ResourceIDFunc: func(ctx any) string { return ctx.(*RequestContext).ResourceOwnerID },
-	}
+	ob := &OwnerBacking{}
 	tests := []struct {
-		name    string
-		user    any
-		ownerID string
-		want    bool
+		name          string
+		user          any
+		userID        string
+		resourceOwner string
+		want          bool
 	}{
-		{"owner", &testUser{ID: "u1"}, "u1", true},
-		{"not owner", &testUser{ID: "u1"}, "u2", false},
-		{"nil user", nil, "u1", false},
+		{"owner", &testUser{ID: "u1"}, "u1", "u1", true},
+		{"not owner", &testUser{ID: "u1"}, "u1", "u2", false},
+		{"nil user", nil, "", "u1", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &RequestContext{User: tt.user, ResourceOwnerID: tt.ownerID}
+			ctx := &RequestContext{User: tt.user, UserID: tt.userID, ResourceOwner: tt.resourceOwner}
 			got, _ := IsOwner(nil, ctx, ob)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)

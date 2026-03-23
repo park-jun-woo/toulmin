@@ -4,8 +4,10 @@ package state
 
 // TransitionContext holds per-request facts for transition evaluation.
 type TransitionContext struct {
-	CurrentState string
-	User         any
-	Resource     any
-	Metadata     map[string]any
+	CurrentState    string
+	User            any
+	Resource        any
+	Metadata        map[string]any
+	UserID          string
+	ResourceOwnerID string
 }

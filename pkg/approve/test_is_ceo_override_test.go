@@ -15,9 +15,8 @@ func TestIsCEOOverride(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ab := &ApproverBacking{RoleFunc: testAB.RoleFunc}
-			ctx := &ApprovalContext{Approver: &testApprover{Role: tt.role}}
-			got, _ := IsCEOOverride(nil, ctx, ab)
+			ctx := &ApprovalContext{Approver: &testApprover{Role: tt.role}, ApproverRole: tt.role}
+			got, _ := IsCEOOverride(nil, ctx, nil)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

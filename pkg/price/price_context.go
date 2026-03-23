@@ -3,9 +3,9 @@
 package price
 
 // PriceContext holds per-request facts for price evaluation.
-// User is any — the framework does not impose a concrete User type.
 type PriceContext struct {
 	User       any
+	Membership string
 	Coupons    []Coupon
 	Promotions []Promotion
 	Metadata   map[string]any

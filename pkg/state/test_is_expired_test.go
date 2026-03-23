@@ -8,7 +8,6 @@ import (
 )
 
 func TestIsExpired(t *testing.T) {
-	expiryFunc := func(r any) time.Time { return r.(*testResource).ExpiresAt }
 	tests := []struct {
 		name string
 		exp  time.Time
@@ -19,8 +18,9 @@ func TestIsExpired(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			b := &ExpiryBacking{ExpiresAt: tt.exp}
 			ctx := &TransitionContext{Resource: &testResource{ExpiresAt: tt.exp}}
-			got, _ := IsExpired(nil, ctx, expiryFunc)
+			got, _ := IsExpired(nil, ctx, b)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

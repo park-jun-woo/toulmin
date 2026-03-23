@@ -16,9 +16,9 @@ func TestContainsHateSpeech(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &mockClassifier{scores: map[string]float64{"hate_speech": tt.score}}
+			cb := &ClassifierBacking{Classifier: &mockClassifier{scores: map[string]float64{"hate_speech": tt.score}}}
 			content := &Content{Body: "test"}
-			got, _ := ContainsHateSpeech(content, nil, c)
+			got, _ := ContainsHateSpeech(content, nil, cb)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

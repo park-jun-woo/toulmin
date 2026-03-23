@@ -178,17 +178,35 @@ verdict = 2 × raw - 1
 - 모더레이션: `verdict ≤ 0` → 차단, `0 < v ≤ 0.3` → 검토, `> 0.3` → 허용
 - 피처 플래그: `verdict > 0` → 활성
 
+### 연산 방식 선택
+
+```go
+results, _ := g.Evaluate(nil, req)                        // 기본 (행렬곱)
+results, _ = g.Evaluate(nil, req, toulmin.Recursive)      // 재귀 h-Categoriser
+```
+
+`Matrix`(기본값): 행렬곱 verdict 연산. `Recursive`: 수학적으로 증명된 재귀 h-Categoriser 탐색. `Evaluate`와 `EvaluateTrace` 모두 사용 가능.
+
 ### Backing
+
+backing 값은 `Backing` 인터페이스를 구현해야 한다:
+
+```go
+type Backing interface {
+    BackingName() string
+    Validate() error
+}
+```
 
 같은 함수 + 다른 backing = 다른 규칙. 클로저 팩토리 없이 규칙을 재사용한다:
 
 ```go
 g := toulmin.NewGraph("access")
-admin  := g.Warrant(isInRole, "admin", 1.0)
-editor := g.Warrant(isInRole, "editor", 0.8)
+admin  := g.Warrant(isInRole, &RoleBacking{Role: "admin"}, 1.0)
+editor := g.Warrant(isInRole, &RoleBacking{Role: "editor"}, 0.8)
 ```
 
-backing이 `nil`이면 규칙에 판정 기준이 필요 없다는 뜻이다.
+backing이 `nil`이면 규칙에 판정 기준이 필요 없다는 뜻이다. Backing 구조체에 func 필드는 금지된다 — `Validate()`가 이를 거부한다.
 
 ## Trace
 
@@ -219,7 +237,7 @@ funcs := map[string]any{
 // YAML → GraphDef 파싱, 검증, 라이브 그래프 생성
 def, _ := toulmin.ParseYAML("policy.yaml")
 toulmin.ValidateGraphDef(def)
-backings := map[string]any{"isIPBlocked": fetchBlocklistFromRedis()}
+backings := map[string]toulmin.Backing{"isIPBlocked": fetchBlocklistFromRedis()}
 g, err := toulmin.LoadGraph(def, funcs, backings)
 results, _ := g.Evaluate(nil, req)
 ```

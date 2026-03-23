@@ -17,8 +17,8 @@ func TestIsAboveLevel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ab := &ApproverBacking{Level: tt.min, LevelFunc: testAB.LevelFunc}
-			ctx := &ApprovalContext{Approver: &testApprover{Level: tt.level}}
+			ab := &ApproverBacking{Level: tt.min}
+			ctx := &ApprovalContext{Approver: &testApprover{Level: tt.level}, ApproverLevel: tt.level}
 			got, _ := IsAboveLevel(nil, ctx, ab)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)

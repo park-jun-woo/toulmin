@@ -17,12 +17,12 @@ func(claim any, ground any, backing any) (bool, any)
 | Function | File | Description |
 |---|---|---|
 | `NewGraph(name)` | new_graph.go | Create graph builder |
-| `g.Warrant(fn, backing, qualifier)` | graph_warrant.go | Register warrant, return `*Rule` |
-| `g.Rebuttal(fn, backing, qualifier)` | graph_rebuttal.go | Register rebuttal, return `*Rule` |
-| `g.Defeater(fn, backing, qualifier)` | graph_defeater.go | Register defeater, return `*Rule` |
+| `g.Warrant(fn, backing Backing, qualifier)` | graph_warrant.go | Register warrant, return `*Rule` |
+| `g.Rebuttal(fn, backing Backing, qualifier)` | graph_rebuttal.go | Register rebuttal, return `*Rule` |
+| `g.Defeater(fn, backing Backing, qualifier)` | graph_defeater.go | Register defeater, return `*Rule` |
 | `g.Defeat(from, to)` | graph_defeat.go | Declare defeat edge |
-| `g.Evaluate(claim, ground)` | graph_evaluate.go | Run evaluation, return verdicts |
-| `g.EvaluateTrace(claim, ground)` | graph_evaluate_trace.go | Run evaluation with trace |
+| `g.Evaluate(claim, ground, opts ...EvalOption)` | graph_evaluate.go | Run evaluation, return verdicts |
+| `g.EvaluateTrace(claim, ground, opts ...EvalOption)` | graph_evaluate_trace.go | Run evaluation with trace |
 
 ### Dynamic Loading
 
@@ -30,7 +30,7 @@ func(claim any, ground any, backing any) (bool, any)
 |---|---|---|
 | `ParseYAML(path)` | parse_yaml.go | YAML file → `GraphDef` |
 | `ValidateGraphDef(def)` | validate_graph_def.go | Check graph name, edge refs, cycles |
-| `LoadGraph(def, funcs, backings)` | load_graph.go | `GraphDef` → live `*Graph` |
+| `LoadGraph(def, funcs, backings map[string]Backing)` | load_graph.go | `GraphDef` → live `*Graph` |
 
 ### Engine (legacy)
 
@@ -58,6 +58,8 @@ func(claim any, ground any, backing any) (bool, any)
 
 | Type | File | Description |
 |---|---|---|
+| `Backing` | backing.go | Interface: `BackingName() string`, `Validate() error` |
+| `EvalOption` | eval_option.go | Evaluation method selector (Matrix, Recursive) |
 | `Graph` | graph.go | Graph builder |
 | `Rule` | rule.go | Opaque rule reference |
 | `RuleMeta` | rule_meta.go | Rule metadata (Name, Qualifier, Strength, Defeats, Backing, Fn) |
@@ -82,6 +84,9 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 
 | File | Description |
 |---|---|
+| resolve_backing.go | Resolve backing from registry for LoadGraph |
+| validate_backing.go | Validate Backing interface implementation |
+| validate_backing_fields.go | Reject func fields in Backing structs |
 | eval_context.go | Shared state for lazy evaluation |
 | eval_context_calc.go | h-Categoriser recursive verdict |
 | eval_context_calc_trace.go | h-Categoriser with trace |

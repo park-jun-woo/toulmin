@@ -11,7 +11,7 @@ import (
 )
 
 func TestGuardDebug_Forbidden(t *testing.T) {
-	blocklist := &IPListBacking{Purpose: "blocklist", Check: func(ip string) bool { return ip == "1.2.3.4" }}
+	blocklist := &IPListBacking{Purpose: "blocklist", List: []string{"1.2.3.4"}}
 
 	g := toulmin.NewGraph("test:debug-deny")
 	auth := g.Warrant(IsAuthenticated, nil, 1.0)

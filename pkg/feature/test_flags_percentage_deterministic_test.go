@@ -12,7 +12,7 @@ func TestFlags_Percentage_Deterministic(t *testing.T) {
 	flags := NewFlags()
 
 	g := toulmin.NewGraph("feature:rollout")
-	g.Warrant(IsUserInPercentage, 0.5, 1.0)
+	g.Warrant(IsUserInPercentage, &PercentageBacking{Percentage: 0.5}, 1.0)
 	flags.Register("rollout", g)
 
 	ctx := &UserContext{ID: "user-42"}

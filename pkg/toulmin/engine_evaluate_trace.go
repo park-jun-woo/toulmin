@@ -6,7 +6,7 @@ package toulmin
 // lazily executing rule funcs only when reached. Returns verdicts with
 // per-warrant trace containing only relevant rules. State is reset per warrant.
 // Returns an error if the defeat graph contains a cycle.
-func (e *Engine) EvaluateTrace(claim any, ground any) ([]EvalResult, error) {
+func (e *Engine) EvaluateTrace(claim any, ground any, opts ...EvalOption) ([]EvalResult, error) {
 	ctx, err := newEvalContext(e.rules, nil, nil)
 	if err != nil {
 		return nil, err

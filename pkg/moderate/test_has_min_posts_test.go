@@ -17,7 +17,7 @@ func TestHasMinPosts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := &ContentContext{Author: &Author{PostCount: tt.count}}
-			got, _ := HasMinPosts(nil, ctx, tt.min)
+			got, _ := HasMinPosts(nil, ctx, &MinPostsBacking{MinPosts: tt.min})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

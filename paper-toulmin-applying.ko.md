@@ -180,7 +180,7 @@ d := g.Defeater(TestFileException, nil, 1.0)
 g.Defeat(d, w)
 ```
 
-`Warrant(fn, backing, qualifier)` — backing은 두 번째 인자다. 규칙에 고정된 판정 기준이 없을 때는 `nil`을 전달한다. `Warrant`, `Rebuttal`, `Defeater`는 `*Rule` 참조를 반환하며, 이 참조를 `Defeat(from, to)`에 전달하여 defeats 관계를 선언한다. backing이 있을 때:
+`Warrant(fn, backing Backing, qualifier)` — backing은 두 번째 인자이며 `Backing` 인터페이스(`BackingName() string`, `Validate() error`)를 구현해야 한다. 규칙에 고정된 판정 기준이 없을 때는 `nil`을 전달한다. `Warrant`, `Rebuttal`, `Defeater`는 `*Rule` 참조를 반환하며, 이 참조를 `Defeat(from, to)`에 전달하여 defeats 관계를 선언한다. backing이 있을 때:
 
 ```go
 g := toulmin.NewGraph("line-limit")
@@ -237,15 +237,19 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 
 ### 4.5 Evaluate와 EvaluateTrace
 
-엔진은 두 가지 평가 모드를 제공한다:
+엔진은 두 가지 평가 모드를 제공하며, 각각 연산 방식을 선택할 수 있다:
 
 ```go
-// Evaluate — verdict + 증거 (경량)
+// Evaluate — verdict + 증거 (기본: 행렬곱)
 results, err := g.Evaluate(claim, ground)
+results, err  = g.Evaluate(claim, ground, toulmin.Recursive) // 재귀 h-Categoriser
 
 // EvaluateTrace — verdict + 증거 + 완전한 trace (설명 가능성)
 results, err := g.EvaluateTrace(claim, ground)
+results, err  = g.EvaluateTrace(claim, ground, toulmin.Recursive)
 ```
+
+`Matrix`(기본값)는 행렬곱으로 verdict를 연산한다. `Recursive`는 수학적으로 증명된 재귀 h-Categoriser 탐색을 사용한다.
 
 EvalResult:
 
@@ -309,7 +313,7 @@ toulmin graph file-structure.yaml   # graph_gen.go 생성
 
 ### 4.8 Backing: 1급 런타임 값
 
-backing은 **1급 런타임 값**이다. `Warrant(fn, backing, qualifier)`의 두 번째 인자로 전달된 backing은 엔진이 규칙 함수를 호출할 때 세 번째 매개변수로 주입된다. 이로써 같은 함수를 서로 다른 판정 기준으로 등록할 수 있다.
+backing은 **1급 런타임 값**이다. `Warrant(fn, backing Backing, qualifier)`의 두 번째 인자로 전달되며, `Backing` 인터페이스(`BackingName() string`, `Validate() error`)를 구현해야 한다. 엔진이 규칙 함수를 호출할 때 세 번째 매개변수로 주입된다. 이로써 같은 함수를 서로 다른 판정 기준으로 등록할 수 있다.
 
 backing이 필요 없는 규칙은 `nil`을 전달하고, 함수 안에서 세 번째 매개변수를 무시한다. backing이 필요한 규칙은 이를 판정 기준으로 사용한다:
 

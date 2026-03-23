@@ -9,11 +9,11 @@ import (
 )
 
 func TestReview_Block(t *testing.T) {
-	c := &mockClassifier{scores: map[string]float64{"hate_speech": 0.95}}
+	cb := &ClassifierBacking{Classifier: &mockClassifier{scores: map[string]float64{"hate_speech": 0.95}}}
 
 	g := toulmin.NewGraph("test:block")
 	verified := g.Warrant(IsVerifiedUser, nil, 1.0)
-	hate := g.Rebuttal(ContainsHateSpeech, c, 1.0)
+	hate := g.Rebuttal(ContainsHateSpeech, cb, 1.0)
 	g.Defeat(hate, verified)
 
 	mod := NewModerator(g)

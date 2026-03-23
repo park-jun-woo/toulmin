@@ -5,8 +5,8 @@ package moderate
 import "testing"
 
 func TestContainsNSFW(t *testing.T) {
-	c := &mockClassifier{scores: map[string]float64{"nsfw": 0.9}}
-	got, _ := ContainsNSFW(&Content{Body: "test"}, nil, c)
+	cb := &ClassifierBacking{Classifier: &mockClassifier{scores: map[string]float64{"nsfw": 0.9}}}
+	got, _ := ContainsNSFW(&Content{Body: "test"}, nil, cb)
 	if !got {
 		t.Error("expected nsfw detected")
 	}

@@ -3,12 +3,12 @@
 package policy
 
 // IsInRole checks if the user has the role specified by backing (*RoleBacking).
-// RoleFunc extracts the role from the domain User type.
+// Reads the role from RequestContext.Role.
 func IsInRole(claim any, ground any, backing any) (bool, any) {
 	ctx := ground.(*RequestContext)
 	if ctx.User == nil {
 		return false, nil
 	}
 	rb := backing.(*RoleBacking)
-	return rb.RoleFunc(ctx.User) == rb.Role, nil
+	return ctx.Role == rb.Role, nil
 }

@@ -6,7 +6,7 @@ import "fmt"
 
 // LoadGraph validates a GraphDef, then builds a *Graph using the provided function and backing registries.
 // Returns an error if validation fails or a rule name is not found in the function registry.
-func LoadGraph(def GraphDef, functions map[string]any, backings map[string]any) (*Graph, error) {
+func LoadGraph(def GraphDef, functions map[string]any, backings map[string]Backing) (*Graph, error) {
 	if err := ValidateGraphDef(def); err != nil {
 		return nil, err
 	}
@@ -24,9 +24,9 @@ func LoadGraph(def GraphDef, functions map[string]any, backings map[string]any) 
 			q = 1.0
 		}
 
-		var backing any
-		if backings != nil {
-			backing = backings[rd.Name]
+		backing, err := resolveBacking(rd.Name, backings)
+		if err != nil {
+			return nil, err
 		}
 
 		var rule *Rule

@@ -12,8 +12,8 @@ func TestDefeatWithBacking(t *testing.T) {
 	isAuth := func(claim any, ground any, backing any) (bool, any) { return true, nil }
 	g := NewGraph("test")
 	auth := g.Warrant(isAuth, nil, 1.0)
-	blocked := g.Rebuttal(isIPInList, "blocklist", 1.0)
-	allowed := g.Defeater(isIPInList, "whitelist", 1.0)
+	blocked := g.Rebuttal(isIPInList, &testBacking{Value: "blocklist"}, 1.0)
+	allowed := g.Defeater(isIPInList, &testBacking{Value: "whitelist"}, 1.0)
 	g.Defeat(blocked, auth)
 	g.Defeat(allowed, blocked)
 	results, err := g.Evaluate(nil, nil)

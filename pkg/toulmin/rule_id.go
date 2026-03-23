@@ -7,7 +7,7 @@ import "fmt"
 // ruleID returns a unique identifier for a rule.
 // If backing is nil, returns funcID only.
 // If backing is non-nil, returns funcID + "#" + backing string.
-func ruleID(fn any, backing any) string {
+func ruleID(fn any, backing Backing) string {
 	id := funcID(fn)
 	if backing == nil {
 		return id

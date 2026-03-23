@@ -5,22 +5,19 @@ package state
 import "testing"
 
 func TestIsOwner(t *testing.T) {
-	b := &OwnerBacking{
-		OwnerIDFunc: func(r any) string { return r.(*testResource).OwnerID },
-		UserIDFunc:  func(u any) string { return u.(*testUser).ID },
-	}
+	b := &OwnerBacking{}
 	tests := []struct {
-		name string
-		user *testUser
-		res  *testResource
-		want bool
+		name            string
+		userID          string
+		resourceOwnerID string
+		want            bool
 	}{
-		{"owner", &testUser{ID: "u1"}, &testResource{OwnerID: "u1"}, true},
-		{"not owner", &testUser{ID: "u1"}, &testResource{OwnerID: "u2"}, false},
+		{"owner", "u1", "u1", true},
+		{"not owner", "u1", "u2", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &TransitionContext{User: tt.user, Resource: tt.res}
+			ctx := &TransitionContext{UserID: tt.userID, ResourceOwnerID: tt.resourceOwnerID}
 			got, _ := IsOwner(nil, ctx, b)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)

@@ -1,12 +1,12 @@
 //ff:func feature=engine type=engine control=iteration dimension=1
-//ff:what EvaluateTrace — lazily evaluates rules by graph traversal and returns verdicts with per-warrant trace
+//ff:what EvaluateTrace — evaluates rules by graph traversal and returns verdicts with per-warrant trace
 package toulmin
 
-// EvaluateTrace traverses the defeats graph from each warrant node,
-// lazily executing rule funcs only when reached. Returns verdicts with
-// per-warrant trace containing only relevant rules. State is reset per warrant.
+// EvaluateTrace traverses the defeats graph from each warrant node and returns
+// verdicts with per-warrant trace. Default method is Matrix. Pass Recursive for
+// proven h-Categoriser traversal. State is reset per warrant.
 // Returns an error if the defeat graph contains a cycle.
-func (g *Graph) EvaluateTrace(claim any, ground any) ([]EvalResult, error) {
+func (g *Graph) EvaluateTrace(claim any, ground any, opts ...EvalOption) ([]EvalResult, error) {
 	ctx, err := newEvalContext(g.rules, g.defeats, g.roles)
 	if err != nil {
 		return nil, err
