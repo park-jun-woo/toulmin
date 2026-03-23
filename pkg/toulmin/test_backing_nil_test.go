@@ -9,7 +9,7 @@ import (
 func TestBackingNil(t *testing.T) {
 	g := NewGraph("test")
 	g.Warrant(WarrantA, nil, 1.0)
-	results, err := g.EvaluateTrace(nil, nil)
+	results, err := g.Evaluate(nil, nil, EvalOption{Trace: true})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

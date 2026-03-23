@@ -2,7 +2,11 @@
 //ff:what CanTrace: 전이 가능 여부 + 판정 근거
 package state
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 // CanTrace evaluates the transition with full trace.
 func (m *Machine) CanTrace(req *TransitionRequest, ctx *TransitionContext) (*TraceResult, error) {
@@ -11,7 +15,7 @@ func (m *Machine) CanTrace(req *TransitionRequest, ctx *TransitionContext) (*Tra
 	if !ok {
 		return nil, fmt.Errorf("no transition registered for %s:%s", req.From, req.Event)
 	}
-	results, err := t.graph.EvaluateTrace(req, ctx)
+	results, err := t.graph.Evaluate(req, ctx, toulmin.EvalOption{Trace: true})
 	if err != nil {
 		return nil, err
 	}

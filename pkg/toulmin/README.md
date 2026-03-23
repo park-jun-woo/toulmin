@@ -21,8 +21,7 @@ func(claim any, ground any, backing any) (bool, any)
 | `g.Rebuttal(fn, backing Backing, qualifier)` | graph_rebuttal.go | Register rebuttal, return `*Rule` |
 | `g.Defeater(fn, backing Backing, qualifier)` | graph_defeater.go | Register defeater, return `*Rule` |
 | `g.Defeat(from, to)` | graph_defeat.go | Declare defeat edge |
-| `g.Evaluate(claim, ground, opts ...EvalOption)` | graph_evaluate.go | Run evaluation, return verdicts |
-| `g.EvaluateTrace(claim, ground, opts ...EvalOption)` | graph_evaluate_trace.go | Run evaluation with trace |
+| `g.Evaluate(claim, ground, opt ...EvalOption)` | graph_evaluate.go | Run evaluation, return verdicts (opt controls Trace/Duration) |
 
 ### Dynamic Loading
 
@@ -38,8 +37,7 @@ func(claim any, ground any, backing any) (bool, any)
 |---|---|---|
 | `NewEngine()` | new_engine.go | Create legacy engine |
 | `e.Register(RuleMeta)` | engine_register.go | Register rule by name |
-| `e.Evaluate(claim, ground)` | engine_evaluate.go | Run evaluation |
-| `e.EvaluateTrace(claim, ground)` | engine_evaluate_trace.go | Run evaluation with trace |
+| `e.Evaluate(claim, ground, opt ...EvalOption)` | engine_evaluate.go | Run evaluation (opt controls Trace/Duration) |
 
 ### Code Generation
 
@@ -59,7 +57,8 @@ func(claim any, ground any, backing any) (bool, any)
 | Type | File | Description |
 |---|---|---|
 | `Backing` | backing.go | Interface: `BackingName() string`, `Validate() error` |
-| `EvalOption` | eval_option.go | Evaluation method selector (Matrix, Recursive) |
+| `EvalOption` | eval_option.go | Evaluation options (Method, Trace, Duration) |
+| `EvalMethod` | eval_method.go | Verdict computation method (Matrix, Recursive) |
 | `Graph` | graph.go | Graph builder |
 | `Rule` | rule.go | Opaque rule reference |
 | `RuleMeta` | rule_meta.go | Rule metadata (Name, Qualifier, Strength, Defeats, Backing, Fn) |
@@ -89,8 +88,10 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 | validate_backing_fields.go | Reject func fields in Backing structs |
 | eval_context.go | Shared state for lazy evaluation |
 | eval_context_calc.go | h-Categoriser recursive verdict |
-| eval_context_calc_trace.go | h-Categoriser with trace |
-| eval_context_record_trace.go | Record trace entry for activated rule |
+| eval_context_calc_trace.go | h-Categoriser with trace and optional duration |
+| eval_context_record_trace.go | Record trace entry with optional duration measurement |
+| eval_method.go | EvalMethod type (Matrix, Recursive) |
+| resolve_option.go | Resolve EvalOption from variadic args |
 | eval_context_reset.go | Reset state between warrants |
 | new_eval_context.go | Build eval context from graph |
 | build_attacker_set.go | Build set of all attacker nodes |

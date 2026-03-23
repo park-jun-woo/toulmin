@@ -6,7 +6,7 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // Evaluate runs the discount graph and computes the final price.
 func (p *Pricer) Evaluate(req *PurchaseRequest, ctx *PriceContext) (*PriceResult, error) {
-	results, err := p.graph.EvaluateTrace(req, ctx)
+	results, err := p.graph.Evaluate(req, ctx, toulmin.EvalOption{Trace: true})
 	if err != nil {
 		return nil, err
 	}

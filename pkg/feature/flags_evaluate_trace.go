@@ -2,7 +2,11 @@
 //ff:what EvaluateTrace: 피처 판정 + 근거
 package feature
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 // EvaluateTrace returns the feature evaluation result with trace.
 func (f *Flags) EvaluateTrace(name string, ctx *UserContext) (*FeatureResult, error) {
@@ -10,7 +14,7 @@ func (f *Flags) EvaluateTrace(name string, ctx *UserContext) (*FeatureResult, er
 	if !ok {
 		return nil, fmt.Errorf("feature not registered: %s", name)
 	}
-	results, err := g.EvaluateTrace(name, ctx)
+	results, err := g.Evaluate(name, ctx, toulmin.EvalOption{Trace: true})
 	if err != nil {
 		return nil, err
 	}

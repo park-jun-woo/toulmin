@@ -2,10 +2,12 @@
 //ff:what Review: 콘텐츠 모더레이션 판정
 package moderate
 
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
 // Review evaluates the content and returns a ReviewResult.
 // verdict > 0.3 → allow, 0 < verdict <= 0.3 → flag, verdict <= 0 → block.
 func (m *Moderator) Review(content *Content, ctx *ContentContext) (*ReviewResult, error) {
-	results, err := m.graph.EvaluateTrace(content, ctx)
+	results, err := m.graph.Evaluate(content, ctx, toulmin.EvalOption{Trace: true})
 	if err != nil {
 		return nil, err
 	}

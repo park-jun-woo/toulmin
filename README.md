@@ -179,14 +179,16 @@ Not binary. **The framework interprets**:
 - Moderation: `verdict ≤ 0` → block, `0 < v ≤ 0.3` → flag, `> 0.3` → allow
 - Feature flags: `verdict > 0` → enabled
 
-### Evaluation Method
+### Evaluation Options
 
 ```go
-results, _ := g.Evaluate(nil, req)                        // default (matrix)
-results, _ = g.Evaluate(nil, req, toulmin.Recursive)      // recursive h-Categoriser
+results, _ := g.Evaluate(nil, req)                                                    // default (matrix)
+results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Method: toulmin.Recursive})       // recursive h-Categoriser
+results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Trace: true})                     // with trace
+results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Duration: true})                  // with duration (trace auto-enabled)
 ```
 
-`Matrix` (default): matrix multiplication verdict computation. `Recursive`: proven recursive h-Categoriser traversal. Both available for `Evaluate` and `EvaluateTrace`.
+`EvalOption` controls evaluation behavior: `Method` (Matrix/Recursive), `Trace` (collect TraceEntry), `Duration` (measure per-rule execution time).
 
 ### Backing
 
@@ -211,10 +213,10 @@ editor := g.Warrant(isInRole, &RoleBacking{Role: "editor"}, 0.8)
 
 ## Trace
 
-`EvaluateTrace` tracks each rule's judgment basis:
+`EvalOption{Trace: true}` tracks each rule's judgment basis:
 
 ```go
-results, _ := g.EvaluateTrace(claim, ground)
+results, _ := g.Evaluate(claim, ground, toulmin.EvalOption{Trace: true})
 for _, t := range results[0].Trace {
     fmt.Printf("%s role=%s activated=%v evidence=%v\n",
         t.Name, t.Role, t.Activated, t.Evidence)
@@ -313,7 +315,7 @@ You can use the core without any framework. Writing your own rule functions — 
 
 - Adding a rule: `g.Defeat(new, existing)` one line vs refactoring entire nesting
 - Exception handling: edge declaration vs conditions inside conditions
-- Audit trail: `EvaluateTrace` built-in vs separate logging
+- Audit trail: `Evaluate(EvalOption{Trace: true})` built-in vs separate logging
 - Testing: unit test each rule function vs combinatorial explosion
 
 ### vs OPA/Casbin/Cedar

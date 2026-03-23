@@ -1,13 +1,14 @@
 //ff:type feature=engine type=model
-//ff:what EvalOption — evaluation method option (Matrix or Recursive)
+//ff:what EvalOption — evaluation options (method, trace, duration)
 package toulmin
 
-// EvalOption controls how verdict is computed.
-type EvalOption int
-
-const (
-	// Matrix uses matrix multiplication for verdict computation (default).
-	Matrix EvalOption = iota
-	// Recursive uses recursive h-Categoriser traversal for verdict computation.
-	Recursive
-)
+// EvalOption controls evaluation behavior.
+type EvalOption struct {
+	// Method selects the verdict computation algorithm. Default is Matrix.
+	Method EvalMethod
+	// Trace enables per-warrant TraceEntry collection.
+	Trace bool
+	// Duration enables per-rule execution time measurement in TraceEntry.
+	// Automatically enables Trace when true.
+	Duration bool
+}

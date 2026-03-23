@@ -111,15 +111,23 @@ w := g.Warrant(IsAdult, nil, 1.0)            // backing is Backing (nil allowed)
 r := g.Rebuttal(HasCriminalRecord, nil, 1.0) // backing is Backing (nil allowed)
 g.Defeat(r, w)
 
-results, err := g.Evaluate(claim, ground)                        // default (matrix)
-results, err = g.Evaluate(claim, ground, toulmin.Recursive)      // recursive h-Categoriser
-results, err = g.EvaluateTrace(claim, ground)                    // default + trace
-results, err = g.EvaluateTrace(claim, ground, toulmin.Recursive) // recursive + trace
+results, err := g.Evaluate(claim, ground)                                                // default (matrix)
+results, err = g.Evaluate(claim, ground, toulmin.EvalOption{Method: toulmin.Recursive})   // recursive h-Categoriser
+results, err = g.Evaluate(claim, ground, toulmin.EvalOption{Trace: true})                 // with trace
+results, err = g.Evaluate(claim, ground, toulmin.EvalOption{Duration: true})              // with duration (trace auto-enabled)
 ```
 
 ### EvalOption
 
-| Option | Description |
+```go
+type EvalOption struct {
+    Method   EvalMethod // Matrix (default) | Recursive
+    Trace    bool       // collect TraceEntry per warrant
+    Duration bool       // measure per-rule execution time (auto-enables Trace)
+}
+```
+
+| Method | Description |
 |---|---|
 | `Matrix` (default) | Matrix multiplication verdict computation |
 | `Recursive` | Proven recursive h-Categoriser traversal |
@@ -135,12 +143,13 @@ type EvalResult struct {
 }
 
 type TraceEntry struct {
-    Name      string  `json:"name"`
-    Role      string  `json:"role"`
-    Activated bool    `json:"activated"`
-    Qualifier float64 `json:"qualifier"`
-    Evidence  any     `json:"evidence,omitempty"`
-    Backing   any     `json:"backing,omitempty"`
+    Name      string        `json:"name"`
+    Role      string        `json:"role"`
+    Activated bool          `json:"activated"`
+    Qualifier float64       `json:"qualifier"`
+    Evidence  any           `json:"evidence,omitempty"`
+    Backing   any           `json:"backing,omitempty"`
+    Duration  time.Duration `json:"duration,omitempty"`
 }
 ```
 

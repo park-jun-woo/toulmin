@@ -4,14 +4,15 @@ package toulmin
 
 // calcTrace computes the verdict like calc, but also collects TraceEntry
 // for each executed rule. Role is resolved from roleMap or inferred.
+// When duration is true, measures execution time per rule.
 // Cycle-free graph is guaranteed by detectCycle in newEvalContext.
-func (ctx *evalContext) calcTrace(id string, claim, ground any) float64 {
+func (ctx *evalContext) calcTrace(id string, claim, ground any, duration bool) float64 {
 	fn, ok := ctx.fnMap[id]
 	if !ok || fn == nil {
 		return -1.0
 	}
 	if !ctx.ran[id] {
-		ctx.recordTrace(id, claim, ground)
+		ctx.recordTrace(id, claim, ground, duration)
 	}
 	if !ctx.active[id] {
 		return -1.0
@@ -19,7 +20,7 @@ func (ctx *evalContext) calcTrace(id string, claim, ground any) float64 {
 	sum := 0.0
 	if ctx.strMap[id] != Strict {
 		for _, aid := range ctx.edges[id] {
-			raw := (ctx.calcTrace(aid, claim, ground) + 1.0) / 2.0
+			raw := (ctx.calcTrace(aid, claim, ground, duration) + 1.0) / 2.0
 			sum += raw
 		}
 	}

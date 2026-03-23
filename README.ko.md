@@ -178,14 +178,16 @@ verdict = 2 × raw - 1
 - 모더레이션: `verdict ≤ 0` → 차단, `0 < v ≤ 0.3` → 검토, `> 0.3` → 허용
 - 피처 플래그: `verdict > 0` → 활성
 
-### 연산 방식 선택
+### 평가 옵션
 
 ```go
-results, _ := g.Evaluate(nil, req)                        // 기본 (행렬곱)
-results, _ = g.Evaluate(nil, req, toulmin.Recursive)      // 재귀 h-Categoriser
+results, _ := g.Evaluate(nil, req)                                                    // 기본 (행렬곱)
+results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Method: toulmin.Recursive})       // 재귀 h-Categoriser
+results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Trace: true})                     // trace 포함
+results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Duration: true})                  // 소요시간 측정 (trace 자동 활성화)
 ```
 
-`Matrix`(기본값): 행렬곱 verdict 연산. `Recursive`: 수학적으로 증명된 재귀 h-Categoriser 탐색. `Evaluate`와 `EvaluateTrace` 모두 사용 가능.
+`EvalOption`으로 평가 동작을 제어한다: `Method` (Matrix/Recursive), `Trace` (TraceEntry 수집), `Duration` (규칙별 실행 시간 측정).
 
 ### Backing
 
@@ -210,10 +212,10 @@ backing이 `nil`이면 규칙에 판정 기준이 필요 없다는 뜻이다. Ba
 
 ## Trace
 
-`EvaluateTrace`는 각 규칙의 판정 근거를 추적한다:
+`EvalOption{Trace: true}`로 각 규칙의 판정 근거를 추적한다:
 
 ```go
-results, _ := g.EvaluateTrace(claim, ground)
+results, _ := g.Evaluate(claim, ground, toulmin.EvalOption{Trace: true})
 for _, t := range results[0].Trace {
     fmt.Printf("%s role=%s activated=%v evidence=%v\n",
         t.Name, t.Role, t.Activated, t.Evidence)
@@ -295,7 +297,7 @@ defeats:
 
 | 패키지 | 도메인 | 핵심 API |
 |---|---|---|
-| `pkg/toulmin` | 코어 엔진, YAML 파서, 검증, 코드 생성 | `Graph`, `ParseYAML`, `ValidateGraphDef`, `GenerateGraph` |
+| `pkg/toulmin` | 코어 엔진, YAML 파서, 검증, 코드 생성 | `Graph`, `EvalOption`, `ParseYAML`, `ValidateGraphDef`, `GenerateGraph` |
 | `pkg/analyzer` | Go AST defeat 그래프 추출 | `ExtractDefeats` |
 | `pkg/policy` | 접근 제어 (인증, 인가, IP, Rate limit) | `Guard` (net/http 미들웨어) |
 | `pkg/state` | 상태 전이 (FSM) | `Machine.Can`, `Mermaid()` |
@@ -312,7 +314,7 @@ defeats:
 
 - 규칙 추가: `g.Defeat(new, existing)` 한 줄 vs 중첩 구조 전체 리팩터링
 - 예외 처리: 엣지 선언 vs 조건문 안에 조건문
-- 판정 근거: `EvaluateTrace` 내장 vs 별도 로깅 구축
+- 판정 근거: `Evaluate(EvalOption{Trace: true})` 내장 vs 별도 로깅 구축
 - 테스트: 규칙 함수 단위 테스트 vs 조합 폭발
 
 ### vs OPA/Casbin/Cedar

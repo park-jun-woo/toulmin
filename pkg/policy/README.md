@@ -62,7 +62,7 @@ type IPListBacking struct {
 
 | | Guard | GuardDebug |
 |---|---|---|
-| Evaluation | `Evaluate` | `EvaluateTrace` |
+| Evaluation | `Evaluate` | `Evaluate(EvalOption{Trace: true})` |
 | Headers | None | `X-Policy-Verdict`, `X-Policy-Trace` |
 | 403 body | `{"error":"forbidden"}` | `{"error":"forbidden","trace":"..."}` |
 | Signature | `func(http.Handler) http.Handler` | `func(http.Handler) http.Handler` |

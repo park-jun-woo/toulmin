@@ -10,7 +10,7 @@ func (f *Flow) Evaluate(req *ApprovalRequest, ctxBuilder StepContextFunc) (*Flow
 	result := &FlowResult{Approved: true}
 	for _, step := range f.steps {
 		ctx := ctxBuilder(step.Name)
-		results, err := step.Graph.EvaluateTrace(req, ctx)
+		results, err := step.Graph.Evaluate(req, ctx, toulmin.EvalOption{Trace: true})
 		if err != nil {
 			return nil, err
 		}
