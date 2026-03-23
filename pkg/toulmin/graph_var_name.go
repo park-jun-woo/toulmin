@@ -1,6 +1,6 @@
 //ff:func feature=codegen type=codegen control=iteration dimension=1
 //ff:what graphVarName — converts graph name to PascalCase variable name
-package codegen
+package toulmin
 
 import "strings"
 

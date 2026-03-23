@@ -7,8 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/park-jun-woo/toulmin/internal/codegen"
-	"github.com/park-jun-woo/toulmin/internal/graphdef"
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
 	"github.com/spf13/cobra"
 )
 
@@ -18,11 +17,11 @@ func runGraphYAML(cmd *cobra.Command, yamlPath string) error {
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
 	output, _ := cmd.Flags().GetString("output")
 	pkgName, _ := cmd.Flags().GetString("package")
-	def, err := graphdef.ParseYAML(yamlPath)
+	def, err := toulmin.ParseYAML(yamlPath)
 	if err != nil {
 		return err
 	}
-	if err := graphdef.Validate(def); err != nil {
+	if err := toulmin.ValidateGraphDef(def); err != nil {
 		return err
 	}
 	if check {
@@ -33,7 +32,7 @@ func runGraphYAML(cmd *cobra.Command, yamlPath string) error {
 	if pkgName == "" {
 		pkgName = dirToPkg(filepath.Dir(yamlPath))
 	}
-	code, err := codegen.GenerateGraph(pkgName, def)
+	code, err := toulmin.GenerateGraph(pkgName, &def)
 	if err != nil {
 		return err
 	}

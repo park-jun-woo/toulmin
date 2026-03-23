@@ -216,13 +216,15 @@ funcs := map[string]any{
     "isRateLimited":   isRateLimited,
 }
 
-// YAML에서 그래프 로드 — 한 줄
+// YAML → GraphDef 파싱, 검증, 라이브 그래프 생성
+def, _ := toulmin.ParseYAML("policy.yaml")
+toulmin.ValidateGraphDef(def)
 backings := map[string]any{"isIPBlocked": fetchBlocklistFromRedis()}
-g, err := toulmin.LoadGraphYAML("policy.yaml", funcs, backings)
+g, err := toulmin.LoadGraph(def, funcs, backings)
 results, _ := g.Evaluate(nil, req)
 ```
 
-`LoadGraphYAML`은 YAML 파싱과 그래프 생성을 한 번에 처리한다. DB나 API에서 로드할 때는 `LoadGraph(def, funcs, backings)`를 직접 사용.
+`ParseYAML`은 YAML을 `GraphDef`로 파싱한다. `ValidateGraphDef`는 defeat 엣지 참조와 순환을 검증한다. `LoadGraph`는 `GraphDef`로 라이브 그래프를 생성한다 — YAML, DB, API 어디서든.
 
 컴파일 실행 속도 + 동적 규칙 업데이트. DSL 파서 없음, 인터프리터 없음, VM 없음 — 그래프 재배선만.
 
@@ -275,6 +277,8 @@ defeats:
 
 | 패키지 | 도메인 | 핵심 API |
 |---|---|---|
+| `pkg/toulmin` | 코어 엔진, YAML 파서, 검증, 코드 생성 | `Graph`, `ParseYAML`, `ValidateGraphDef`, `GenerateGraph` |
+| `pkg/analyzer` | Go AST defeat 그래프 추출 | `ExtractDefeats` |
 | `pkg/policy` | 접근 제어 (인증, 인가, IP, Rate limit) | `Guard` (net/http 미들웨어) |
 | `pkg/state` | 상태 전이 (FSM) | `Machine.Can`, `Mermaid()` |
 | `pkg/approve` | 다단계 결재 | `Flow.Evaluate` |

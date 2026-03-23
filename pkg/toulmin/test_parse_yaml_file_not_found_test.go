@@ -1,10 +1,8 @@
 //ff:func feature=graph type=parser control=sequence
-//ff:what TestParseYAMLFileNotFound — tests error returned for nonexistent file
-package graphdef
+//ff:what TestParseYAMLFileNotFound — tests error for missing YAML file
+package toulmin
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestParseYAMLFileNotFound(t *testing.T) {
 	_, err := ParseYAML("/nonexistent/path.yaml")

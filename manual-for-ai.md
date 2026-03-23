@@ -6,7 +6,8 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 
 | Package | Description | README |
 |---|---|---|
-| `pkg/toulmin` | Core engine (Graph, Rule, Evaluate, h-Categoriser) | — |
+| `pkg/toulmin` | Core engine (Graph, Rule, Evaluate, h-Categoriser, ParseYAML, ValidateGraphDef, GenerateGraph) | `pkg/toulmin/README.md` |
+| `pkg/analyzer` | Go AST analysis (extract defeat graphs from source) | — |
 | `pkg/policy` | Policy judgment (auth, IP, rate limit, net/http Guard) | `pkg/policy/README.md` |
 | `pkg/state` | State transition (Machine, Mermaid diagram) | `pkg/state/README.md` |
 | `pkg/approve` | Approval workflow (multi-step Flow) | `pkg/approve/README.md` |
@@ -192,20 +193,14 @@ defeats:
     to: isIPBlocked
 ```
 
-### LoadGraphYAML — YAML File to Live Graph
+### ParseYAML + ValidateGraphDef
 
-Parses YAML and builds a live graph in one call. Combines `ParseYAML` + `LoadGraph`.
+`ParseYAML` parses YAML into `GraphDef` (AST). `ValidateGraphDef` checks graph name, defeat edge references, and cycles.
 
 ```go
-funcs := map[string]any{
-    "isAuthenticated": isAuthenticated,
-    "isIPBlocked":     isIPBlocked,
-}
-backings := map[string]any{
-    "isIPBlocked": fetchBlocklistFromRedis(),
-}
-
-g, err := toulmin.LoadGraphYAML("policy.yaml", funcs, backings)
+def, err := toulmin.ParseYAML("policy.yaml")
+if err := toulmin.ValidateGraphDef(def); err != nil { /* handle */ }
+g, err := toulmin.LoadGraph(def, funcs, backings)
 results, _ := g.Evaluate(nil, req)
 ```
 

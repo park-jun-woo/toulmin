@@ -1,6 +1,6 @@
 //ff:func feature=codegen type=codegen control=sequence
 //ff:what ruleVarName — converts a rule name to a Go variable name
-package codegen
+package toulmin
 
 import "strings"
 

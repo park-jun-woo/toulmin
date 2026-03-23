@@ -217,13 +217,15 @@ funcs := map[string]any{
     "isRateLimited":   isRateLimited,
 }
 
-// Load graph structure from YAML — one line
+// Parse YAML into GraphDef, validate, then build live graph
+def, _ := toulmin.ParseYAML("policy.yaml")
+toulmin.ValidateGraphDef(def)
 backings := map[string]any{"isIPBlocked": fetchBlocklistFromRedis()}
-g, err := toulmin.LoadGraphYAML("policy.yaml", funcs, backings)
+g, err := toulmin.LoadGraph(def, funcs, backings)
 results, _ := g.Evaluate(nil, req)
 ```
 
-`LoadGraphYAML` parses YAML and builds a live graph in one call. Or use `LoadGraph(def, funcs, backings)` with a `GraphDef` from DB or API.
+`ParseYAML` parses YAML into `GraphDef`. `ValidateGraphDef` checks defeat edge references and cycles. `LoadGraph` builds the live graph from any `GraphDef` — YAML, DB, or API.
 
 Compiled execution speed + dynamic rule updates. No DSL parser, no interpreter, no VM — just graph rewiring.
 
@@ -276,6 +278,8 @@ Domain-specific frameworks built on the core. Pre-built rule functions and wrapp
 
 | Package | Domain | Key API |
 |---|---|---|
+| `pkg/toulmin` | Core engine, YAML parser, validator, codegen | `Graph`, `ParseYAML`, `ValidateGraphDef`, `GenerateGraph` |
+| `pkg/analyzer` | Go AST defeat graph extraction | `ExtractDefeats` |
 | `pkg/policy` | Access control (auth, IP, rate limit) | `Guard` (net/http middleware) |
 | `pkg/state` | State transitions (FSM) | `Machine.Can`, `Mermaid()` |
 | `pkg/approve` | Multi-step approval workflow | `Flow.Evaluate` |

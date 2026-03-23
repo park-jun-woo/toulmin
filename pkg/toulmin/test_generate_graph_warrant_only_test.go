@@ -1,19 +1,17 @@
 //ff:func feature=codegen type=codegen control=sequence
 //ff:what TestGenerateGraphWarrantOnly — tests code generation with warrant-only graph
-package codegen
+package toulmin
 
 import (
 	"strings"
 	"testing"
-
-	"github.com/park-jun-woo/toulmin/internal/graphdef"
 )
 
 func TestGenerateGraphWarrantOnly(t *testing.T) {
-	def := &graphdef.GraphDef{
+	def := &GraphDef{
 		Graph: "example",
-		Rules: []graphdef.RuleDef{
-			{Name: "IsAdult", Role: "warrant", Qualifier: float64Ptr(1.0)},
+		Rules: []GraphRuleDef{
+			{Name: "IsAdult", Role: "warrant", Qualifier: 1.0},
 		},
 	}
 	code, err := GenerateGraph("mypkg", def)

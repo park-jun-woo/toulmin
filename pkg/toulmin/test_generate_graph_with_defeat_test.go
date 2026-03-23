@@ -1,22 +1,20 @@
 //ff:func feature=codegen type=codegen control=sequence
 //ff:what TestGenerateGraphWithDefeat — tests code generation with defeat edges
-package codegen
+package toulmin
 
 import (
 	"strings"
 	"testing"
-
-	"github.com/park-jun-woo/toulmin/internal/graphdef"
 )
 
 func TestGenerateGraphWithDefeat(t *testing.T) {
-	def := &graphdef.GraphDef{
+	def := &GraphDef{
 		Graph: "check",
-		Rules: []graphdef.RuleDef{
-			{Name: "W", Role: "warrant", Qualifier: float64Ptr(1.0)},
-			{Name: "R", Role: "rebuttal", Qualifier: float64Ptr(0.8)},
+		Rules: []GraphRuleDef{
+			{Name: "W", Role: "warrant", Qualifier: 1.0},
+			{Name: "R", Role: "rebuttal", Qualifier: 0.8},
 		},
-		Defeats: []graphdef.EdgeDef{{From: "R", To: "W"}},
+		Defeats: []GraphEdgeDef{{From: "R", To: "W"}},
 	}
 	code, err := GenerateGraph("pkg", def)
 	if err != nil {

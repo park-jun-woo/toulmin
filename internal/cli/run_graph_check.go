@@ -5,7 +5,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/park-jun-woo/toulmin/internal/analyzer"
+	"github.com/park-jun-woo/toulmin/pkg/analyzer"
 	"github.com/park-jun-woo/toulmin/pkg/toulmin"
 	"github.com/spf13/cobra"
 )
