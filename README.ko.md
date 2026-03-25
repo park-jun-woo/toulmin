@@ -7,18 +7,21 @@ Go 룰 엔진. 규칙은 Go 함수다. 예외는 그래프 엣지다. DSL 없음
 규칙은 Go 함수다. 각 함수는 1-2 depth:
 
 ```go
-func isAuthenticated(claim any, ground any, backing Backing) (bool, any) {
-    return ground.(*Req).User != nil, nil
+func isAuthenticated(ctx Context, backing Backing) (bool, any) {
+    req, _ := ctx.Get("req")
+    return req.(*Req).User != nil, nil
 }
-func isIPBlocked(claim any, ground any, backing Backing) (bool, any) {
-    return blockedIPs[ground.(*Req).IP], nil
+func isIPBlocked(ctx Context, backing Backing) (bool, any) {
+    req, _ := ctx.Get("req")
+    return blockedIPs[req.(*Req).IP], nil
 }
-func isInternalIP(claim any, ground any, backing Backing) (bool, any) {
-    return strings.HasPrefix(ground.(*Req).IP, "10."), nil
+func isInternalIP(ctx Context, backing Backing) (bool, any) {
+    req, _ := ctx.Get("req")
+    return strings.HasPrefix(req.(*Req).IP, "10."), nil
 }
-func isRateLimited(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
-func isPremiumUser(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
-func isIncidentMode(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
+func isRateLimited(ctx Context, backing Backing) (bool, any) { /* ... */ }
+func isPremiumUser(ctx Context, backing Backing) (bool, any) { /* ... */ }
+func isIncidentMode(ctx Context, backing Backing) (bool, any) { /* ... */ }
 ```
 
 요구사항은 진화한다. 양쪽이 어떻게 대응하는지 보라:
@@ -26,25 +29,27 @@ func isIncidentMode(claim any, ground any, backing Backing) (bool, any) { /* ...
 ```go
 // 월요일: "인증된 사용자만 접근, IP 차단 적용, 내부망은 차단 면제"
 g := toulmin.NewGraph("api:access")
-auth    := g.Warrant(isAuthenticated, nil, 1.0)
-blocked := g.Rebuttal(isIPBlocked, nil, 1.0)
-exempt  := g.Defeater(isInternalIP, nil, 1.0)
-g.Defeat(blocked, auth)
-g.Defeat(exempt, blocked)
+auth    := g.Rule(isAuthenticated)
+blocked := g.Counter(isIPBlocked)
+exempt  := g.Except(isInternalIP)
+blocked.Attacks(auth)
+exempt.Attacks(blocked)
 
 // 화요일: "Rate limiting 추가"
-limited := g.Rebuttal(isRateLimited, nil, 1.0)
-g.Defeat(limited, auth)
+limited := g.Counter(isRateLimited)
+limited.Attacks(auth)
 
 // 수요일: "프리미엄 사용자는 Rate limit 면제"
-premium := g.Defeater(isPremiumUser, nil, 1.0)
-g.Defeat(premium, limited)
+premium := g.Except(isPremiumUser)
+premium.Attacks(limited)
 
 // 목요일: "장애 대응 중에는 프리미엄도 제한"
-incident := g.Rebuttal(isIncidentMode, nil, 1.0)
-g.Defeat(incident, premium)
+incident := g.Counter(isIncidentMode)
+incident.Attacks(premium)
 
-results, _ := g.Evaluate(nil, req)
+ctx := toulmin.NewContext()
+ctx.Set("req", req)
+results, _ := g.Evaluate(ctx)
 // results[0].Verdict > 0: 허용
 ```
 
@@ -121,18 +126,18 @@ go get github.com/park-jun-woo/toulmin/pkg/toulmin
 ### 규칙은 Go 함수다
 
 ```go
-func(claim any, ground any, backing Backing) (bool, any)
+func(ctx Context, backing Backing) (bool, any)
 ```
 
-- `ground` = 요청마다 달라지는 판정 재료 (사용자, IP, 컨텍스트)
+- `ctx` = Get/Set 기반의 요청별 컨텍스트 (사용자, IP, 컨텍스트)
 - `backing` = 그래프 선언 시 고정되는 판정 기준 (임계값, 역할명, 설정)
 - 반환 = `(판정 결과, 증거)`. 증거는 도메인별 자유 타입.
 
 ```go
-func isInRole(claim any, ground any, backing Backing) (bool, any) {
-    user := ground.(*User)
+func isInRole(ctx Context, backing Backing) (bool, any) {
+    user, _ := ctx.Get("user")
     b := backing.(*RoleBacking)
-    return user.Role == b.Role, user.Role
+    return user.(*User).Role == b.Role, user.(*User).Role
 }
 ```
 
@@ -142,20 +147,20 @@ func isInRole(claim any, ground any, backing Backing) (bool, any) {
 
 | 노드 | 역할 |
 |---|---|
-| **Warrant** | 주장 — 공격받을 수 있다 |
-| **Rebuttal** | 반박 — 주장을 공격한다 (자기 결론 있음) |
-| **Defeater** | 예외 — 공격만 한다 (자기 결론 없음) |
+| **Rule** | 주장 — 공격받을 수 있다 |
+| **Counter** | 반박 — 주장을 공격한다 (자기 결론 있음) |
+| **Except** | 예외 — 공격만 한다 (자기 결론 없음) |
 
 ```go
 g := toulmin.NewGraph("voting")
-auth     := g.Warrant(isAdult, nil, 1.0)
-criminal := g.Rebuttal(hasCriminalRecord, nil, 1.0)
-expunged := g.Defeater(isExpunged, nil, 1.0)
-g.Defeat(criminal, auth)      // 전과가 성인을 공격
-g.Defeat(expunged, criminal)  // 말소가 전과를 무력화
+auth     := g.Rule(isAdult)
+criminal := g.Counter(hasCriminalRecord)
+expunged := g.Except(isExpunged)
+criminal.Attacks(auth)      // 전과가 성인을 공격
+expunged.Attacks(criminal)  // 말소가 전과를 무력화
 ```
 
-**Defeater가 차별점이다.** "예외의 예외"를 if-else로는 구조적으로 표현할 수 없다. defeats graph에서는 엣지 한 줄이다.
+**Except가 차별점이다.** "예외의 예외"를 if-else로는 구조적으로 표현할 수 없다. defeats graph에서는 엣지 한 줄이다.
 
 ### Verdict
 
@@ -181,10 +186,12 @@ verdict = 2 × raw - 1
 ### 평가 옵션
 
 ```go
-results, _ := g.Evaluate(nil, req)                                                    // 기본 (행렬곱)
-results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Method: toulmin.Recursive})       // 재귀 h-Categoriser
-results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Trace: true})                     // trace 포함
-results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Duration: true})                  // 소요시간 측정 (trace 자동 활성화)
+ctx := toulmin.NewContext()
+ctx.Set("req", req)
+results, _ := g.Evaluate(ctx)                                                         // 기본 (행렬곱)
+results, _ = g.Evaluate(ctx, toulmin.EvalOption{Method: toulmin.Recursive})            // 재귀 h-Categoriser
+results, _ = g.Evaluate(ctx, toulmin.EvalOption{Trace: true})                          // trace 포함
+results, _ = g.Evaluate(ctx, toulmin.EvalOption{Duration: true})                       // 소요시간 측정 (trace 자동 활성화)
 ```
 
 `EvalOption`으로 평가 동작을 제어한다: `Method` (Matrix/Recursive), `Trace` (TraceEntry 수집), `Duration` (규칙별 실행 시간 측정).
@@ -204,8 +211,8 @@ type Backing interface {
 
 ```go
 g := toulmin.NewGraph("access")
-admin  := g.Warrant(isInRole, &RoleBacking{Role: "admin"}, 1.0)
-editor := g.Warrant(isInRole, &RoleBacking{Role: "editor"}, 0.8)
+admin  := g.Rule(isInRole).Backing(&RoleBacking{Role: "admin"})
+editor := g.Rule(isInRole).Backing(&RoleBacking{Role: "editor"}).Qualifier(0.8)
 ```
 
 backing이 `nil`이면 규칙에 판정 기준이 필요 없다는 뜻이다. Backing 구조체에 func 필드는 금지된다 — `Validate()`가 이를 거부한다.
@@ -215,7 +222,8 @@ backing이 `nil`이면 규칙에 판정 기준이 필요 없다는 뜻이다. Ba
 `EvalOption{Trace: true}`로 각 규칙의 판정 근거를 추적한다:
 
 ```go
-results, _ := g.Evaluate(claim, ground, toulmin.EvalOption{Trace: true})
+ctx := toulmin.NewContext()
+results, _ := g.Evaluate(ctx, toulmin.EvalOption{Trace: true})
 for _, t := range results[0].Trace {
     fmt.Printf("%s role=%s activated=%v evidence=%v\n",
         t.Name, t.Role, t.Activated, t.Evidence)
@@ -241,7 +249,9 @@ def, _ := toulmin.ParseYAML("policy.yaml")
 toulmin.ValidateGraphDef(def)
 backings := map[string]toulmin.Backing{"isIPBlocked": fetchBlocklistFromRedis()}
 g, err := toulmin.LoadGraph(def, funcs, backings)
-results, _ := g.Evaluate(nil, req)
+ctx := toulmin.NewContext()
+ctx.Set("req", req)
+results, _ := g.Evaluate(ctx)
 ```
 
 `ParseYAML`은 YAML을 `GraphDef`로 파싱한다. `ValidateGraphDef`는 defeat 엣지 참조와 순환을 검증한다. `LoadGraph`는 `GraphDef`로 라이브 그래프를 생성한다 — YAML, DB, API 어디서든.
@@ -254,7 +264,7 @@ results, _ := g.Evaluate(nil, req)
 graph: <이름>              # 그래프 이름 (필수)
 rules:                     # 규칙 목록 (필수)
   - name: <규칙명>          # 규칙 이름, 함수 레지스트리 키와 일치 (필수)
-    role: <역할>            # warrant | rebuttal | defeater (필수)
+    role: <역할>            # rule | counter | except (필수)
     qualifier: <실수>       # 0.0–1.0, 생략 시 기본값 1.0 (선택)
 defeats:                   # defeat 엣지 목록 (선택)
   - from: <공격자>          # 공격하는 규칙 이름 (rules에 존재해야 함)
@@ -267,17 +277,17 @@ defeats:                   # defeat 엣지 목록 (선택)
 graph: api:access
 rules:
   - name: isAuthenticated
-    role: warrant
+    role: rule
   - name: isIPBlocked
-    role: rebuttal
+    role: counter
   - name: isInternalIP
-    role: defeater
+    role: except
   - name: isRateLimited
-    role: rebuttal
+    role: counter
   - name: isPremiumUser
-    role: defeater
+    role: except
   - name: isIncidentMode
-    role: rebuttal
+    role: counter
 defeats:
   - from: isIPBlocked
     to: isAuthenticated
@@ -312,7 +322,7 @@ defeats:
 
 ### vs if-else
 
-- 규칙 추가: `g.Defeat(new, existing)` 한 줄 vs 중첩 구조 전체 리팩터링
+- 규칙 추가: `new.Attacks(existing)` 한 줄 vs 중첩 구조 전체 리팩터링
 - 예외 처리: 엣지 선언 vs 조건문 안에 조건문
 - 판정 근거: `Evaluate(EvalOption{Trace: true})` 내장 vs 별도 로깅 구축
 - 테스트: 규칙 함수 단위 테스트 vs 조합 폭발
@@ -323,7 +333,7 @@ defeats:
 |---|---|---|---|---|
 | 규칙 언어 | **Go 함수** | Rego (DSL) | PERM 모델 (설정) | Cedar (DSL) |
 | 예외 처리 | **defeats graph** | 규칙 우선순위 | 정책 우선순위 | forbid/permit |
-| 예외의 예외 | **Defeater** | 없음 | 없음 | 없음 |
+| 예외의 예외 | **Except** | 없음 | 없음 | 없음 |
 | 판정 | **연속값 [-1,1]** | allow/deny | allow/deny | allow/deny |
 | 판정 근거 | **Trace 내장** | Decision log | 없음 | 없음 |
 | 의존성 | Go 표준 라이브러리 | Go + Rego 런타임 | Go | Rust + FFI |

@@ -7,18 +7,21 @@ A rule engine for Go. Rules are Go functions. Exceptions are graph edges. No DSL
 Rules are Go functions. Each stays at 1-2 depth:
 
 ```go
-func isAuthenticated(claim any, ground any, backing Backing) (bool, any) {
-    return ground.(*Req).User != nil, nil
+func isAuthenticated(ctx Context, backing Backing) (bool, any) {
+    req, _ := ctx.Get("req")
+    return req.(*Req).User != nil, nil
 }
-func isIPBlocked(claim any, ground any, backing Backing) (bool, any) {
-    return blockedIPs[ground.(*Req).IP], nil
+func isIPBlocked(ctx Context, backing Backing) (bool, any) {
+    req, _ := ctx.Get("req")
+    return blockedIPs[req.(*Req).IP], nil
 }
-func isInternalIP(claim any, ground any, backing Backing) (bool, any) {
-    return strings.HasPrefix(ground.(*Req).IP, "10."), nil
+func isInternalIP(ctx Context, backing Backing) (bool, any) {
+    req, _ := ctx.Get("req")
+    return strings.HasPrefix(req.(*Req).IP, "10."), nil
 }
-func isRateLimited(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
-func isPremiumUser(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
-func isIncidentMode(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
+func isRateLimited(ctx Context, backing Backing) (bool, any) { /* ... */ }
+func isPremiumUser(ctx Context, backing Backing) (bool, any) { /* ... */ }
+func isIncidentMode(ctx Context, backing Backing) (bool, any) { /* ... */ }
 ```
 
 Requirements evolve. Watch how each side handles it:
@@ -27,25 +30,27 @@ Requirements evolve. Watch how each side handles it:
 // Monday: "authenticated users can access, but block banned IPs,
 //          except internal network is exempt from IP blocking"
 g := toulmin.NewGraph("api:access")
-auth    := g.Warrant(isAuthenticated, nil, 1.0)
-blocked := g.Rebuttal(isIPBlocked, nil, 1.0)
-exempt  := g.Defeater(isInternalIP, nil, 1.0)
-g.Defeat(blocked, auth)
-g.Defeat(exempt, blocked)
+auth    := g.Rule(isAuthenticated)
+blocked := g.Counter(isIPBlocked)
+exempt  := g.Except(isInternalIP)
+blocked.Attacks(auth)
+exempt.Attacks(blocked)
 
 // Tuesday: "add rate limiting"
-limited := g.Rebuttal(isRateLimited, nil, 1.0)
-g.Defeat(limited, auth)
+limited := g.Counter(isRateLimited)
+limited.Attacks(auth)
 
 // Wednesday: "premium users bypass rate limit"
-premium := g.Defeater(isPremiumUser, nil, 1.0)
-g.Defeat(premium, limited)
+premium := g.Except(isPremiumUser)
+premium.Attacks(limited)
 
 // Thursday: "but not during incident response"
-incident := g.Rebuttal(isIncidentMode, nil, 1.0)
-g.Defeat(incident, premium)
+incident := g.Counter(isIncidentMode)
+incident.Attacks(premium)
 
-results, _ := g.Evaluate(nil, req)
+ctx := toulmin.NewContext()
+ctx.Set("req", req)
+results, _ := g.Evaluate(ctx)
 // results[0].Verdict > 0: allow
 ```
 
@@ -122,18 +127,18 @@ go get github.com/park-jun-woo/toulmin/pkg/toulmin
 ### Rules are Go functions
 
 ```go
-func(claim any, ground any, backing Backing) (bool, any)
+func(ctx Context, backing Backing) (bool, any)
 ```
 
-- `ground` = per-request facts (user, IP, context)
+- `ctx` = context with Get/Set for per-request facts (user, IP, context)
 - `backing` = fixed criteria at graph declaration (threshold, role name, config)
 - Returns `(judgment, evidence)`. Evidence is any domain-specific type.
 
 ```go
-func isInRole(claim any, ground any, backing Backing) (bool, any) {
-    user := ground.(*User)
+func isInRole(ctx Context, backing Backing) (bool, any) {
+    user, _ := ctx.Get("user")
     b := backing.(*RoleBacking)
-    return user.Role == b.Role, user.Role
+    return user.(*User).Role == b.Role, user.(*User).Role
 }
 ```
 
@@ -143,20 +148,20 @@ Three node types, one edge type:
 
 | Node | Role |
 |---|---|
-| **Warrant** | Claim — can be attacked |
-| **Rebuttal** | Counter-claim — attacks a warrant (has own conclusion) |
-| **Defeater** | Exception — attacks only (no own conclusion) |
+| **Rule** | Claim — can be attacked |
+| **Counter** | Counter-claim — attacks a rule (has own conclusion) |
+| **Except** | Exception — attacks only (no own conclusion) |
 
 ```go
 g := toulmin.NewGraph("voting")
-auth     := g.Warrant(isAdult, nil, 1.0)
-criminal := g.Rebuttal(hasCriminalRecord, nil, 1.0)
-expunged := g.Defeater(isExpunged, nil, 1.0)
-g.Defeat(criminal, auth)      // criminal record attacks adult
-g.Defeat(expunged, criminal)  // expungement neutralizes criminal record
+auth     := g.Rule(isAdult)
+criminal := g.Counter(hasCriminalRecord)
+expunged := g.Except(isExpunged)
+criminal.Attacks(auth)      // criminal record attacks adult
+expunged.Attacks(criminal)  // expungement neutralizes criminal record
 ```
 
-**Defeater is the differentiator.** "Exceptions to exceptions" cannot be structurally expressed with if-else. In a defeats graph, it's one edge.
+**Except is the differentiator.** "Exceptions to exceptions" cannot be structurally expressed with if-else. In a defeats graph, it's one edge.
 
 ### Verdict
 
@@ -182,10 +187,12 @@ Not binary. **The framework interprets**:
 ### Evaluation Options
 
 ```go
-results, _ := g.Evaluate(nil, req)                                                    // default (matrix)
-results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Method: toulmin.Recursive})       // recursive h-Categoriser
-results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Trace: true})                     // with trace
-results, _ = g.Evaluate(nil, req, toulmin.EvalOption{Duration: true})                  // with duration (trace auto-enabled)
+ctx := toulmin.NewContext()
+ctx.Set("req", req)
+results, _ := g.Evaluate(ctx)                                                         // default (matrix)
+results, _ = g.Evaluate(ctx, toulmin.EvalOption{Method: toulmin.Recursive})            // recursive h-Categoriser
+results, _ = g.Evaluate(ctx, toulmin.EvalOption{Trace: true})                          // with trace
+results, _ = g.Evaluate(ctx, toulmin.EvalOption{Duration: true})                       // with duration (trace auto-enabled)
 ```
 
 `EvalOption` controls evaluation behavior: `Method` (Matrix/Recursive), `Trace` (collect TraceEntry), `Duration` (measure per-rule execution time).
@@ -205,8 +212,8 @@ Same function + different backing = different rule. Reuse without closure factor
 
 ```go
 g := toulmin.NewGraph("access")
-admin  := g.Warrant(isInRole, &RoleBacking{Role: "admin"}, 1.0)
-editor := g.Warrant(isInRole, &RoleBacking{Role: "editor"}, 0.8)
+admin  := g.Rule(isInRole).Backing(&RoleBacking{Role: "admin"})
+editor := g.Rule(isInRole).Backing(&RoleBacking{Role: "editor"}).Qualifier(0.8)
 ```
 
 `nil` backing means the rule needs no judgment criteria. Func fields in Backing structs are forbidden — `Validate()` rejects them.
@@ -216,7 +223,8 @@ editor := g.Warrant(isInRole, &RoleBacking{Role: "editor"}, 0.8)
 `EvalOption{Trace: true}` tracks each rule's judgment basis:
 
 ```go
-results, _ := g.Evaluate(claim, ground, toulmin.EvalOption{Trace: true})
+ctx := toulmin.NewContext()
+results, _ := g.Evaluate(ctx, toulmin.EvalOption{Trace: true})
 for _, t := range results[0].Trace {
     fmt.Printf("%s role=%s activated=%v evidence=%v\n",
         t.Name, t.Role, t.Activated, t.Evidence)
@@ -242,7 +250,9 @@ def, _ := toulmin.ParseYAML("policy.yaml")
 toulmin.ValidateGraphDef(def)
 backings := map[string]toulmin.Backing{"isIPBlocked": fetchBlocklistFromRedis()}
 g, err := toulmin.LoadGraph(def, funcs, backings)
-results, _ := g.Evaluate(nil, req)
+ctx := toulmin.NewContext()
+ctx.Set("req", req)
+results, _ := g.Evaluate(ctx)
 ```
 
 `ParseYAML` parses YAML into `GraphDef`. `ValidateGraphDef` checks defeat edge references and cycles. `LoadGraph` builds the live graph from any `GraphDef` — YAML, DB, or API.
@@ -255,7 +265,7 @@ Compiled execution speed + dynamic rule updates. No DSL parser, no interpreter, 
 graph: <name>              # graph name (required)
 rules:                     # rule list (required)
   - name: <rule_name>      # rule name, matches function registry key (required)
-    role: <role>           # warrant | rebuttal | defeater (required)
+    role: <role>           # rule | counter | except (required)
     qualifier: <float>     # 0.0–1.0, default 1.0 if omitted (optional)
 defeats:                   # defeat edge list (optional)
   - from: <attacker_name>  # rule name of attacker (must exist in rules)
@@ -268,17 +278,17 @@ Example — the same access control graph from above:
 graph: api:access
 rules:
   - name: isAuthenticated
-    role: warrant
+    role: rule
   - name: isIPBlocked
-    role: rebuttal
+    role: counter
   - name: isInternalIP
-    role: defeater
+    role: except
   - name: isRateLimited
-    role: rebuttal
+    role: counter
   - name: isPremiumUser
-    role: defeater
+    role: except
   - name: isIncidentMode
-    role: rebuttal
+    role: counter
 defeats:
   - from: isIPBlocked
     to: isAuthenticated
@@ -313,7 +323,7 @@ You can use the core without any framework. Writing your own rule functions — 
 
 ### vs if-else
 
-- Adding a rule: `g.Defeat(new, existing)` one line vs refactoring entire nesting
+- Adding a rule: `new.Attacks(existing)` one line vs refactoring entire nesting
 - Exception handling: edge declaration vs conditions inside conditions
 - Audit trail: `Evaluate(EvalOption{Trace: true})` built-in vs separate logging
 - Testing: unit test each rule function vs combinatorial explosion
@@ -324,7 +334,7 @@ You can use the core without any framework. Writing your own rule functions — 
 |---|---|---|---|---|
 | Rule language | **Go functions** | Rego (DSL) | PERM model (config) | Cedar (DSL) |
 | Exception handling | **defeats graph** | rule priority | policy priority | forbid/permit |
-| Exception of exception | **Defeater** | none | none | none |
+| Exception of exception | **Except** | none | none | none |
 | Judgment | **continuous [-1,1]** | allow/deny | allow/deny | allow/deny |
 | Audit trail | **Trace built-in** | Decision log | none | none |
 | Dependencies | Go stdlib only | Go + Rego runtime | Go | Rust + FFI |

@@ -18,16 +18,16 @@ import "github.com/park-jun-woo/toulmin/pkg/price"
 memberFunc := func(u any) string { return u.(*MyUser).Membership }
 
 g := toulmin.NewGraph("product:discount")
-coupon := g.Warrant(price.HasCoupon, &price.DiscountBacking{
+coupon := g.Rule(price.HasCoupon).Backing(&price.DiscountBacking{
     Name: "SAVE30", Rate: 0.3, Max: 50000,
-}, 1.0)
-basic := g.Warrant(price.IsMemberLevel, &price.MemberBacking{
+})
+basic := g.Rule(price.IsMemberLevel).Backing(&price.MemberBacking{
     Level: "basic", MembershipFunc: memberFunc,
     Discount: &price.DiscountBacking{Name: "basic", Rate: 0.1},
-}, 1.0)
-noStack := g.Rebuttal(price.IsAlreadyDiscounted, nil, 1.0)
-g.Defeat(noStack, coupon)
-g.Defeat(noStack, basic)
+})
+noStack := g.Counter(price.IsAlreadyDiscounted)
+noStack.Attacks(coupon)
+noStack.Attacks(basic)
 
 pricer := price.NewPricer(g, nil)
 result, _ := pricer.Evaluate(req, ctx)

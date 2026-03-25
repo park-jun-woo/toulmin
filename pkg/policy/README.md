@@ -16,12 +16,12 @@ import "github.com/park-jun-woo/toulmin/pkg/policy"
 
 ```go
 g := toulmin.NewGraph("admin:users")
-auth := g.Warrant(policy.IsAuthenticated, nil, 1.0)
-admin := g.Warrant(policy.IsInRole, &policy.RoleBacking{Role: "admin"}, 1.0)
-blocked := g.Rebuttal(policy.IsIPInList, &policy.IPListBacking{Purpose: "blocklist"}, 1.0)
-allowed := g.Defeater(policy.IsIPInList, &policy.IPListBacking{Purpose: "whitelist"}, 1.0)
-g.Defeat(blocked, auth)
-g.Defeat(allowed, blocked)
+auth := g.Rule(policy.IsAuthenticated)
+admin := g.Rule(policy.IsInRole).Backing(&policy.RoleBacking{Role: "admin"})
+blocked := g.Counter(policy.IsIPInList).Backing(&policy.IPListBacking{Purpose: "blocklist"})
+allowed := g.Except(policy.IsIPInList).Backing(&policy.IPListBacking{Purpose: "whitelist"})
+blocked.Attacks(auth)
+allowed.Attacks(blocked)
 
 mux := http.NewServeMux()
 mux.Handle("/admin/users", policy.Guard(g, buildCtx)(adminHandler))
@@ -29,7 +29,7 @@ mux.Handle("/admin/users", policy.Guard(g, buildCtx)(adminHandler))
 
 ## Rules
 
-`func(claim, ground, backing) (bool, any)` — ground is per-request facts, backing is fixed criteria.
+`func(ctx toulmin.Context, backing toulmin.Backing) (bool, any)` — ctx provides per-request facts via Get/Set, backing is fixed criteria.
 
 | Rule | Backing | Description |
 |---|---|---|
@@ -62,7 +62,7 @@ type IPListBacking struct {
 
 | | Guard | GuardDebug |
 |---|---|---|
-| Evaluation | `Evaluate` | `Evaluate(EvalOption{Trace: true})` |
+| Evaluation | `Evaluate(ctx)` | `Evaluate(ctx, EvalOption{Trace: true})` |
 | Headers | None | `X-Policy-Verdict`, `X-Policy-Trace` |
 | 403 body | `{"error":"forbidden"}` | `{"error":"forbidden","trace":"..."}` |
 | Signature | `func(http.Handler) http.Handler` | `func(http.Handler) http.Handler` |
@@ -95,7 +95,9 @@ mux.Handle("/admin", policy.Guard(g, buildCtx)(handler))
 // Gin
 r.GET("/admin", func(c *gin.Context) {
     rc := buildCtxFromGin(c)
-    results, _ := g.Evaluate(nil, rc)
+    ctx := toulmin.NewContext()
+    ctx.Set("rc", rc)
+    results, _ := g.Evaluate(ctx)
     if results[0].Verdict <= 0 {
         c.AbortWithStatusJSON(403, gin.H{"error": "forbidden"})
         return

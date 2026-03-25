@@ -14,17 +14,17 @@ import "github.com/park-jun-woo/toulmin/pkg/feature"
 
 ```go
 g := toulmin.NewGraph("feature:dark-mode")
-beta := g.Warrant(feature.IsBetaUser, nil, 1.0)
-legacy := g.Rebuttal(feature.IsLegacyBrowser, nil, 1.0)
-internal := g.Defeater(feature.IsInternalStaff, nil, 1.0)
-g.Defeat(legacy, beta)
-g.Defeat(internal, legacy)
+beta := g.Rule(feature.IsBetaUser)
+legacy := g.Counter(feature.IsLegacyBrowser)
+internal := g.Except(feature.IsInternalStaff)
+legacy.Attacks(beta)
+internal.Attacks(legacy)
 
 flags := feature.NewFlags()
 flags.Register("dark-mode", g)
 
 enabled, _ := flags.IsEnabled("dark-mode", ctx)
-result, _ := flags.EvaluateTrace("dark-mode", ctx)
+result, _ := flags.Evaluate("dark-mode", ctx, toulmin.EvalOption{Trace: true})
 active, _ := flags.List(ctx)
 ```
 
@@ -42,9 +42,9 @@ active, _ := flags.List(ctx)
 ## Flags
 
 ```go
-flags.IsEnabled(name, ctx)       // bool
-flags.EvaluateTrace(name, ctx)   // FeatureResult with trace
-flags.List(ctx)                  // all enabled feature names
+flags.IsEnabled(name, ctx)                                    // bool
+flags.Evaluate(name, ctx, toulmin.EvalOption{Trace: true})    // FeatureResult with trace
+flags.List(ctx)                                               // all enabled feature names
 ```
 
 ## Middleware (net/http)

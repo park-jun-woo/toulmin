@@ -22,11 +22,11 @@ ab := &approve.ApproverBacking{
 }
 
 g := toulmin.NewGraph("expense:manager")
-budget := g.Warrant(approve.IsUnderBudget, nil, 1.0)
-frozen := g.Rebuttal(approve.IsBudgetFrozen, nil, 1.0)
-urgent := g.Defeater(approve.IsUrgent, nil, 1.0)
-g.Defeat(frozen, budget)
-g.Defeat(urgent, frozen)
+budget := g.Rule(approve.IsUnderBudget)
+frozen := g.Counter(approve.IsBudgetFrozen)
+urgent := g.Except(approve.IsUrgent)
+frozen.Attacks(budget)
+urgent.Attacks(frozen)
 
 f := approve.NewFlow("expense").AddStep("manager", g)
 

@@ -27,10 +27,10 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 ### Rule
 
 ```go
-func(claim any, ground any, backing Backing) (bool, any)
+func(ctx Context, backing Backing) (bool, any)
 ```
 
-Returns `(judgment, evidence)`. `backing` receives judgment criteria from graph declaration. Legacy `func(any, any) (bool, any)` supported via internal wrapping.
+Returns `(judgment, evidence)`. `ctx` is a Context interface with `Get(key string) (any, bool)` and `Set(key string, value any)`. `backing` receives judgment criteria from graph declaration.
 
 ### Backing Interface
 
@@ -49,7 +49,7 @@ Backing structs must implement `BackingName()` (returns identifier for ruleID) a
 |---|---|---|
 | What | Facts about judgment target | Judgment criteria |
 | When | Per request (runtime) | Fixed at declaration |
-| Passed by | `Evaluate(claim, ground)` | `Warrant(fn, backing, qualifier)` |
+| Passed by | `ctx.Set(key, value)` before `Evaluate(ctx)` | `g.Rule(fn).Backing(b)` |
 | Example | User, IP, request context | Threshold, role name, config |
 
 ### Strength
@@ -62,9 +62,9 @@ Backing structs must implement `BackingName()` (returns identifier for ruleID) a
 
 ### Defeats Graph
 
-- **Warrant**: node that can be attacked
-- **Rebuttal**: node that attacks a warrant (has own conclusion)
-- **Defeater**: node that attacks without own conclusion
+- **Rule**: node that can be attacked
+- **Counter**: node that attacks a rule (has own conclusion)
+- **Except**: node that attacks without own conclusion
 
 Distinction is in **graph position** (defeat edges), not function signature.
 
@@ -90,10 +90,11 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 ## Writing Rules
 
 ```go
-func CheckOneFileOneFunc(claim any, ground any, backing Backing) (bool, any) {
-    gf := ground.(*FileGround)
-    if len(gf.Funcs) > 1 {
-        return true, &Evidence{Got: len(gf.Funcs), Expected: 1}
+func CheckOneFileOneFunc(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+    gf, _ := ctx.Get("file")
+    f := gf.(*FileGround)
+    if len(f.Funcs) > 1 {
+        return true, &Evidence{Got: len(f.Funcs), Expected: 1}
     }
     return false, nil
 }
@@ -103,18 +104,19 @@ func CheckOneFileOneFunc(claim any, ground any, backing Backing) (bool, any) {
 
 ## Graph API
 
-Warrant/Rebuttal/Defeater return `*Rule` reference. Defeat takes two `*Rule`. No chaining.
+Rule/Counter/Except return `*Rule` reference with builder pattern. Attacks is a method on `*Rule`.
 
 ```go
 g := toulmin.NewGraph("voting")
-w := g.Warrant(IsAdult, nil, 1.0)            // backing is Backing (nil allowed)
-r := g.Rebuttal(HasCriminalRecord, nil, 1.0) // backing is Backing (nil allowed)
-g.Defeat(r, w)
+w := g.Rule(IsAdult)                           // backing/qualifier optional via builder
+r := g.Counter(HasCriminalRecord)
+r.Attacks(w)
 
-results, err := g.Evaluate(claim, ground)                                                // default (matrix)
-results, err = g.Evaluate(claim, ground, toulmin.EvalOption{Method: toulmin.Recursive})   // recursive h-Categoriser
-results, err = g.Evaluate(claim, ground, toulmin.EvalOption{Trace: true})                 // with trace
-results, err = g.Evaluate(claim, ground, toulmin.EvalOption{Duration: true})              // with duration (trace auto-enabled)
+ctx := toulmin.NewContext()
+results, err := g.Evaluate(ctx)                                                          // default (matrix)
+results, err = g.Evaluate(ctx, toulmin.EvalOption{Method: toulmin.Recursive})             // recursive h-Categoriser
+results, err = g.Evaluate(ctx, toulmin.EvalOption{Trace: true})                           // with trace
+results, err = g.Evaluate(ctx, toulmin.EvalOption{Duration: true})                        // with duration (trace auto-enabled)
 ```
 
 ### EvalOption
@@ -157,10 +159,10 @@ type TraceEntry struct {
 
 ```go
 g := toulmin.NewGraph("limits")
-w1 := g.Warrant(CheckThreshold, &ThresholdBacking{Max: 100}, 1.0)
-w2 := g.Warrant(CheckThreshold, &ThresholdBacking{Max: 200}, 0.8)
-r := g.Rebuttal(HasExemption, &ExemptionBacking{Type: "vip"}, 1.0)
-g.Defeat(r, w1)
+w1 := g.Rule(CheckThreshold).Backing(&ThresholdBacking{Max: 100})
+w2 := g.Rule(CheckThreshold).Backing(&ThresholdBacking{Max: 200}).Qualifier(0.8)
+r := g.Counter(HasExemption).Backing(&ExemptionBacking{Type: "vip"})
+r.Attacks(w1)
 ```
 
 ### LoadGraph — Dynamic Graph from Definition
@@ -177,7 +179,8 @@ backings := map[string]toulmin.Backing{
 }
 
 g, err := toulmin.LoadGraph(def, funcs, backings)
-results, _ := g.Evaluate(claim, ground)
+ctx := toulmin.NewContext()
+results, _ := g.Evaluate(ctx)
 ```
 
 `GraphDef` can come from YAML, DB, or API — graph structure and backing change without redeployment. Functions stay compiled.
@@ -196,7 +199,7 @@ type GraphDef struct {
 graph: <name>              # graph name (required)
 rules:                     # rule list (required)
   - name: <rule_name>      # rule name, matches function registry key (required)
-    role: <role>           # warrant | rebuttal | defeater (required)
+    role: <role>           # rule | counter | except (required)
     qualifier: <float>     # 0.0–1.0, default 1.0 if omitted (optional)
 defeats:                   # defeat edge list (optional)
   - from: <attacker_name>  # rule name of attacker (must exist in rules)
@@ -209,11 +212,11 @@ Example:
 graph: api:access
 rules:
   - name: isAuthenticated
-    role: warrant
+    role: rule
   - name: isIPBlocked
-    role: rebuttal
+    role: counter
   - name: isInternalIP
-    role: defeater
+    role: except
     qualifier: 0.8
 defeats:
   - from: isIPBlocked
@@ -230,7 +233,9 @@ defeats:
 def, err := toulmin.ParseYAML("policy.yaml")
 if err := toulmin.ValidateGraphDef(def); err != nil { /* handle */ }
 g, err := toulmin.LoadGraph(def, funcs, backings)
-results, _ := g.Evaluate(nil, req)
+ctx := toulmin.NewContext()
+ctx.Set("req", req)
+results, _ := g.Evaluate(ctx)
 ```
 
 ### Engine API (legacy)
@@ -259,8 +264,7 @@ func TestAccessPolicy(t *testing.T) {
 ```go
 type TestCase struct {
     Name   string      // sub-test name
-    Claim  any         // passed to Evaluate
-    Ground any         // passed to Evaluate
+    Ctx    Context     // passed to Evaluate (use NewContext())
     Option EvalOption  // zero value for defaults
     Expect Expectation // verdict assertion
 }
@@ -306,7 +310,7 @@ toulmin evaluate                              # run example
 
 ```
 0. Cycle detection (DFS) → error if cycle found
-1. Each warrant node → run func(claim, ground, backing) → false? skip
+1. Each rule node → run func(ctx, backing) → false? skip
 2. If true → traverse attackers recursively
 3. Each attacker: func → false? contributes 0 → true? recurse deeper
 4. h-Categoriser: raw(a) = w(a) / (1 + Σ raw(attackers)), verdict = 2*raw - 1
@@ -320,11 +324,11 @@ toulmin evaluate                              # run example
 
 | Mistake | Fix |
 |---|---|
-| Rule func wrong signature | `func(claim any, ground any, backing Backing) (bool, any)` (legacy 2-arg also OK) |
-| Chaining calls | Warrant/Rebuttal/Defeater return `*Rule`, not `*Graph` — use separate statements |
-| Defeat without registration | Must Warrant/Rebuttal/Defeater first to get `*Rule` |
+| Rule func wrong signature | `func(ctx Context, backing Backing) (bool, any)` |
+| Chaining calls | Rule/Counter/Except return `*Rule` with builder pattern — backing/qualifier are optional |
+| Attacks without registration | Must Rule/Counter/Except first to get `*Rule` |
 | Verdict 0.0 as allow/deny | 0.0 = undecided — threshold is framework's decision |
-| Confusing ground and backing | ground = per-request facts, backing = fixed criteria at declaration |
+| Confusing context and backing | ctx = per-request facts via Get/Set, backing = fixed criteria at declaration |
 | Forgetting backing | Use `nil` when no backing needed |
 | Func field in Backing struct | `Validate()` rejects func fields — use plain data fields only |
 
@@ -334,9 +338,9 @@ Same function + different backing values — no closure factories needed. `ruleI
 
 ```go
 g := toulmin.NewGraph("example")
-r1 := g.Rebuttal(HasRole, &RoleBacking{Role: "admin"}, 1.0)   // ruleID = "HasRole#admin"
-r2 := g.Rebuttal(HasRole, &RoleBacking{Role: "editor"}, 1.0)  // ruleID = "HasRole#editor"
-g.Defeat(r1, someWarrant)
+r1 := g.Counter(HasRole).Backing(&RoleBacking{Role: "admin"})   // ruleID = "HasRole#admin"
+r2 := g.Counter(HasRole).Backing(&RoleBacking{Role: "editor"})  // ruleID = "HasRole#editor"
+r1.Attacks(someRule)
 ```
 
 ### Verdict 0.0 Threshold

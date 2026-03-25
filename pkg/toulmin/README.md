@@ -5,8 +5,9 @@ Toulmin argumentation-based rule engine core. Defeats graph + h-Categoriser verd
 ## Rule Function Signature
 
 ```go
-func(claim any, ground any, backing Backing) (bool, any)
-// ground = per-request facts, backing = fixed criteria at declaration
+func(ctx Context, backing Backing) (bool, any)
+// ctx = Context interface with Get/Set for per-request facts
+// backing = fixed criteria at declaration
 // returns (judgment, evidence)
 ```
 
@@ -17,11 +18,12 @@ func(claim any, ground any, backing Backing) (bool, any)
 | Function | File | Description |
 |---|---|---|
 | `NewGraph(name)` | new_graph.go | Create graph builder |
-| `g.Warrant(fn, backing Backing, qualifier)` | graph_warrant.go | Register warrant, return `*Rule` |
-| `g.Rebuttal(fn, backing Backing, qualifier)` | graph_rebuttal.go | Register rebuttal, return `*Rule` |
-| `g.Defeater(fn, backing Backing, qualifier)` | graph_defeater.go | Register defeater, return `*Rule` |
-| `g.Defeat(from, to)` | graph_defeat.go | Declare defeat edge |
-| `g.Evaluate(claim, ground, opt ...EvalOption)` | graph_evaluate.go | Run evaluation, return verdicts (opt controls Trace/Duration) |
+| `g.Rule(fn)` | graph_rule.go | Register rule, return `*Rule` (builder: `.Backing(b)`, `.Qualifier(q)`) |
+| `g.Counter(fn)` | graph_counter.go | Register counter, return `*Rule` (builder: `.Backing(b)`, `.Qualifier(q)`) |
+| `g.Except(fn)` | graph_except.go | Register except, return `*Rule` (builder: `.Backing(b)`, `.Qualifier(q)`) |
+| `rule.Attacks(target)` | rule_attacks.go | Declare defeat edge (method on `*Rule`) |
+| `g.Evaluate(ctx, opt ...EvalOption)` | graph_evaluate.go | Run evaluation, return verdicts (ctx is Context, opt controls Trace/Duration) |
+| `NewContext()` | new_context.go | Create `*MapContext` implementing Context interface |
 
 ### Dynamic Loading
 
@@ -37,7 +39,7 @@ func(claim any, ground any, backing Backing) (bool, any)
 |---|---|---|
 | `NewEngine()` | new_engine.go | Create legacy engine |
 | `e.Register(RuleMeta)` | engine_register.go | Register rule by name |
-| `e.Evaluate(claim, ground, opt ...EvalOption)` | engine_evaluate.go | Run evaluation (opt controls Trace/Duration) |
+| `e.Evaluate(ctx, opt ...EvalOption)` | engine_evaluate.go | Run evaluation (ctx is Context, opt controls Trace/Duration) |
 
 ### Code Generation
 
@@ -79,7 +81,9 @@ func(claim any, ground any, backing Backing) (bool, any)
 | `GraphDef` | graph_def.go | Graph definition (AST from YAML/DB/API) |
 | `GraphRuleDef` | graph_rule_def.go | Rule entry in GraphDef |
 | `GraphEdgeDef` | graph_edge_def.go | Defeat edge in GraphDef |
-| `TestCase` | test_case.go | Table-driven test case (Name, Claim, Ground, Option, Expect) |
+| `TestCase` | test_case.go | Table-driven test case (Name, Ctx, Option, Expect) |
+| `Context` | context.go | Interface: `Get(key string) (any, bool)`, `Set(key string, value any)` |
+| `MapContext` | map_context.go | Default Context implementation |
 | `Expectation` | expectation.go | Verdict assertion function `func([]EvalResult) error` |
 
 ## h-Categoriser
@@ -126,7 +130,7 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 graph: <name>
 rules:
   - name: <rule_name>
-    role: warrant | rebuttal | defeater
+    role: rule | counter | except
     qualifier: 0.0-1.0  # default 1.0
 defeats:
   - from: <attacker>

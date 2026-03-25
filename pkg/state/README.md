@@ -14,12 +14,12 @@ import "github.com/park-jun-woo/toulmin/pkg/state"
 
 ```go
 g := toulmin.NewGraph("proposal:accept")
-current := g.Warrant(state.IsCurrentState, nil, 1.0)
-owner := g.Warrant(state.IsOwner, ownerBacking, 1.0)
-expired := g.Rebuttal(state.IsExpired, expiryFunc, 1.0)
-override := g.Defeater(isAdminOverride, nil, 1.0)
-g.Defeat(expired, current)
-g.Defeat(override, expired)
+current := g.Rule(state.IsCurrentState)
+owner := g.Rule(state.IsOwner).Backing(ownerBacking)
+expired := g.Counter(state.IsExpired).Backing(expiryFunc)
+override := g.Except(isAdminOverride)
+expired.Attacks(current)
+override.Attacks(expired)
 
 m := state.NewMachine()
 m.Add("pending", "accept", "accepted", g)

@@ -16,11 +16,11 @@ import "github.com/park-jun-woo/toulmin/pkg/moderate"
 classifier := myClassifier{}
 
 g := toulmin.NewGraph("post:publish")
-verified := g.Warrant(moderate.IsVerifiedUser, nil, 1.0)
-hate := g.Rebuttal(moderate.ContainsHateSpeech, classifier, 1.0)
-news := g.Defeater(moderate.IsNewsContext, nil, 1.0)
-g.Defeat(hate, verified)
-g.Defeat(news, hate)
+verified := g.Rule(moderate.IsVerifiedUser)
+hate := g.Counter(moderate.ContainsHateSpeech).Backing(classifier)
+news := g.Except(moderate.IsNewsContext)
+hate.Attacks(verified)
+news.Attacks(hate)
 
 mod := moderate.NewModerator(g)
 result, _ := mod.Review(content, ctx)
