@@ -338,6 +338,29 @@ You can use the core without any framework. Writing your own rule functions — 
 | strict/defeasible/defeater | Nute (1994) |
 | h-Categoriser | Amgoud & Ben-Naim (2013, 2017) |
 
+## Testing
+
+`RunCases` runs table-driven policy tests with zero boilerplate:
+
+```go
+func TestAccessPolicy(t *testing.T) {
+    g := buildAccessGraph()
+    toulmin.RunCases(t, g, []toulmin.TestCase{
+        {Name: "admin allowed",    Ground: &Ctx{Role: "admin"},  Expect: toulmin.VerdictAbove(0)},
+        {Name: "blocked IP",       Ground: &Ctx{IP: "blocked"},  Expect: toulmin.VerdictAtMost(0)},
+        {Name: "unauthenticated",  Ground: &Ctx{User: nil},      Expect: toulmin.NoResult},
+        {Name: "partial override", Ground: &Ctx{Role: "editor"}, Expect: toulmin.VerdictBetween(0, 0.5)},
+    })
+}
+```
+
+| Expectation | Condition |
+|---|---|
+| `VerdictAbove(v)` | verdict > v |
+| `VerdictAtMost(v)` | verdict <= v |
+| `VerdictBetween(lo, hi)` | lo < verdict <= hi |
+| `NoResult` | no active warrants |
+
 ## CLI
 
 ```bash

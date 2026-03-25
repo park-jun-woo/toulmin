@@ -239,6 +239,44 @@ results, _ := g.Evaluate(nil, req)
 
 ---
 
+## Testing Helper
+
+`RunCases` eliminates boilerplate for table-driven policy tests.
+
+```go
+func TestAccessPolicy(t *testing.T) {
+    g := buildAccessGraph()
+    toulmin.RunCases(t, g, []toulmin.TestCase{
+        {Name: "admin allowed",  Ground: &Ctx{Role: "admin"},  Expect: toulmin.VerdictAbove(0)},
+        {Name: "blocked IP",     Ground: &Ctx{IP: "blocked"},  Expect: toulmin.VerdictAtMost(0)},
+        {Name: "unauthenticated", Ground: &Ctx{User: nil},     Expect: toulmin.NoResult},
+    })
+}
+```
+
+### TestCase
+
+```go
+type TestCase struct {
+    Name   string      // sub-test name
+    Claim  any         // passed to Evaluate
+    Ground any         // passed to Evaluate
+    Option EvalOption  // zero value for defaults
+    Expect Expectation // verdict assertion
+}
+```
+
+### Expectation
+
+| Function | Condition |
+|---|---|
+| `VerdictAbove(v)` | verdict > v |
+| `VerdictAtMost(v)` | verdict <= v |
+| `VerdictBetween(lo, hi)` | lo < verdict <= hi |
+| `NoResult` | no active warrants (empty results) |
+
+---
+
 ## Cycle Detection
 
 Detected at evaluation time via DFS. CLI also detects before codegen:

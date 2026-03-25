@@ -45,6 +45,16 @@ func(claim any, ground any, backing any) (bool, any)
 |---|---|---|
 | `GenerateGraph(pkg, def)` | generate_graph.go | `GraphDef` → Go source code |
 
+### Testing Helper
+
+| Function | File | Description |
+|---|---|---|
+| `RunCases(t, g, cases)` | run_cases.go | Run table-driven test cases against a graph |
+| `VerdictAbove(v)` | verdict_above.go | Expectation: verdict > v |
+| `VerdictAtMost(v)` | verdict_at_most.go | Expectation: verdict <= v |
+| `VerdictBetween(lo, hi)` | verdict_between.go | Expectation: lo < verdict <= hi |
+| `NoResult` | no_result.go | Expectation: no active warrants |
+
 ### Utilities
 
 | Function | File | Description |
@@ -69,6 +79,8 @@ func(claim any, ground any, backing any) (bool, any)
 | `GraphDef` | graph_def.go | Graph definition (AST from YAML/DB/API) |
 | `GraphRuleDef` | graph_rule_def.go | Rule entry in GraphDef |
 | `GraphEdgeDef` | graph_edge_def.go | Defeat edge in GraphDef |
+| `TestCase` | test_case.go | Table-driven test case (Name, Claim, Ground, Option, Expect) |
+| `Expectation` | expectation.go | Verdict assertion function `func([]EvalResult) error` |
 
 ## h-Categoriser
 

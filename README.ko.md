@@ -337,6 +337,29 @@ defeats:
 | strict/defeasible/defeater | Nute (1994) |
 | h-Categoriser | Amgoud & Ben-Naim (2013, 2017) |
 
+## 테스트
+
+`RunCases`로 테이블 드리븐 정책 테스트를 보일러플레이트 없이 작성한다:
+
+```go
+func TestAccessPolicy(t *testing.T) {
+    g := buildAccessGraph()
+    toulmin.RunCases(t, g, []toulmin.TestCase{
+        {Name: "admin 허용",      Ground: &Ctx{Role: "admin"},  Expect: toulmin.VerdictAbove(0)},
+        {Name: "차단 IP 거부",     Ground: &Ctx{IP: "blocked"},  Expect: toulmin.VerdictAtMost(0)},
+        {Name: "미인증 거부",      Ground: &Ctx{User: nil},      Expect: toulmin.NoResult},
+        {Name: "부분 재정의",      Ground: &Ctx{Role: "editor"}, Expect: toulmin.VerdictBetween(0, 0.5)},
+    })
+}
+```
+
+| Expectation | 조건 |
+|---|---|
+| `VerdictAbove(v)` | verdict > v |
+| `VerdictAtMost(v)` | verdict <= v |
+| `VerdictBetween(lo, hi)` | lo < verdict <= hi |
+| `NoResult` | 활성 warrant 없음 |
+
 ## CLI
 
 ```bash
