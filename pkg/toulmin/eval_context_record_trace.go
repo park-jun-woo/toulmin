@@ -2,20 +2,36 @@
 //ff:what recordTrace — executes rule function and appends trace entry on first visit
 package toulmin
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // recordTrace runs the rule function for id and records a TraceEntry.
 // Called once per node when calcTrace visits it for the first time.
 // When duration is true, measures execution time of the rule function.
+// Sets ctx.err if the rule function panics.
 func (ctx *evalContext) recordTrace(id string, claim, ground any, duration bool) {
 	ctx.ran[id] = true
 	var dur time.Duration
 	if duration {
 		start := time.Now()
-		ctx.active[id], ctx.evidence[id] = ctx.fnMap[id](claim, ground, ctx.backingMap[id])
+		active, evidence, err := safeCall(ctx.fnMap[id], claim, ground, ctx.backingMap[id])
 		dur = time.Since(start)
+		if err != nil {
+			ctx.err = fmt.Errorf("rule %q: %w", id, err)
+			return
+		}
+		ctx.active[id] = active
+		ctx.evidence[id] = evidence
 	} else {
-		ctx.active[id], ctx.evidence[id] = ctx.fnMap[id](claim, ground, ctx.backingMap[id])
+		active, evidence, err := safeCall(ctx.fnMap[id], claim, ground, ctx.backingMap[id])
+		if err != nil {
+			ctx.err = fmt.Errorf("rule %q: %w", id, err)
+			return
+		}
+		ctx.active[id] = active
+		ctx.evidence[id] = evidence
 	}
 	role := ctx.roleMap[id]
 	if role == "" {

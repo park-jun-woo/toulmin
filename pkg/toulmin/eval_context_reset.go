@@ -8,4 +8,5 @@ func (ctx *evalContext) reset() {
 	ctx.active = make(map[string]bool)
 	ctx.evidence = make(map[string]any)
 	ctx.trace = nil
+	ctx.err = nil
 }

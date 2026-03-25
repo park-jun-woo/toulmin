@@ -1,4 +1,4 @@
-//ff:func feature=engine type=engine control=sequence
+//ff:func feature=engine type=engine control=iteration dimension=1
 //ff:what TestDuration — tests that Duration option measures per-rule execution time
 package toulmin
 

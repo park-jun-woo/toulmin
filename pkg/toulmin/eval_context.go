@@ -15,4 +15,5 @@ type evalContext struct {
 	evidence    map[string]any
 	trace       []TraceEntry
 	roleMap     map[string]string
+	err         error
 }

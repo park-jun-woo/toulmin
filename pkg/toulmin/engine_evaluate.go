@@ -21,6 +21,9 @@ func (e *Engine) Evaluate(claim any, ground any, opts ...EvalOption) ([]EvalResu
 			ctx.reset()
 		}
 		verdict := ctx.evalRule(r.Name, claim, ground, opt)
+		if ctx.err != nil {
+			return nil, ctx.err
+		}
 		if !ctx.active[r.Name] {
 			continue
 		}
