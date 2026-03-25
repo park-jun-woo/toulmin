@@ -22,7 +22,7 @@ func TestHasMinPosts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("author", &Author{PostCount: tt.count})
-			got, _ := HasMinPosts(ctx, &MinPostsBacking{MinPosts: tt.min})
+			got, _ := HasMinPosts(ctx, toulmin.Specs{&MinPostsSpec{MinPosts: tt.min}})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

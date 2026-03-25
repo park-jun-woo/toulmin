@@ -11,7 +11,7 @@ import (
 
 func TestPricer_RateWithMax(t *testing.T) {
 	g := toulmin.NewGraph("test:max")
-	g.Rule(HasCoupon).Backing(&DiscountBacking{Name: "BIG", Rate: 0.5, Max: 30000})
+	g.Rule(HasCoupon).With(&DiscountSpec{Name: "BIG", Rate: 0.5, Max: 30000})
 
 	p := NewPricer(g, nil)
 	req := &PurchaseRequest{BasePrice: 100000}

@@ -7,7 +7,7 @@ import (
 )
 
 func TestLoadGraph_InvalidRole(t *testing.T) {
-	fn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
+	fn := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 
 	def := GraphDef{
 		Graph: "bad-role",

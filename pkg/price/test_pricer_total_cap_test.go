@@ -11,10 +11,10 @@ import (
 
 func TestPricer_TotalCap(t *testing.T) {
 	g := toulmin.NewGraph("test:totalcap")
-	g.Rule(HasCoupon).Backing(&DiscountBacking{Name: "A", Rate: 0.2})
-	g.Rule(IsMemberLevel).Backing(&MemberBacking{Level: "basic", Discount: &DiscountBacking{Name: "basic", Rate: 0.1}})
+	g.Rule(HasCoupon).With(&DiscountSpec{Name: "A", Rate: 0.2})
+	g.Rule(IsMemberLevel).With(&MemberSpec{Level: "basic", Discount: &DiscountSpec{Name: "basic", Rate: 0.1}})
 
-	totalCap := &DiscountBacking{Max: 25000}
+	totalCap := &DiscountSpec{Max: 25000}
 	p := NewPricer(g, totalCap)
 	req := &PurchaseRequest{BasePrice: 100000}
 	ctx := &PriceContext{

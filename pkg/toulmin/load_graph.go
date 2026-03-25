@@ -4,9 +4,9 @@ package toulmin
 
 import "fmt"
 
-// LoadGraph validates a GraphDef, then builds a *Graph using the provided function and backing registries.
+// LoadGraph validates a GraphDef, then builds a *Graph using the provided function and spec registries.
 // Returns an error if validation fails or a rule name is not found in the function registry.
-func LoadGraph(def GraphDef, functions map[string]any, backings map[string]Backing) (*Graph, error) {
+func LoadGraph(def GraphDef, functions map[string]any, specs map[string][]Spec) (*Graph, error) {
 	if err := ValidateGraphDef(def); err != nil {
 		return nil, err
 	}
@@ -24,7 +24,7 @@ func LoadGraph(def GraphDef, functions map[string]any, backings map[string]Backi
 			q = 1.0
 		}
 
-		backing, err := resolveBacking(rd.Name, backings)
+		ss, err := resolveSpecs(rd.Name, specs)
 		if err != nil {
 			return nil, err
 		}
@@ -38,8 +38,8 @@ func LoadGraph(def GraphDef, functions map[string]any, backings map[string]Backi
 		case "except":
 			rule = g.Except(fn)
 		}
-		if backing != nil {
-			rule.Backing(backing)
+		for _, s := range ss {
+			rule.With(s)
 		}
 		if q != 1.0 {
 			rule.Qualifier(q)

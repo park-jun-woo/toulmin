@@ -23,8 +23,8 @@ func TestIsMemberLevel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("membership", tt.membership)
-			mb := &MemberBacking{Level: tt.level, Discount: &DiscountBacking{Name: tt.level, Rate: 0.1}}
-			got, _ := IsMemberLevel(ctx, mb)
+			mb := &MemberSpec{Level: tt.level, Discount: &DiscountSpec{Name: tt.level, Rate: 0.1}}
+			got, _ := IsMemberLevel(ctx, toulmin.Specs{mb})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

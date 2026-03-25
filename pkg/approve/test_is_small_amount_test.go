@@ -23,7 +23,7 @@ func TestIsSmallAmount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("amount", tt.amount)
-			got, _ := IsSmallAmount(ctx, &ThresholdBacking{Max: tt.threshold})
+			got, _ := IsSmallAmount(ctx, toulmin.Specs{&ThresholdSpec{Max: tt.threshold}})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

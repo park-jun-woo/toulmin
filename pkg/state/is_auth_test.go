@@ -4,4 +4,4 @@ package state
 
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
-func isAuth(ctx toulmin.Context, backing toulmin.Backing) (bool, any) { return true, nil }
+func isAuth(ctx toulmin.Context, specs toulmin.Specs) (bool, any) { return true, nil }

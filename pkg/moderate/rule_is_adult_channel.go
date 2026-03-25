@@ -5,7 +5,7 @@ package moderate
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsAdultChannel returns true if the channel is age-gated.
-func IsAdultChannel(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+func IsAdultChannel(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	channel, _ := ctx.Get("channel")
 	return channel.(*Channel).AgeGated, nil
 }

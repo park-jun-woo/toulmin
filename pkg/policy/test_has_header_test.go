@@ -23,7 +23,7 @@ func TestHasHeader(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("headers", tt.headers)
-			got, _ := HasHeader(ctx, &HeaderBacking{Header: tt.header})
+			got, _ := HasHeader(ctx, toulmin.Specs{&HeaderSpec{Header: tt.header}})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

@@ -8,7 +8,7 @@ import (
 )
 
 func TestDeepDefeatChain(t *testing.T) {
-	fn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
+	fn := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 	eng := NewEngine()
 	eng.Register(RuleMeta{Name: "W", Qualifier: 1.0, Strength: Defeasible, Fn: fn})
 	prev := "W"

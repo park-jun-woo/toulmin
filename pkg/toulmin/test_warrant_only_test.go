@@ -10,7 +10,7 @@ func TestWarrantOnly(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(ctx Context, backing Backing) (bool, any) { return true, nil },
+		Fn: func(ctx Context, specs Specs) (bool, any) { return true, nil },
 	})
 	results, err := eng.Evaluate(nil)
 	if err != nil {

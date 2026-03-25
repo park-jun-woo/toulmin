@@ -9,7 +9,7 @@ import (
 )
 
 func TestHasActivePromotion(t *testing.T) {
-	db := &DiscountBacking{Name: "blackfriday", Fixed: 5000}
+	db := &DiscountSpec{Name: "blackfriday", Fixed: 5000}
 	tests := []struct {
 		name   string
 		promos []Promotion
@@ -24,7 +24,7 @@ func TestHasActivePromotion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("promotions", tt.promos)
-			got, _ := HasActivePromotion(ctx, db)
+			got, _ := HasActivePromotion(ctx, toulmin.Specs{db})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

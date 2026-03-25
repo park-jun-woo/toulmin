@@ -11,17 +11,17 @@ func TestCompensation(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(ctx Context, backing Backing) (bool, any) { return true, nil },
+		Fn: func(ctx Context, specs Specs) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D1", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"W"},
-		Fn:      func(ctx Context, backing Backing) (bool, any) { return true, nil },
+		Fn:      func(ctx Context, specs Specs) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D2", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"D1"},
-		Fn:      func(ctx Context, backing Backing) (bool, any) { return true, nil },
+		Fn:      func(ctx Context, specs Specs) (bool, any) { return true, nil },
 	})
 	results, err := eng.Evaluate(nil)
 	if err != nil {

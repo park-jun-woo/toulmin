@@ -5,7 +5,7 @@ package policy
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsAuthenticated returns true if the request has a non-nil user.
-func IsAuthenticated(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+func IsAuthenticated(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	user, _ := ctx.Get("user")
 	return user != nil, nil
 }

@@ -1,16 +1,25 @@
-//ff:func feature=engine type=util control=sequence
-//ff:what ruleID — generates unique rule identifier from funcID and backing
+//ff:func feature=engine type=util control=iteration dimension=1
+//ff:what ruleID — generates unique rule identifier from funcID and specs
 package toulmin
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
 
 // ruleID returns a unique identifier for a rule.
-// If backing is nil, returns funcID only.
-// If backing is non-nil, returns funcID + "#" + backing string.
-func ruleID(fn any, backing Backing) string {
+// If specs is empty, returns funcID only.
+// If specs is non-empty, returns funcID + "#" + sorted spec names.
+func ruleID(fn any, specs Specs) string {
 	id := funcID(fn)
-	if backing == nil {
+	if len(specs) == 0 {
 		return id
 	}
-	return id + "#" + fmt.Sprint(backing)
+	names := make([]string, len(specs))
+	for i, s := range specs {
+		names[i] = fmt.Sprint(s)
+	}
+	sort.Strings(names)
+	return id + "#" + strings.Join(names, "+")
 }

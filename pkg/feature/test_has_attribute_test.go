@@ -24,7 +24,7 @@ func TestHasAttribute(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("attributes", tt.attr)
-			got, _ := HasAttribute(ctx, &AttributeBacking{Key: tt.key, Value: tt.val})
+			got, _ := HasAttribute(ctx, toulmin.Specs{&AttributeSpec{Key: tt.key, Value: tt.val}})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

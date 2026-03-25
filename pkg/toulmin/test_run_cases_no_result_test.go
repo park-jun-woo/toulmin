@@ -5,7 +5,7 @@ package toulmin
 import "testing"
 
 func TestRunCasesNoResult(t *testing.T) {
-	inactive := func(ctx Context, backing Backing) (bool, any) { return false, nil }
+	inactive := func(ctx Context, specs Specs) (bool, any) { return false, nil }
 	g := NewGraph("test")
 	g.Rule(inactive)
 	RunCases(t, g, []TestCase{

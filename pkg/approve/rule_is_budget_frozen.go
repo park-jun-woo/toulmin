@@ -5,7 +5,7 @@ package approve
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsBudgetFrozen checks if the budget is frozen.
-func IsBudgetFrozen(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+func IsBudgetFrozen(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	budget, _ := ctx.Get("budget")
 	return budget.(*Budget).Frozen, nil
 }

@@ -16,7 +16,7 @@ func (ec *evalContext) recordTrace(id string, ctx Context, duration bool) {
 	var dur time.Duration
 	if duration {
 		start := time.Now()
-		active, evidence, err := safeCall(ec.fnMap[id], ctx, ec.backingMap[id])
+		active, evidence, err := safeCall(ec.fnMap[id], ctx, ec.specsMap[id])
 		dur = time.Since(start)
 		if err != nil {
 			ec.err = fmt.Errorf("rule %q: %w", id, err)
@@ -25,7 +25,7 @@ func (ec *evalContext) recordTrace(id string, ctx Context, duration bool) {
 		ec.active[id] = active
 		ec.evidence[id] = evidence
 	} else {
-		active, evidence, err := safeCall(ec.fnMap[id], ctx, ec.backingMap[id])
+		active, evidence, err := safeCall(ec.fnMap[id], ctx, ec.specsMap[id])
 		if err != nil {
 			ec.err = fmt.Errorf("rule %q: %w", id, err)
 			return
@@ -43,7 +43,7 @@ func (ec *evalContext) recordTrace(id string, ctx Context, duration bool) {
 		Activated: ec.active[id],
 		Qualifier: ec.qualMap[id],
 		Evidence:  ec.evidence[id],
-		Backing:   ec.backingMap[id],
+		Specs:     ec.specsMap[id],
 		Duration:  dur,
 	})
 }

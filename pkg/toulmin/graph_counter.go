@@ -3,7 +3,7 @@
 package toulmin
 
 // Counter registers a counter (rebuttal) rule in the graph and returns a *Rule reference.
-// Default backing is nil and qualifier is 1.0. Use Backing() and Qualifier() to override.
+// Use With() to add Specs and Qualifier() to set weight.
 func (g *Graph) Counter(fn any) *Rule {
 	wrapped := toRuleFunc(fn)
 	id := ruleID(fn, nil)
@@ -12,7 +12,6 @@ func (g *Graph) Counter(fn any) *Rule {
 		Name:      id,
 		Qualifier: 1.0,
 		Strength:  Defeasible,
-		Backing:   nil,
 		Fn:        wrapped,
 	})
 	g.roles[id] = "counter"

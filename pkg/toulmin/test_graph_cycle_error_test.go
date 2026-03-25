@@ -7,8 +7,8 @@ import (
 )
 
 func TestGraphCycleError(t *testing.T) {
-	cycleA := func(ctx Context, backing Backing) (bool, any) { return true, nil }
-	cycleB := func(ctx Context, backing Backing) (bool, any) { return true, nil }
+	cycleA := func(ctx Context, specs Specs) (bool, any) { return true, nil }
+	cycleB := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 	g := NewGraph("test")
 	a := g.Rule(cycleA)
 	b := g.Counter(cycleB)

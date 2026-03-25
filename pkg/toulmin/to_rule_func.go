@@ -3,13 +3,13 @@
 package toulmin
 
 // toRuleFunc accepts fn as any and returns the rule func.
-// Supports func(Context, Backing)(bool, any).
+// Supports func(Context, Specs)(bool, any).
 // Panics if fn is not the expected signature.
-func toRuleFunc(fn any) func(Context, Backing) (bool, any) {
+func toRuleFunc(fn any) func(Context, Specs) (bool, any) {
 	switch f := fn.(type) {
-	case func(Context, Backing) (bool, any):
+	case func(Context, Specs) (bool, any):
 		return f
 	default:
-		panic("toulmin: fn must be func(Context, Backing)(bool, any)")
+		panic("toulmin: fn must be func(Context, Specs)(bool, any)")
 	}
 }

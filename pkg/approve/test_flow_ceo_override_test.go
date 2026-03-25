@@ -9,12 +9,12 @@ import (
 )
 
 func TestFlow_CEOOverride(t *testing.T) {
-	ab := &ApproverBacking{}
+	ab := &ApproverSpec{}
 
 	g := toulmin.NewGraph("expense:finance")
 	budget := g.Rule(IsUnderBudget)
 	frozen := g.Counter(IsBudgetFrozen)
-	ceo := g.Except(IsCEOOverride).Backing(ab)
+	ceo := g.Except(IsCEOOverride).With(ab)
 	frozen.Attacks(budget)
 	ceo.Attacks(frozen)
 

@@ -1,12 +1,12 @@
 //ff:func feature=approve type=rule control=sequence
-//ff:what IsSmallAmount: backing(*ThresholdBacking)으로 지정된 금액 임계값 이하인지 판정
+//ff:what IsSmallAmount: spec(*ThresholdSpec)으로 지정된 금액 임계값 이하인지 판정
 package approve
 
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
-// IsSmallAmount checks if the requested amount is at or below backing threshold.
-func IsSmallAmount(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+// IsSmallAmount checks if the requested amount is at or below spec threshold.
+func IsSmallAmount(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	amount, _ := ctx.Get("amount")
-	b := backing.(*ThresholdBacking)
+	b := specs[0].(*ThresholdSpec)
 	return amount.(float64) <= b.Max, nil
 }

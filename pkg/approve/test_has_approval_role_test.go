@@ -20,10 +20,10 @@ func TestHasApprovalRole(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ab := &ApproverBacking{Role: tt.role}
+			ab := &ApproverSpec{Role: tt.role}
 			ctx := toulmin.NewContext()
 			ctx.Set("approverRole", tt.have)
-			got, _ := HasApprovalRole(ctx, ab)
+			got, _ := HasApprovalRole(ctx, toulmin.Specs{ab})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

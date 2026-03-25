@@ -7,7 +7,7 @@ import (
 )
 
 func TestLegacySignature(t *testing.T) {
-	fn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
+	fn := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 	g := NewGraph("test")
 	g.Rule(fn)
 	results, err := g.Evaluate(nil)

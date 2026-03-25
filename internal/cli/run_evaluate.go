@@ -17,16 +17,16 @@ func runEvaluate(cmd *cobra.Command, args []string) error {
 		Name:      "OneFileOneFunc",
 		Qualifier: 1.0,
 		Strength:  toulmin.Defeasible,
-		Backing:   &demoBacking{Value: "Bohm-Jacopini theorem"},
-		Fn:        func(ctx toulmin.Context, backing toulmin.Backing) (bool, any) { return true, nil },
+		Specs:    toulmin.Specs{&demoSpec{Value: "Bohm-Jacopini theorem"}},
+		Fn:        func(ctx toulmin.Context, specs toulmin.Specs) (bool, any) { return true, nil },
 	})
 	eng.Register(toulmin.RuleMeta{
 		Name:      "TestFileException",
 		Qualifier: 1.0,
 		Strength:  toulmin.Defeater,
 		Defeats:   []string{"OneFileOneFunc"},
-		Backing:   &demoBacking{Value: "test files conventionally group multiple test funcs"},
-		Fn:        func(ctx toulmin.Context, backing toulmin.Backing) (bool, any) { return true, nil },
+		Specs:    toulmin.Specs{&demoSpec{Value: "test files conventionally group multiple test funcs"}},
+		Fn:        func(ctx toulmin.Context, specs toulmin.Specs) (bool, any) { return true, nil },
 	})
 	ctx := toulmin.NewContext()
 	results, err := eng.Evaluate(ctx)

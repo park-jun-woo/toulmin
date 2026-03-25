@@ -11,8 +11,8 @@ import (
 func TestIsMemberLevel_NilUser(t *testing.T) {
 	ctx := toulmin.NewContext()
 	ctx.Set("membership", "")
-	mb := &MemberBacking{Level: "basic", Discount: &DiscountBacking{}}
-	got, _ := IsMemberLevel(ctx, mb)
+	mb := &MemberSpec{Level: "basic", Discount: &DiscountSpec{}}
+	got, _ := IsMemberLevel(ctx, toulmin.Specs{mb})
 	if got {
 		t.Error("expected false for nil user")
 	}

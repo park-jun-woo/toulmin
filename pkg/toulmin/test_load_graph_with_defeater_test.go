@@ -7,9 +7,9 @@ import (
 )
 
 func TestLoadGraph_WithDefeater(t *testing.T) {
-	wFn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
-	rFn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
-	dFn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
+	wFn := func(ctx Context, specs Specs) (bool, any) { return true, nil }
+	rFn := func(ctx Context, specs Specs) (bool, any) { return true, nil }
+	dFn := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 
 	def := GraphDef{
 		Graph: "defeater-test",

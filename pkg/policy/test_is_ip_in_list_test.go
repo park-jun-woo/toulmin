@@ -9,12 +9,12 @@ import (
 )
 
 func TestIsIPInList(t *testing.T) {
-	blocklist := &IPListBacking{Purpose: "blocklist", List: []string{"1.2.3.4"}}
-	whitelist := &IPListBacking{Purpose: "whitelist", List: []string{"10.0.0.1"}}
+	blocklist := &IPListSpec{Purpose: "blocklist", List: []string{"1.2.3.4"}}
+	whitelist := &IPListSpec{Purpose: "whitelist", List: []string{"10.0.0.1"}}
 	tests := []struct {
 		name string
 		ip   string
-		list *IPListBacking
+		list *IPListSpec
 		want bool
 	}{
 		{"blocked", "1.2.3.4", blocklist, true},
@@ -26,7 +26,7 @@ func TestIsIPInList(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("clientIP", tt.ip)
-			got, _ := IsIPInList(ctx, tt.list)
+			got, _ := IsIPInList(ctx, toulmin.Specs{tt.list})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

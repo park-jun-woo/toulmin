@@ -16,7 +16,7 @@ func TestFlags_List(t *testing.T) {
 	flags.Register("a", g1)
 
 	g2 := toulmin.NewGraph("feature:b")
-	g2.Rule(IsRegion).Backing(&RegionBacking{Region: "KR"})
+	g2.Rule(IsRegion).With(&RegionSpec{Region: "KR"})
 	flags.Register("b", g2)
 
 	ctx := &UserContext{

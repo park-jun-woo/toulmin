@@ -7,5 +7,5 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // Pricer evaluates discount rules and computes the final price.
 type Pricer struct {
 	graph    *toulmin.Graph
-	totalCap *DiscountBacking
+	totalCap *DiscountSpec
 }

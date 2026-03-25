@@ -8,7 +8,7 @@ import (
 )
 
 func TestPanicRecover(t *testing.T) {
-	panicRule := func(ctx Context, backing Backing) (bool, any) {
+	panicRule := func(ctx Context, specs Specs) (bool, any) {
 		panic("test panic")
 		return true, nil
 	}

@@ -11,7 +11,7 @@ func (p *Pricer) Evaluate(req *PurchaseRequest, pctx *PriceContext) (*PriceResul
 	if err != nil {
 		return nil, err
 	}
-	var applied []*DiscountBacking
+	var applied []*DiscountSpec
 	var allTrace []toulmin.TraceEntry
 	totalDiscount := 0.0
 
@@ -19,7 +19,7 @@ func (p *Pricer) Evaluate(req *PurchaseRequest, pctx *PriceContext) (*PriceResul
 		if len(r.Trace) > 0 {
 			allTrace = append(allTrace, r.Trace...)
 		}
-		db, ok := r.Evidence.(*DiscountBacking)
+		db, ok := r.Evidence.(*DiscountSpec)
 		if !ok || db == nil {
 			continue
 		}

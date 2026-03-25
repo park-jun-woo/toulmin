@@ -20,9 +20,9 @@ func TestIsExpired(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := &ExpiryBacking{ExpiresAt: tt.exp}
+			b := &ExpirySpec{ExpiresAt: tt.exp}
 			ctx := toulmin.NewContext()
-			got, _ := IsExpired(ctx, b)
+			got, _ := IsExpired(ctx, toulmin.Specs{b})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

@@ -9,7 +9,7 @@ import (
 )
 
 func TestHasCoupon(t *testing.T) {
-	db := &DiscountBacking{Name: "SAVE30", Rate: 0.3}
+	db := &DiscountSpec{Name: "SAVE30", Rate: 0.3}
 	tests := []struct {
 		name    string
 		base    float64
@@ -25,7 +25,7 @@ func TestHasCoupon(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("basePrice", tt.base)
 			ctx.Set("coupons", tt.coupons)
-			got, _ := HasCoupon(ctx, db)
+			got, _ := HasCoupon(ctx, toulmin.Specs{db})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

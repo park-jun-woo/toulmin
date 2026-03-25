@@ -10,8 +10,8 @@ import (
 
 func TestPricer_AppliedDiscountsList(t *testing.T) {
 	g := toulmin.NewGraph("test:list")
-	g.Rule(HasCoupon).Backing(&DiscountBacking{Name: "A", Rate: 0.1})
-	g.Rule(IsMemberLevel).Backing(&MemberBacking{Level: "basic", Discount: &DiscountBacking{Name: "basic", Rate: 0.05}})
+	g.Rule(HasCoupon).With(&DiscountSpec{Name: "A", Rate: 0.1})
+	g.Rule(IsMemberLevel).With(&MemberSpec{Level: "basic", Discount: &DiscountSpec{Name: "basic", Rate: 0.05}})
 
 	p := NewPricer(g, nil)
 	req := &PurchaseRequest{BasePrice: 100000}

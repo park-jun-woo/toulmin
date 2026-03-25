@@ -10,13 +10,13 @@ import (
 
 func TestFlow_MultiStep_SecondRejects(t *testing.T) {
 	org := &mockOrgTree{managers: map[string]string{"emp-1": "mgr-1"}}
-	ab := &ApproverBacking{}
+	ab := &ApproverSpec{}
 
 	g1 := toulmin.NewGraph("expense:manager")
-	g1.Rule(IsDirectManager).Backing(ab)
+	g1.Rule(IsDirectManager).With(ab)
 
 	g2 := toulmin.NewGraph("expense:finance")
-	g2.Rule(HasApprovalRole).Backing(&ApproverBacking{Role: "finance"})
+	g2.Rule(HasApprovalRole).With(&ApproverSpec{Role: "finance"})
 
 	f := NewFlow("expense").AddStep("manager", g1).AddStep("finance", g2)
 

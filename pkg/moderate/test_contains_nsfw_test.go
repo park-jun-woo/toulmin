@@ -9,10 +9,10 @@ import (
 )
 
 func TestContainsNSFW(t *testing.T) {
-	cb := &ClassifierBacking{Classifier: &mockClassifier{scores: map[string]float64{"nsfw": 0.9}}}
+	cb := &ClassifierSpec{Classifier: &mockClassifier{scores: map[string]float64{"nsfw": 0.9}}}
 	ctx := toulmin.NewContext()
 	ctx.Set("body", "test")
-	got, _ := ContainsNSFW(ctx, cb)
+	got, _ := ContainsNSFW(ctx, toulmin.Specs{cb})
 	if !got {
 		t.Error("expected nsfw detected")
 	}

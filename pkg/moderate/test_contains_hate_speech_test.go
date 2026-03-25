@@ -20,10 +20,10 @@ func TestContainsHateSpeech(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cb := &ClassifierBacking{Classifier: &mockClassifier{scores: map[string]float64{"hate_speech": tt.score}}}
+			cb := &ClassifierSpec{Classifier: &mockClassifier{scores: map[string]float64{"hate_speech": tt.score}}}
 			ctx := toulmin.NewContext()
 			ctx.Set("body", "test")
-			got, _ := ContainsHateSpeech(ctx, cb)
+			got, _ := ContainsHateSpeech(ctx, toulmin.Specs{cb})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

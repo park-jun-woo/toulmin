@@ -21,10 +21,10 @@ func TestIsAboveLevel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ab := &ApproverBacking{Level: tt.min}
+			ab := &ApproverSpec{Level: tt.min}
 			ctx := toulmin.NewContext()
 			ctx.Set("approverLevel", tt.level)
-			got, _ := IsAboveLevel(ctx, ab)
+			got, _ := IsAboveLevel(ctx, toulmin.Specs{ab})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

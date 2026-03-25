@@ -11,11 +11,11 @@ import (
 )
 
 func TestGuardDebug_Forbidden(t *testing.T) {
-	blocklist := &IPListBacking{Purpose: "blocklist", List: []string{"1.2.3.4"}}
+	blocklist := &IPListSpec{Purpose: "blocklist", List: []string{"1.2.3.4"}}
 
 	g := toulmin.NewGraph("test:debug-deny")
 	auth := g.Rule(IsAuthenticated)
-	blocked := g.Counter(IsIPInList).Backing(blocklist)
+	blocked := g.Counter(IsIPInList).With(blocklist)
 	blocked.Attacks(auth)
 
 	handler := GuardDebug(g, buildTestCtxFn(&testUser{ID: "u1"}, "1.2.3.4", nil))(okHandler)

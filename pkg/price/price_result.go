@@ -9,6 +9,6 @@ type PriceResult struct {
 	BasePrice        float64
 	TotalDiscount    float64
 	FinalPrice       float64
-	AppliedDiscounts []*DiscountBacking
+	AppliedDiscounts []*DiscountSpec
 	Trace            []toulmin.TraceEntry
 }

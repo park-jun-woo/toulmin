@@ -25,8 +25,8 @@ func TestIsInRole(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("user", tt.user)
 			ctx.Set("role", tt.ctxRole)
-			rb := &RoleBacking{Role: tt.role}
-			got, _ := IsInRole(ctx, rb)
+			rb := &RoleSpec{Role: tt.role}
+			got, _ := IsInRole(ctx, toulmin.Specs{rb})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

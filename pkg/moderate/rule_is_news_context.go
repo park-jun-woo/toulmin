@@ -5,7 +5,7 @@ package moderate
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsNewsContext returns true if the channel type is "news".
-func IsNewsContext(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+func IsNewsContext(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	channel, _ := ctx.Get("channel")
 	return channel.(*Channel).Type == "news", nil
 }

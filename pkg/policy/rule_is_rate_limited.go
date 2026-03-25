@@ -5,7 +5,7 @@ package policy
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsRateLimited checks if the client is rate limited.
-func IsRateLimited(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+func IsRateLimited(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	rateLimiter, _ := ctx.Get("rateLimiter")
 	clientIP, _ := ctx.Get("clientIP")
 	return rateLimiter.(RateLimiter).IsLimited(clientIP.(string)), nil

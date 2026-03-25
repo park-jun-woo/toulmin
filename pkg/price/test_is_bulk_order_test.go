@@ -23,7 +23,7 @@ func TestIsBulkOrder(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("quantity", tt.qty)
-			got, _ := IsBulkOrder(ctx, &BulkOrderBacking{MinQuantity: tt.min})
+			got, _ := IsBulkOrder(ctx, toulmin.Specs{&BulkOrderSpec{MinQuantity: tt.min}})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

@@ -10,7 +10,7 @@ import (
 
 func TestIsDirectManager(t *testing.T) {
 	org := &mockOrgTree{managers: map[string]string{"emp-1": "mgr-1"}}
-	ab := &ApproverBacking{}
+	ab := &ApproverSpec{}
 	tests := []struct {
 		name     string
 		approver *testApprover
@@ -25,7 +25,7 @@ func TestIsDirectManager(t *testing.T) {
 			ctx.Set("requesterID", "emp-1")
 			ctx.Set("approverID", tt.approver.ID)
 			ctx.Set("orgTree", org)
-			got, _ := IsDirectManager(ctx, ab)
+			got, _ := IsDirectManager(ctx, toulmin.Specs{ab})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

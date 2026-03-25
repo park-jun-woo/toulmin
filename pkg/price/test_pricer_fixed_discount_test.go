@@ -11,7 +11,7 @@ import (
 
 func TestPricer_FixedDiscount(t *testing.T) {
 	g := toulmin.NewGraph("test:fixed")
-	g.Rule(HasActivePromotion).Backing(&DiscountBacking{Name: "bf", Fixed: 5000})
+	g.Rule(HasActivePromotion).With(&DiscountSpec{Name: "bf", Fixed: 5000})
 
 	p := NewPricer(g, nil)
 	req := &PurchaseRequest{BasePrice: 100000}

@@ -3,7 +3,7 @@
 package toulmin
 
 // Except registers an exception (defeater) rule in the graph and returns a *Rule reference.
-// Default backing is nil and qualifier is 1.0. Use Backing() and Qualifier() to override.
+// Use With() to add Specs and Qualifier() to set weight.
 func (g *Graph) Except(fn any) *Rule {
 	wrapped := toRuleFunc(fn)
 	id := ruleID(fn, nil)
@@ -12,7 +12,6 @@ func (g *Graph) Except(fn any) *Rule {
 		Name:      id,
 		Qualifier: 1.0,
 		Strength:  Defeater,
-		Backing:   nil,
 		Fn:        wrapped,
 	})
 	g.roles[id] = "except"

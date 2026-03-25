@@ -9,7 +9,7 @@ import (
 )
 
 func TestIsOwner(t *testing.T) {
-	b := &OwnerBacking{}
+	b := &OwnerSpec{}
 	tests := []struct {
 		name            string
 		userID          string
@@ -24,7 +24,7 @@ func TestIsOwner(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("userID", tt.userID)
 			ctx.Set("resourceOwnerID", tt.resourceOwnerID)
-			got, _ := IsOwner(ctx, b)
+			got, _ := IsOwner(ctx, toulmin.Specs{b})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

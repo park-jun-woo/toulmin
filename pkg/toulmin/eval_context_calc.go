@@ -18,7 +18,7 @@ func (ec *evalContext) calc(id string, ctx Context) float64 {
 	}
 	if !ec.ran[id] {
 		ec.ran[id] = true
-		active, evidence, err := safeCall(fn, ctx, ec.backingMap[id])
+		active, evidence, err := safeCall(fn, ctx, ec.specsMap[id])
 		if err != nil {
 			ec.err = fmt.Errorf("rule %q: %w", id, err)
 			return -1.0

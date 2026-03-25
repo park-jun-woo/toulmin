@@ -22,7 +22,7 @@ func TestIsRegion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("region", tt.region)
-			got, _ := IsRegion(ctx, &RegionBacking{Region: tt.back})
+			got, _ := IsRegion(ctx, toulmin.Specs{&RegionSpec{Region: tt.back}})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

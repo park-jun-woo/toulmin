@@ -2,4 +2,4 @@
 //ff:what WarrantA — test helper: always-active warrant rule
 package toulmin
 
-func WarrantA(ctx Context, backing Backing) (bool, any) { return true, nil }
+func WarrantA(ctx Context, specs Specs) (bool, any) { return true, nil }

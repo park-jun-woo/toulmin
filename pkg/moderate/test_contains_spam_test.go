@@ -9,10 +9,10 @@ import (
 )
 
 func TestContainsSpam(t *testing.T) {
-	cb := &ClassifierBacking{Classifier: &mockClassifier{scores: map[string]float64{"spam": 0.9}}}
+	cb := &ClassifierSpec{Classifier: &mockClassifier{scores: map[string]float64{"spam": 0.9}}}
 	ctx := toulmin.NewContext()
 	ctx.Set("body", "test")
-	got, _ := ContainsSpam(ctx, cb)
+	got, _ := ContainsSpam(ctx, toulmin.Specs{cb})
 	if !got {
 		t.Error("expected spam detected")
 	}

@@ -10,7 +10,7 @@ import (
 
 func TestPricer_NoDiscount(t *testing.T) {
 	g := toulmin.NewGraph("test:none")
-	g.Rule(HasCoupon).Backing(&DiscountBacking{Name: "X", Rate: 0.1})
+	g.Rule(HasCoupon).With(&DiscountSpec{Name: "X", Rate: 0.1})
 
 	p := NewPricer(g, nil)
 	req := &PurchaseRequest{BasePrice: 100000}

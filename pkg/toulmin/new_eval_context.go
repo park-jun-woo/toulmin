@@ -6,33 +6,33 @@ package toulmin
 // If defeatEdges is nil, edges are derived from RuleMeta.Defeats.
 // Returns an error if the defeat graph contains a cycle.
 func newEvalContext(rules []RuleMeta, defeatEdges []defeatEdge, roleMap map[string]string) (*evalContext, error) {
-	ctx := &evalContext{
-		fnMap:      make(map[string]func(Context, Backing) (bool, any)),
-		qualMap:    make(map[string]float64),
-		strMap:     make(map[string]Strength),
-		backingMap: make(map[string]Backing),
-		edges:      make(map[string][]string),
-		ran:        make(map[string]bool),
-		active:     make(map[string]bool),
-		evidence:   make(map[string]any),
-		roleMap:    roleMap,
+	ec := &evalContext{
+		fnMap:    make(map[string]func(Context, Specs) (bool, any)),
+		qualMap:  make(map[string]float64),
+		strMap:   make(map[string]Strength),
+		specsMap: make(map[string]Specs),
+		edges:    make(map[string][]string),
+		ran:      make(map[string]bool),
+		active:   make(map[string]bool),
+		evidence: make(map[string]any),
+		roleMap:  roleMap,
 	}
 	for _, r := range rules {
-		ctx.fnMap[r.Name] = r.Fn
-		ctx.qualMap[r.Name] = r.Qualifier
-		ctx.strMap[r.Name] = r.Strength
-		ctx.backingMap[r.Name] = r.Backing
+		ec.fnMap[r.Name] = r.Fn
+		ec.qualMap[r.Name] = r.Qualifier
+		ec.strMap[r.Name] = r.Strength
+		ec.specsMap[r.Name] = r.Specs
 	}
 	if defeatEdges != nil {
 		for _, d := range defeatEdges {
-			ctx.edges[d.to] = append(ctx.edges[d.to], d.from)
+			ec.edges[d.to] = append(ec.edges[d.to], d.from)
 		}
 	} else {
-		buildEdgesFromRules(ctx.edges, rules)
+		buildEdgesFromRules(ec.edges, rules)
 	}
-	ctx.attackerSet = buildAttackerSet(ctx.edges)
-	if err := DetectCycle(ctx.edges); err != nil {
+	ec.attackerSet = buildAttackerSet(ec.edges)
+	if err := DetectCycle(ec.edges); err != nil {
 		return nil, err
 	}
-	return ctx, nil
+	return ec, nil
 }

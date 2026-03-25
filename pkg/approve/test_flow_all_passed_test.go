@@ -10,10 +10,10 @@ import (
 
 func TestFlow_AllPassed(t *testing.T) {
 	org := &mockOrgTree{managers: map[string]string{"emp-1": "mgr-1"}}
-	ab := &ApproverBacking{}
+	ab := &ApproverSpec{}
 
 	g := toulmin.NewGraph("expense:manager")
-	g.Rule(IsDirectManager).Backing(ab)
+	g.Rule(IsDirectManager).With(ab)
 	g.Rule(IsUnderBudget)
 
 	f := NewFlow("expense").AddStep("manager", g)

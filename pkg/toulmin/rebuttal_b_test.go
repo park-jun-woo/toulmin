@@ -2,4 +2,4 @@
 //ff:what RebuttalB — test helper: always-active rebuttal rule
 package toulmin
 
-func RebuttalB(ctx Context, backing Backing) (bool, any) { return true, nil }
+func RebuttalB(ctx Context, specs Specs) (bool, any) { return true, nil }

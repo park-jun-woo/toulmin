@@ -23,7 +23,7 @@ func TestIsTrustedUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := toulmin.NewContext()
 			ctx.Set("author", &Author{TrustScore: tt.score})
-			got, _ := IsTrustedUser(ctx, &TrustScoreBacking{MinScore: tt.min})
+			got, _ := IsTrustedUser(ctx, toulmin.Specs{&TrustScoreSpec{MinScore: tt.min}})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

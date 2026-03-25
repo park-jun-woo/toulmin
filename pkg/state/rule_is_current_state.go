@@ -5,7 +5,7 @@ package state
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsCurrentState returns true if the current state matches the transition request's From.
-func IsCurrentState(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+func IsCurrentState(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	from, _ := ctx.Get("from")
 	currentState, _ := ctx.Get("currentState")
 	return currentState == from, nil
