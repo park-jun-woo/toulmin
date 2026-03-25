@@ -9,8 +9,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 func (f *Flow) Evaluate(req *ApprovalRequest, ctxBuilder StepContextFunc) (*FlowResult, error) {
 	result := &FlowResult{Approved: true}
 	for _, step := range f.steps {
-		ctx := ctxBuilder(step.Name)
-		results, err := step.Graph.Evaluate(req, ctx, toulmin.EvalOption{Trace: true})
+		stepCtx := ctxBuilder(step.Name)
+		ctx := buildApproveContext(req, stepCtx)
+		results, err := step.Graph.Evaluate(ctx, toulmin.EvalOption{Trace: true})
 		if err != nil {
 			return nil, err
 		}

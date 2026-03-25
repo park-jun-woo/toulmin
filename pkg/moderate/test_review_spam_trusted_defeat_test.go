@@ -12,11 +12,11 @@ func TestReview_SpamTrustedDefeat(t *testing.T) {
 	cb := &ClassifierBacking{Classifier: &mockClassifier{scores: map[string]float64{"spam": 0.9}}}
 
 	g := toulmin.NewGraph("test:trusted-defeat")
-	verified := g.Warrant(IsVerifiedUser, nil, 1.0)
-	spam := g.Rebuttal(ContainsSpam, cb, 1.0)
-	trusted := g.Defeater(IsTrustedUser, &TrustScoreBacking{MinScore: 0.9}, 1.0)
-	g.Defeat(spam, verified)
-	g.Defeat(trusted, spam)
+	verified := g.Rule(IsVerifiedUser)
+	spam := g.Counter(ContainsSpam).Backing(cb)
+	trusted := g.Except(IsTrustedUser).Backing(&TrustScoreBacking{MinScore: 0.9})
+	spam.Attacks(verified)
+	trusted.Attacks(spam)
 
 	mod := NewModerator(g)
 	content := &Content{Body: "looks like spam"}

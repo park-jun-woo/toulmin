@@ -8,13 +8,13 @@ import (
 )
 
 func TestPanicRecoverTrace(t *testing.T) {
-	panicRule := func(claim any, ground any, backing Backing) (bool, any) {
-		_ = ground.(string)
+	panicRule := func(ctx Context, backing Backing) (bool, any) {
+		panic("test panic")
 		return true, nil
 	}
 	g := NewGraph("test")
-	g.Warrant(panicRule, nil, 1.0)
-	results, err := g.Evaluate(nil, nil, EvalOption{Trace: true})
+	g.Rule(panicRule)
+	results, err := g.Evaluate(nil, EvalOption{Trace: true})
 	if err == nil {
 		t.Fatalf("expected error from panicking rule, got results: %+v", results)
 	}

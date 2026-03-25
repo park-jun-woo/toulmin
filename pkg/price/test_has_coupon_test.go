@@ -2,7 +2,11 @@
 //ff:what TestHasCoupon — tests HasCoupon rule
 package price
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestHasCoupon(t *testing.T) {
 	db := &DiscountBacking{Name: "SAVE30", Rate: 0.3}
@@ -18,9 +22,10 @@ func TestHasCoupon(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := &PurchaseRequest{BasePrice: tt.base}
-			ctx := &PriceContext{Coupons: tt.coupons}
-			got, _ := HasCoupon(req, ctx, db)
+			ctx := toulmin.NewContext()
+			ctx.Set("basePrice", tt.base)
+			ctx.Set("coupons", tt.coupons)
+			got, _ := HasCoupon(ctx, db)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

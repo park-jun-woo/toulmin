@@ -7,16 +7,16 @@ import (
 )
 
 func TestTraceOnlyRelevantRules(t *testing.T) {
-	warrantX := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
-	unrelatedDefeater := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
+	warrantX := func(ctx Context, backing Backing) (bool, any) { return true, nil }
+	unrelatedDefeater := func(ctx Context, backing Backing) (bool, any) { return true, nil }
 	g := NewGraph("test")
-	wA := g.Warrant(WarrantA, nil, 1.0)
-	wX := g.Warrant(warrantX, nil, 1.0)
-	ud := g.Defeater(unrelatedDefeater, nil, 1.0)
-	rB := g.Rebuttal(RebuttalB, nil, 1.0)
-	g.Defeat(rB, wA)
-	g.Defeat(ud, wX)
-	results, err := g.Evaluate(nil, nil, EvalOption{Trace: true})
+	wA := g.Rule(WarrantA)
+	wX := g.Rule(warrantX)
+	ud := g.Except(unrelatedDefeater)
+	rB := g.Counter(RebuttalB)
+	rB.Attacks(wA)
+	ud.Attacks(wX)
+	results, err := g.Evaluate(nil, EvalOption{Trace: true})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

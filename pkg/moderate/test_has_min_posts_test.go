@@ -2,7 +2,11 @@
 //ff:what TestHasMinPosts — tests HasMinPosts rule
 package moderate
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestHasMinPosts(t *testing.T) {
 	tests := []struct {
@@ -16,8 +20,9 @@ func TestHasMinPosts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &ContentContext{Author: &Author{PostCount: tt.count}}
-			got, _ := HasMinPosts(nil, ctx, &MinPostsBacking{MinPosts: tt.min})
+			ctx := toulmin.NewContext()
+			ctx.Set("author", &Author{PostCount: tt.count})
+			got, _ := HasMinPosts(ctx, &MinPostsBacking{MinPosts: tt.min})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

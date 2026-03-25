@@ -5,12 +5,13 @@ package feature
 import "fmt"
 
 // IsEnabled returns true if the feature is enabled for the given user context.
-func (f *Flags) IsEnabled(name string, ctx *UserContext) (bool, error) {
+func (f *Flags) IsEnabled(name string, uctx *UserContext) (bool, error) {
 	g, ok := f.features[name]
 	if !ok {
 		return false, fmt.Errorf("feature not registered: %s", name)
 	}
-	results, err := g.Evaluate(name, ctx)
+	ctx := buildFeatureContext(name, uctx)
+	results, err := g.Evaluate(ctx)
 	if err != nil {
 		return false, err
 	}

@@ -11,7 +11,7 @@ import (
 
 func TestGuard_Unauthenticated(t *testing.T) {
 	g := toulmin.NewGraph("test:auth")
-	g.Warrant(IsAuthenticated, nil, 1.0)
+	g.Rule(IsAuthenticated)
 
 	handler := Guard(g, buildTestCtxFn(nil, "10.0.0.1", nil))(okHandler)
 

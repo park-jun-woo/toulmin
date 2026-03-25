@@ -6,8 +6,8 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsUserInPercentage checks if the user falls within the rollout percentage.
 // Uses deterministic hash, not rand.
-func IsUserInPercentage(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*UserContext)
+func IsUserInPercentage(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	id, _ := ctx.Get("id")
 	pb := backing.(*PercentageBacking)
-	return hashPercentage(ctx.ID) < pb.Percentage, nil
+	return hashPercentage(id.(string)) < pb.Percentage, nil
 }

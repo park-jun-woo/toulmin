@@ -12,11 +12,11 @@ func TestFlags_List(t *testing.T) {
 	flags := NewFlags()
 
 	g1 := toulmin.NewGraph("feature:a")
-	g1.Warrant(IsBetaUser, nil, 1.0)
+	g1.Rule(IsBetaUser)
 	flags.Register("a", g1)
 
 	g2 := toulmin.NewGraph("feature:b")
-	g2.Warrant(IsRegion, &RegionBacking{Region: "KR"}, 1.0)
+	g2.Rule(IsRegion).Backing(&RegionBacking{Region: "KR"})
 	flags.Register("b", g2)
 
 	ctx := &UserContext{

@@ -7,11 +7,11 @@ import (
 )
 
 func TestBackingSameFunc(t *testing.T) {
-	isInRole := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
+	isInRole := func(ctx Context, backing Backing) (bool, any) { return true, nil }
 	g := NewGraph("test")
-	g.Warrant(isInRole, &testBacking{Value: "admin"}, 1.0)
-	g.Warrant(isInRole, &testBacking{Value: "editor"}, 1.0)
-	results, err := g.Evaluate(nil, nil)
+	g.Rule(isInRole).Backing(&testBacking{Value: "admin"})
+	g.Rule(isInRole).Backing(&testBacking{Value: "editor"})
+	results, err := g.Evaluate(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

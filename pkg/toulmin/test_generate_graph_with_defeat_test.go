@@ -11,8 +11,8 @@ func TestGenerateGraphWithDefeat(t *testing.T) {
 	def := &GraphDef{
 		Graph: "check",
 		Rules: []GraphRuleDef{
-			{Name: "W", Role: "warrant", Qualifier: 1.0},
-			{Name: "R", Role: "rebuttal", Qualifier: 0.8},
+			{Name: "W", Role: "rule", Qualifier: 1.0},
+			{Name: "R", Role: "counter", Qualifier: 0.8},
 		},
 		Defeats: []GraphEdgeDef{{From: "R", To: "W"}},
 	}
@@ -20,10 +20,10 @@ func TestGenerateGraphWithDefeat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(code, "g.Rebuttal(R") {
+	if !strings.Contains(code, "g.Counter(R") {
 		t.Error("missing Rebuttal call")
 	}
-	if !strings.Contains(code, "g.Defeat(r, w)") {
+	if !strings.Contains(code, "r.Attacks(w)") {
 		t.Error("missing Defeat call with variable references")
 	}
 }

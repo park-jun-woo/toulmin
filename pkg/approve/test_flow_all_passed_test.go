@@ -13,8 +13,8 @@ func TestFlow_AllPassed(t *testing.T) {
 	ab := &ApproverBacking{}
 
 	g := toulmin.NewGraph("expense:manager")
-	g.Warrant(IsDirectManager, ab, 1.0)
-	g.Warrant(IsUnderBudget, nil, 1.0)
+	g.Rule(IsDirectManager).Backing(ab)
+	g.Rule(IsUnderBudget)
 
 	f := NewFlow("expense").AddStep("manager", g)
 

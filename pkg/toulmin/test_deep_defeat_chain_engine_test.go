@@ -9,7 +9,7 @@ import (
 )
 
 func TestDeepDefeatChainEngine(t *testing.T) {
-	fn := func(c any, g any, b Backing) (bool, any) { return true, nil }
+	fn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
 	eng := NewEngine()
 	eng.Register(RuleMeta{Name: "W", Qualifier: 1.0, Strength: Defeasible, Fn: fn})
 	prev := "W"
@@ -18,7 +18,7 @@ func TestDeepDefeatChainEngine(t *testing.T) {
 		eng.Register(RuleMeta{Name: name, Qualifier: 1.0, Strength: Defeater, Defeats: []string{prev}, Fn: fn})
 		prev = name
 	}
-	results, err := eng.Evaluate(nil, nil)
+	results, err := eng.Evaluate(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

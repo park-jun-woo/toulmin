@@ -2,4 +2,4 @@
 //ff:what DefeaterC — test helper: always-active defeater rule
 package toulmin
 
-func DefeaterC(claim any, ground any, backing Backing) (bool, any) { return true, nil }
+func DefeaterC(ctx Context, backing Backing) (bool, any) { return true, nil }

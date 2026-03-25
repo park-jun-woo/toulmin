@@ -2,7 +2,11 @@
 //ff:what TestIsAuthenticated — tests IsAuthenticated rule
 package policy
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsAuthenticated(t *testing.T) {
 	tests := []struct {
@@ -15,8 +19,9 @@ func TestIsAuthenticated(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &RequestContext{User: tt.user}
-			got, _ := IsAuthenticated(nil, ctx, nil)
+			ctx := toulmin.NewContext()
+			ctx.Set("user", tt.user)
+			got, _ := IsAuthenticated(ctx, nil)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

@@ -5,8 +5,8 @@ package approve
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsUrgent checks if the request is marked as urgent.
-func IsUrgent(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	req := claim.(*ApprovalRequest)
-	urgent, _ := req.Metadata["urgent"].(bool)
+func IsUrgent(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	reqMeta, _ := ctx.Get("requestMetadata")
+	urgent, _ := reqMeta.(map[string]any)["urgent"].(bool)
 	return urgent, nil
 }

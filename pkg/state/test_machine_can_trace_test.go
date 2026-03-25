@@ -12,8 +12,8 @@ func TestMachine_CanTrace(t *testing.T) {
 	m := NewMachine()
 
 	g := toulmin.NewGraph("proposal:accept")
-	g.Warrant(IsCurrentState, nil, 1.0)
-	g.Warrant(isAuth, nil, 1.0)
+	g.Rule(IsCurrentState)
+	g.Rule(isAuth)
 
 	m.Add("pending", "accept", "accepted", g)
 

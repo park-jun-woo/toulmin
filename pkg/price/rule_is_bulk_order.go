@@ -5,8 +5,8 @@ package price
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsBulkOrder checks if the order quantity meets the minimum specified by backing.
-func IsBulkOrder(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	req := claim.(*PurchaseRequest)
+func IsBulkOrder(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	quantity, _ := ctx.Get("quantity")
 	bb := backing.(*BulkOrderBacking)
-	return req.Quantity >= bb.MinQuantity, nil
+	return quantity.(int) >= bb.MinQuantity, nil
 }

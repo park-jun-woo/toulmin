@@ -2,7 +2,11 @@
 //ff:what TestIsUnderBudget — tests IsUnderBudget rule
 package approve
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsUnderBudget(t *testing.T) {
 	tests := []struct {
@@ -17,9 +21,10 @@ func TestIsUnderBudget(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := &ApprovalRequest{Amount: tt.amount}
-			ctx := &ApprovalContext{Budget: &Budget{Remaining: tt.remaining}}
-			got, _ := IsUnderBudget(req, ctx, nil)
+			ctx := toulmin.NewContext()
+			ctx.Set("amount", tt.amount)
+			ctx.Set("budget", &Budget{Remaining: tt.remaining})
+			got, _ := IsUnderBudget(ctx, nil)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

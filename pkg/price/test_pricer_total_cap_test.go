@@ -11,8 +11,8 @@ import (
 
 func TestPricer_TotalCap(t *testing.T) {
 	g := toulmin.NewGraph("test:totalcap")
-	g.Warrant(HasCoupon, &DiscountBacking{Name: "A", Rate: 0.2}, 1.0)
-	g.Warrant(IsMemberLevel, &MemberBacking{Level: "basic", Discount: &DiscountBacking{Name: "basic", Rate: 0.1}}, 1.0)
+	g.Rule(HasCoupon).Backing(&DiscountBacking{Name: "A", Rate: 0.2})
+	g.Rule(IsMemberLevel).Backing(&MemberBacking{Level: "basic", Discount: &DiscountBacking{Name: "basic", Rate: 0.1}})
 
 	totalCap := &DiscountBacking{Max: 25000}
 	p := NewPricer(g, totalCap)

@@ -8,7 +8,7 @@ func TestValidateGraphDefUnknownTo(t *testing.T) {
 	def := GraphDef{
 		Graph: "test",
 		Rules: []GraphRuleDef{
-			{Name: "R", Role: "rebuttal"},
+			{Name: "R", Role: "counter"},
 		},
 		Defeats: []GraphEdgeDef{
 			{From: "R", To: "unknown"},

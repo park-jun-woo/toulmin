@@ -10,7 +10,7 @@ func RunCases(t *testing.T, g *Graph, cases []TestCase) {
 	for _, tc := range cases {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Helper()
-			results, err := g.Evaluate(tc.Claim, tc.Ground, tc.Option)
+			results, err := g.Evaluate(tc.Context, tc.Option)
 			if err != nil {
 				t.Fatalf("evaluate error: %v", err)
 			}

@@ -11,19 +11,19 @@ func TestCompensation(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(c any, g any, b Backing) (bool, any) { return true, nil },
+		Fn: func(ctx Context, backing Backing) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D1", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"W"},
-		Fn:      func(c any, g any, b Backing) (bool, any) { return true, nil },
+		Fn:      func(ctx Context, backing Backing) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D2", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"D1"},
-		Fn:      func(c any, g any, b Backing) (bool, any) { return true, nil },
+		Fn:      func(ctx Context, backing Backing) (bool, any) { return true, nil },
 	})
-	results, err := eng.Evaluate(nil, nil)
+	results, err := eng.Evaluate(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

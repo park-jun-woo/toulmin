@@ -8,8 +8,8 @@ func TestValidateGraphDefValid(t *testing.T) {
 	def := GraphDef{
 		Graph: "test",
 		Rules: []GraphRuleDef{
-			{Name: "W", Role: "warrant"},
-			{Name: "R", Role: "rebuttal"},
+			{Name: "W", Role: "rule"},
+			{Name: "R", Role: "counter"},
 		},
 		Defeats: []GraphEdgeDef{
 			{From: "R", To: "W"},

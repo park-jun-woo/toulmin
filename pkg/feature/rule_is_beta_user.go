@@ -5,8 +5,8 @@ package feature
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsBetaUser returns true if the user has the "beta" attribute set to true.
-func IsBetaUser(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*UserContext)
-	beta, _ := ctx.Attributes["beta"].(bool)
+func IsBetaUser(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	attributes, _ := ctx.Get("attributes")
+	beta, _ := attributes.(map[string]any)["beta"].(bool)
 	return beta, nil
 }

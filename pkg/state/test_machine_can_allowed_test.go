@@ -12,7 +12,7 @@ func TestMachine_Can_Allowed(t *testing.T) {
 	m := NewMachine()
 
 	g := toulmin.NewGraph("proposal:accept")
-	g.Warrant(IsCurrentState, nil, 1.0)
+	g.Rule(IsCurrentState)
 
 	m.Add("pending", "accept", "accepted", g)
 

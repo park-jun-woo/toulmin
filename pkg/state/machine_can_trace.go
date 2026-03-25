@@ -9,13 +9,14 @@ import (
 )
 
 // CanTrace evaluates the transition with full trace.
-func (m *Machine) CanTrace(req *TransitionRequest, ctx *TransitionContext) (*TraceResult, error) {
+func (m *Machine) CanTrace(req *TransitionRequest, tctx *TransitionContext) (*TraceResult, error) {
 	key := req.From + ":" + req.Event
 	t, ok := m.transitions[key]
 	if !ok {
 		return nil, fmt.Errorf("no transition registered for %s:%s", req.From, req.Event)
 	}
-	results, err := t.graph.Evaluate(req, ctx, toulmin.EvalOption{Trace: true})
+	ctx := buildStateContext(req, tctx)
+	results, err := t.graph.Evaluate(ctx, toulmin.EvalOption{Trace: true})
 	if err != nil {
 		return nil, err
 	}

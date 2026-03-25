@@ -6,10 +6,10 @@ package toulmin
 // whether it appears as an attacker in any defeat edge.
 func inferRole(strMap map[string]Strength, attackerSet map[string]bool, id string) string {
 	if strMap[id] == Defeater {
-		return "defeater"
+		return "except"
 	}
 	if attackerSet[id] {
-		return "rebuttal"
+		return "counter"
 	}
-	return "warrant"
+	return "rule"
 }

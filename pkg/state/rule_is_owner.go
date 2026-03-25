@@ -6,7 +6,8 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsOwner checks if the user owns the resource.
 // Reads UserID and ResourceOwnerID from TransitionContext.
-func IsOwner(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*TransitionContext)
-	return ctx.UserID == ctx.ResourceOwnerID, nil
+func IsOwner(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	userID, _ := ctx.Get("userID")
+	resourceOwnerID, _ := ctx.Get("resourceOwnerID")
+	return userID == resourceOwnerID, nil
 }

@@ -7,16 +7,16 @@ import (
 )
 
 func TestLoadGraph_WithDefeater(t *testing.T) {
-	wFn := func(c any, g any, b Backing) (bool, any) { return true, nil }
-	rFn := func(c any, g any, b Backing) (bool, any) { return true, nil }
-	dFn := func(c any, g any, b Backing) (bool, any) { return true, nil }
+	wFn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
+	rFn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
+	dFn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
 
 	def := GraphDef{
 		Graph: "defeater-test",
 		Rules: []GraphRuleDef{
-			{Name: "W", Role: "warrant"},
-			{Name: "R", Role: "rebuttal"},
-			{Name: "D", Role: "defeater"},
+			{Name: "W", Role: "rule"},
+			{Name: "R", Role: "counter"},
+			{Name: "D", Role: "except"},
 		},
 		Defeats: []GraphEdgeDef{
 			{From: "R", To: "W"},
@@ -31,7 +31,7 @@ func TestLoadGraph_WithDefeater(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	results, _ := g.Evaluate(nil, nil)
+	results, _ := g.Evaluate(nil)
 	if len(results) == 0 {
 		t.Fatal("expected results")
 	}

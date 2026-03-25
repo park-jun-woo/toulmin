@@ -9,12 +9,13 @@ import (
 )
 
 // EvaluateTrace returns the feature evaluation result with trace.
-func (f *Flags) EvaluateTrace(name string, ctx *UserContext) (*FeatureResult, error) {
+func (f *Flags) EvaluateTrace(name string, uctx *UserContext) (*FeatureResult, error) {
 	g, ok := f.features[name]
 	if !ok {
 		return nil, fmt.Errorf("feature not registered: %s", name)
 	}
-	results, err := g.Evaluate(name, ctx, toulmin.EvalOption{Trace: true})
+	ctx := buildFeatureContext(name, uctx)
+	results, err := g.Evaluate(ctx, toulmin.EvalOption{Trace: true})
 	if err != nil {
 		return nil, err
 	}

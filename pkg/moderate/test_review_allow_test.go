@@ -10,7 +10,7 @@ import (
 
 func TestReview_Allow(t *testing.T) {
 	g := toulmin.NewGraph("test:allow")
-	g.Warrant(IsVerifiedUser, nil, 1.0)
+	g.Rule(IsVerifiedUser)
 
 	mod := NewModerator(g)
 	content := &Content{Body: "hello"}

@@ -22,7 +22,7 @@ func ValidateGraphDef(def GraphDef) error {
 		}
 		known[r.Name] = true
 		switch r.Role {
-		case "warrant", "rebuttal", "defeater":
+		case "rule", "counter", "except":
 		default:
 			errs = append(errs, fmt.Sprintf("  rule %q has unknown role %q", r.Name, r.Role))
 		}

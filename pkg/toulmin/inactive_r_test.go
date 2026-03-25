@@ -2,4 +2,4 @@
 //ff:what InactiveR — test helper: always-inactive rule
 package toulmin
 
-func InactiveR(claim any, ground any, backing Backing) (bool, any) { return false, nil }
+func InactiveR(ctx Context, backing Backing) (bool, any) { return false, nil }

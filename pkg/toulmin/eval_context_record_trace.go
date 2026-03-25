@@ -10,40 +10,40 @@ import (
 // recordTrace runs the rule function for id and records a TraceEntry.
 // Called once per node when calcTrace visits it for the first time.
 // When duration is true, measures execution time of the rule function.
-// Sets ctx.err if the rule function panics.
-func (ctx *evalContext) recordTrace(id string, claim, ground any, duration bool) {
-	ctx.ran[id] = true
+// Sets ec.err if the rule function panics.
+func (ec *evalContext) recordTrace(id string, ctx Context, duration bool) {
+	ec.ran[id] = true
 	var dur time.Duration
 	if duration {
 		start := time.Now()
-		active, evidence, err := safeCall(ctx.fnMap[id], claim, ground, ctx.backingMap[id])
+		active, evidence, err := safeCall(ec.fnMap[id], ctx, ec.backingMap[id])
 		dur = time.Since(start)
 		if err != nil {
-			ctx.err = fmt.Errorf("rule %q: %w", id, err)
+			ec.err = fmt.Errorf("rule %q: %w", id, err)
 			return
 		}
-		ctx.active[id] = active
-		ctx.evidence[id] = evidence
+		ec.active[id] = active
+		ec.evidence[id] = evidence
 	} else {
-		active, evidence, err := safeCall(ctx.fnMap[id], claim, ground, ctx.backingMap[id])
+		active, evidence, err := safeCall(ec.fnMap[id], ctx, ec.backingMap[id])
 		if err != nil {
-			ctx.err = fmt.Errorf("rule %q: %w", id, err)
+			ec.err = fmt.Errorf("rule %q: %w", id, err)
 			return
 		}
-		ctx.active[id] = active
-		ctx.evidence[id] = evidence
+		ec.active[id] = active
+		ec.evidence[id] = evidence
 	}
-	role := ctx.roleMap[id]
+	role := ec.roleMap[id]
 	if role == "" {
-		role = inferRole(ctx.strMap, ctx.attackerSet, id)
+		role = inferRole(ec.strMap, ec.attackerSet, id)
 	}
-	ctx.trace = append(ctx.trace, TraceEntry{
+	ec.trace = append(ec.trace, TraceEntry{
 		Name:      id,
 		Role:      role,
-		Activated: ctx.active[id],
-		Qualifier: ctx.qualMap[id],
-		Evidence:  ctx.evidence[id],
-		Backing:   ctx.backingMap[id],
+		Activated: ec.active[id],
+		Qualifier: ec.qualMap[id],
+		Evidence:  ec.evidence[id],
+		Backing:   ec.backingMap[id],
 		Duration:  dur,
 	})
 }

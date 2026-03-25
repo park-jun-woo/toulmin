@@ -8,10 +8,10 @@ import (
 
 func TestDuration(t *testing.T) {
 	g := NewGraph("test")
-	w := g.Warrant(WarrantA, nil, 1.0)
-	r := g.Rebuttal(RebuttalB, nil, 0.8)
-	g.Defeat(r, w)
-	results, err := g.Evaluate(nil, nil, EvalOption{Duration: true})
+	w := g.Rule(WarrantA)
+	r := g.Counter(RebuttalB).Qualifier(0.8)
+	r.Attacks(w)
+	results, err := g.Evaluate(nil, EvalOption{Duration: true})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

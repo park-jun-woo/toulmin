@@ -2,7 +2,11 @@
 //ff:what TestIsLegacyBrowser — tests IsLegacyBrowser rule
 package feature
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsLegacyBrowser(t *testing.T) {
 	tests := []struct {
@@ -15,7 +19,9 @@ func TestIsLegacyBrowser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := IsLegacyBrowser(nil, &UserContext{Attributes: tt.attr}, nil)
+			ctx := toulmin.NewContext()
+			ctx.Set("attributes", tt.attr)
+			got, _ := IsLegacyBrowser(ctx, nil)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

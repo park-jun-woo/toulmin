@@ -2,7 +2,11 @@
 //ff:what TestIsIPInList — tests IsIPInList rule
 package policy
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsIPInList(t *testing.T) {
 	blocklist := &IPListBacking{Purpose: "blocklist", List: []string{"1.2.3.4"}}
@@ -20,7 +24,9 @@ func TestIsIPInList(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := IsIPInList(nil, &RequestContext{ClientIP: tt.ip}, tt.list)
+			ctx := toulmin.NewContext()
+			ctx.Set("clientIP", tt.ip)
+			got, _ := IsIPInList(ctx, tt.list)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

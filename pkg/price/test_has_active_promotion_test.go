@@ -2,7 +2,11 @@
 //ff:what TestHasActivePromotion — tests HasActivePromotion rule
 package price
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestHasActivePromotion(t *testing.T) {
 	db := &DiscountBacking{Name: "blackfriday", Fixed: 5000}
@@ -18,8 +22,9 @@ func TestHasActivePromotion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &PriceContext{Promotions: tt.promos}
-			got, _ := HasActivePromotion(nil, ctx, db)
+			ctx := toulmin.NewContext()
+			ctx.Set("promotions", tt.promos)
+			got, _ := HasActivePromotion(ctx, db)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

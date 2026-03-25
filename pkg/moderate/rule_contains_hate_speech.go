@@ -6,9 +6,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // ContainsHateSpeech checks if the content contains hate speech.
 // backing is *ClassifierBacking. Returns score as evidence.
-func ContainsHateSpeech(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	content := claim.(*Content)
+func ContainsHateSpeech(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	body, _ := ctx.Get("body")
 	cb := backing.(*ClassifierBacking)
-	score := cb.Classifier.Predict(content.Body, "hate_speech")
+	score := cb.Classifier.Predict(body.(string), "hate_speech")
 	return score > 0.8, score
 }

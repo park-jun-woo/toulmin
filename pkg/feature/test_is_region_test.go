@@ -2,7 +2,11 @@
 //ff:what TestIsRegion — tests IsRegion rule
 package feature
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsRegion(t *testing.T) {
 	tests := []struct {
@@ -16,7 +20,9 @@ func TestIsRegion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := IsRegion(nil, &UserContext{Region: tt.region}, &RegionBacking{Region: tt.back})
+			ctx := toulmin.NewContext()
+			ctx.Set("region", tt.region)
+			got, _ := IsRegion(ctx, &RegionBacking{Region: tt.back})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

@@ -8,14 +8,14 @@ import (
 )
 
 func TestPanicRecoverRebuttal(t *testing.T) {
-	panicRebuttal := func(claim any, ground any, backing Backing) (bool, any) {
+	panicRebuttal := func(ctx Context, backing Backing) (bool, any) {
 		panic("unexpected")
 	}
 	g := NewGraph("test")
-	w := g.Warrant(WarrantA, nil, 1.0)
-	r := g.Rebuttal(panicRebuttal, nil, 1.0)
-	g.Defeat(r, w)
-	results, err := g.Evaluate(nil, nil)
+	w := g.Rule(WarrantA)
+	r := g.Counter(panicRebuttal)
+	r.Attacks(w)
+	results, err := g.Evaluate(nil)
 	if err == nil {
 		t.Fatalf("expected error from panicking rebuttal, got results: %+v", results)
 	}

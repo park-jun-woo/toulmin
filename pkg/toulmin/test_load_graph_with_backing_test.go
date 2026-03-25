@@ -7,15 +7,15 @@ import (
 )
 
 func TestLoadGraph_WithBacking(t *testing.T) {
-	fn := func(c any, g any, b Backing) (bool, any) {
-		tb, ok := b.(*testBacking)
-		return ok && tb.Value == "admin", b
+	fn := func(ctx Context, backing Backing) (bool, any) {
+		tb, ok := backing.(*testBacking)
+		return ok && tb.Value == "admin", backing
 	}
 
 	def := GraphDef{
 		Graph: "backing-test",
 		Rules: []GraphRuleDef{
-			{Name: "checkRole", Role: "warrant", Qualifier: 1.0},
+			{Name: "checkRole", Role: "rule", Qualifier: 1.0},
 		},
 	}
 
@@ -27,7 +27,7 @@ func TestLoadGraph_WithBacking(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	results, _ := g.Evaluate(nil, nil)
+	results, _ := g.Evaluate(nil)
 	if len(results) == 0 || results[0].Verdict <= 0 {
 		t.Error("expected positive verdict with admin backing")
 	}

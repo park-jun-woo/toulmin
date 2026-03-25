@@ -10,7 +10,7 @@ import (
 
 func TestReview_TraceIncluded(t *testing.T) {
 	g := toulmin.NewGraph("test:trace")
-	g.Warrant(IsVerifiedUser, nil, 1.0)
+	g.Rule(IsVerifiedUser)
 
 	mod := NewModerator(g)
 	content := &Content{Body: "hello"}

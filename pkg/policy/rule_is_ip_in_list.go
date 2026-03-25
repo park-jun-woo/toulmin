@@ -5,11 +5,11 @@ package policy
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsIPInList checks if the client IP is in the list provided by backing.
-func IsIPInList(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*RequestContext)
+func IsIPInList(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	clientIP, _ := ctx.Get("clientIP")
 	b := backing.(*IPListBacking)
 	for _, ip := range b.List {
-		if ip == ctx.ClientIP {
+		if ip == clientIP.(string) {
 			return true, nil
 		}
 	}

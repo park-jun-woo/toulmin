@@ -24,13 +24,17 @@ func GenerateGraph(pkgName string, def *GraphDef) (string, error) {
 		method := roleToMethod(r.Role)
 		goVar := ruleVarName(r.Name)
 		varNames[r.Name] = goVar
-		fmt.Fprintf(&buf, "\t%s := g.%s(%s, nil, %g)\n", goVar, method, r.Name, r.Qualifier)
+		if r.Qualifier != 0 && r.Qualifier != 1.0 {
+			fmt.Fprintf(&buf, "\t%s := g.%s(%s).Qualifier(%g)\n", goVar, method, r.Name, r.Qualifier)
+		} else {
+			fmt.Fprintf(&buf, "\t%s := g.%s(%s)\n", goVar, method, r.Name)
+		}
 	}
 
 	for _, d := range def.Defeats {
 		fromVar := varNames[d.From]
 		toVar := varNames[d.To]
-		fmt.Fprintf(&buf, "\tg.Defeat(%s, %s)\n", fromVar, toVar)
+		fmt.Fprintf(&buf, "\t%s.Attacks(%s)\n", fromVar, toVar)
 	}
 
 	buf.WriteString("\treturn g\n")

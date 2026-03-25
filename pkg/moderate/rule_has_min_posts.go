@@ -6,8 +6,8 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // HasMinPosts checks if the author has at least the minimum post count.
 // backing is *MinPostsBacking.
-func HasMinPosts(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*ContentContext)
+func HasMinPosts(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	author, _ := ctx.Get("author")
 	mp := backing.(*MinPostsBacking)
-	return ctx.Author.PostCount >= mp.MinPosts, nil
+	return author.(*Author).PostCount >= mp.MinPosts, nil
 }

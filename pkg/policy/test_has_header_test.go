@@ -2,7 +2,11 @@
 //ff:what TestHasHeader — tests HasHeader rule
 package policy
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestHasHeader(t *testing.T) {
 	tests := []struct {
@@ -17,7 +21,9 @@ func TestHasHeader(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := HasHeader(nil, &RequestContext{Headers: tt.headers}, &HeaderBacking{Header: tt.header})
+			ctx := toulmin.NewContext()
+			ctx.Set("headers", tt.headers)
+			got, _ := HasHeader(ctx, &HeaderBacking{Header: tt.header})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

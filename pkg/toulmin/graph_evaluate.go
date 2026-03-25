@@ -2,33 +2,33 @@
 //ff:what Evaluate — evaluates rules by graph traversal and returns verdicts
 package toulmin
 
-// Evaluate traverses the defeats graph from each warrant node and returns verdicts.
+// Evaluate traverses the defeats graph from each rule node and returns verdicts.
 // Default method is Matrix. Use EvalOption to enable Trace, Duration, or Recursive method.
-// Returns an error if the defeat graph contains a cycle.
-func (g *Graph) Evaluate(claim any, ground any, opts ...EvalOption) ([]EvalResult, error) {
+// Returns an error if the defeat graph contains a cycle or a rule panics.
+func (g *Graph) Evaluate(ctx Context, opts ...EvalOption) ([]EvalResult, error) {
 	opt := resolveOption(opts)
-	ctx, err := newEvalContext(g.rules, g.defeats, g.roles)
+	ec, err := newEvalContext(g.rules, g.defeats, g.roles)
 	if err != nil {
 		return nil, err
 	}
 	var results []EvalResult
 	for _, r := range g.rules {
-		if !isWarrant(ctx.attackerSet, r.Strength, r.Name) {
+		if !isWarrant(ec.attackerSet, r.Strength, r.Name) {
 			continue
 		}
 		if opt.Trace {
-			ctx.reset()
+			ec.reset()
 		}
-		verdict := ctx.evalRule(r.Name, claim, ground, opt)
-		if ctx.err != nil {
-			return nil, ctx.err
+		verdict := ec.evalRule(r.Name, ctx, opt)
+		if ec.err != nil {
+			return nil, ec.err
 		}
-		if !ctx.active[r.Name] {
+		if !ec.active[r.Name] {
 			continue
 		}
-		result := EvalResult{Name: shortName(r.Name), Verdict: verdict, Evidence: ctx.evidence[r.Name]}
+		result := EvalResult{Name: shortName(r.Name), Verdict: verdict, Evidence: ec.evidence[r.Name]}
 		if opt.Trace {
-			result.Trace = collectTrace(ctx.trace)
+			result.Trace = collectTrace(ec.trace)
 		}
 		results = append(results, result)
 	}

@@ -2,7 +2,11 @@
 //ff:what TestIsOwner — tests IsOwner rule
 package state
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsOwner(t *testing.T) {
 	b := &OwnerBacking{}
@@ -17,8 +21,10 @@ func TestIsOwner(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &TransitionContext{UserID: tt.userID, ResourceOwnerID: tt.resourceOwnerID}
-			got, _ := IsOwner(nil, ctx, b)
+			ctx := toulmin.NewContext()
+			ctx.Set("userID", tt.userID)
+			ctx.Set("resourceOwnerID", tt.resourceOwnerID)
+			got, _ := IsOwner(ctx, b)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

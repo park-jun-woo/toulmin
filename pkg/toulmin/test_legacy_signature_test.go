@@ -1,5 +1,5 @@
 //ff:func feature=engine type=engine control=sequence
-//ff:what TestLegacySignature — tests that legacy 2-arg func signature works
+//ff:what TestLegacySignature — tests that context-based func signature works
 package toulmin
 
 import (
@@ -7,10 +7,10 @@ import (
 )
 
 func TestLegacySignature(t *testing.T) {
-	legacyFn := func(claim any, ground any) (bool, any) { return true, nil }
+	fn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
 	g := NewGraph("test")
-	g.Warrant(legacyFn, nil, 1.0)
-	results, err := g.Evaluate(nil, nil)
+	g.Rule(fn)
+	results, err := g.Evaluate(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

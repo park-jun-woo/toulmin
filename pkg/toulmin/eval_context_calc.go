@@ -8,34 +8,34 @@ import "fmt"
 // Executes func on first visit, caches result. Returns [-1.0, +1.0].
 // Sets ctx.err and returns -1.0 if a rule function panics.
 // Cycle-free graph is guaranteed by detectCycle in newEvalContext.
-func (ctx *evalContext) calc(id string, claim, ground any) float64 {
-	if ctx.err != nil {
+func (ec *evalContext) calc(id string, ctx Context) float64 {
+	if ec.err != nil {
 		return -1.0
 	}
-	fn, ok := ctx.fnMap[id]
+	fn, ok := ec.fnMap[id]
 	if !ok || fn == nil {
 		return -1.0
 	}
-	if !ctx.ran[id] {
-		ctx.ran[id] = true
-		active, evidence, err := safeCall(fn, claim, ground, ctx.backingMap[id])
+	if !ec.ran[id] {
+		ec.ran[id] = true
+		active, evidence, err := safeCall(fn, ctx, ec.backingMap[id])
 		if err != nil {
-			ctx.err = fmt.Errorf("rule %q: %w", id, err)
+			ec.err = fmt.Errorf("rule %q: %w", id, err)
 			return -1.0
 		}
-		ctx.active[id] = active
-		ctx.evidence[id] = evidence
+		ec.active[id] = active
+		ec.evidence[id] = evidence
 	}
-	if !ctx.active[id] {
+	if !ec.active[id] {
 		return -1.0
 	}
 	sum := 0.0
-	if ctx.strMap[id] != Strict {
-		for _, aid := range ctx.edges[id] {
-			raw := (ctx.calc(aid, claim, ground) + 1.0) / 2.0
+	if ec.strMap[id] != Strict {
+		for _, aid := range ec.edges[id] {
+			raw := (ec.calc(aid, ctx) + 1.0) / 2.0
 			sum += raw
 		}
 	}
-	raw := ctx.qualMap[id] / (1.0 + sum)
+	raw := ec.qualMap[id] / (1.0 + sum)
 	return 2*raw - 1
 }

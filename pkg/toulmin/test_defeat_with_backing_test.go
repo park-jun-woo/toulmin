@@ -8,15 +8,15 @@ import (
 )
 
 func TestDefeatWithBacking(t *testing.T) {
-	isIPInList := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
-	isAuth := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
+	isIPInList := func(ctx Context, backing Backing) (bool, any) { return true, nil }
+	isAuth := func(ctx Context, backing Backing) (bool, any) { return true, nil }
 	g := NewGraph("test")
-	auth := g.Warrant(isAuth, nil, 1.0)
-	blocked := g.Rebuttal(isIPInList, &testBacking{Value: "blocklist"}, 1.0)
-	allowed := g.Defeater(isIPInList, &testBacking{Value: "whitelist"}, 1.0)
-	g.Defeat(blocked, auth)
-	g.Defeat(allowed, blocked)
-	results, err := g.Evaluate(nil, nil)
+	auth := g.Rule(isAuth)
+	blocked := g.Counter(isIPInList).Backing(&testBacking{Value: "blocklist"})
+	allowed := g.Except(isIPInList).Backing(&testBacking{Value: "whitelist"})
+	blocked.Attacks(auth)
+	allowed.Attacks(blocked)
+	results, err := g.Evaluate(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

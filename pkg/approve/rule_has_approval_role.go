@@ -5,8 +5,8 @@ package approve
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // HasApprovalRole checks if the approver has the role specified by backing.
-func HasApprovalRole(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*ApprovalContext)
+func HasApprovalRole(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	approverRole, _ := ctx.Get("approverRole")
 	ab := backing.(*ApproverBacking)
-	return ctx.ApproverRole == ab.Role, nil
+	return approverRole.(string) == ab.Role, nil
 }

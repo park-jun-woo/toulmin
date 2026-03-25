@@ -6,10 +6,10 @@ import "testing"
 
 func TestRunCasesAtMost(t *testing.T) {
 	g := NewGraph("test")
-	w := g.Warrant(WarrantA, nil, 1.0)
-	r := g.Rebuttal(RebuttalB, nil, 1.0)
-	g.Defeat(r, w)
+	w := g.Rule(WarrantA)
+	r := g.Counter(RebuttalB)
+	r.Attacks(w)
 	RunCases(t, g, []TestCase{
-		{Name: "fully rebutted", Ground: nil, Expect: VerdictAtMost(0)},
+		{Name: "fully rebutted", Context: nil, Expect: VerdictAtMost(0)},
 	})
 }

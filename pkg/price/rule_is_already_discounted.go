@@ -5,8 +5,8 @@ package price
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsAlreadyDiscounted checks if the purchase is already discounted.
-func IsAlreadyDiscounted(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	req := claim.(*PurchaseRequest)
-	discounted, _ := req.Metadata["discounted"].(bool)
+func IsAlreadyDiscounted(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	reqMeta, _ := ctx.Get("requestMetadata")
+	discounted, _ := reqMeta.(map[string]any)["discounted"].(bool)
 	return discounted, nil
 }

@@ -12,11 +12,11 @@ func TestReview_NewsDefeat(t *testing.T) {
 	cb := &ClassifierBacking{Classifier: &mockClassifier{scores: map[string]float64{"hate_speech": 0.95}}}
 
 	g := toulmin.NewGraph("test:news-defeat")
-	verified := g.Warrant(IsVerifiedUser, nil, 1.0)
-	hate := g.Rebuttal(ContainsHateSpeech, cb, 1.0)
-	news := g.Defeater(IsNewsContext, nil, 1.0)
-	g.Defeat(hate, verified)
-	g.Defeat(news, hate)
+	verified := g.Rule(IsVerifiedUser)
+	hate := g.Counter(ContainsHateSpeech).Backing(cb)
+	news := g.Except(IsNewsContext)
+	hate.Attacks(verified)
+	news.Attacks(hate)
 
 	mod := NewModerator(g)
 	content := &Content{Body: "news quote with hate speech"}

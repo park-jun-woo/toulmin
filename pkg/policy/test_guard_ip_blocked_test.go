@@ -13,9 +13,9 @@ func TestGuard_IPBlocked(t *testing.T) {
 	blocklist := &IPListBacking{Purpose: "blocklist", List: []string{"1.2.3.4"}}
 
 	g := toulmin.NewGraph("test:ip")
-	auth := g.Warrant(IsAuthenticated, nil, 1.0)
-	blocked := g.Rebuttal(IsIPInList, blocklist, 1.0)
-	g.Defeat(blocked, auth)
+	auth := g.Rule(IsAuthenticated)
+	blocked := g.Counter(IsIPInList).Backing(blocklist)
+	blocked.Attacks(auth)
 
 	handler := Guard(g, buildTestCtxFn(&testUser{ID: "u1"}, "1.2.3.4", nil))(okHandler)
 

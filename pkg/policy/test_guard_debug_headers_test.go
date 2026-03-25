@@ -11,7 +11,7 @@ import (
 
 func TestGuardDebug_Headers(t *testing.T) {
 	g := toulmin.NewGraph("test:debug")
-	g.Warrant(IsAuthenticated, nil, 1.0)
+	g.Rule(IsAuthenticated)
 
 	handler := GuardDebug(g, buildTestCtxFn(&testUser{ID: "u1"}, "10.0.0.1", nil))(okHandler)
 

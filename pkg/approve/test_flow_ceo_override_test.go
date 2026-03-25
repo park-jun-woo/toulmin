@@ -12,11 +12,11 @@ func TestFlow_CEOOverride(t *testing.T) {
 	ab := &ApproverBacking{}
 
 	g := toulmin.NewGraph("expense:finance")
-	budget := g.Warrant(IsUnderBudget, nil, 1.0)
-	frozen := g.Rebuttal(IsBudgetFrozen, nil, 1.0)
-	ceo := g.Defeater(IsCEOOverride, ab, 1.0)
-	g.Defeat(frozen, budget)
-	g.Defeat(ceo, frozen)
+	budget := g.Rule(IsUnderBudget)
+	frozen := g.Counter(IsBudgetFrozen)
+	ceo := g.Except(IsCEOOverride).Backing(ab)
+	frozen.Attacks(budget)
+	ceo.Attacks(frozen)
 
 	f := NewFlow("expense").AddStep("finance", g)
 

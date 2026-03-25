@@ -11,8 +11,8 @@ func TestGenerateGraphGofmtValid(t *testing.T) {
 	def := &GraphDef{
 		Graph: "test",
 		Rules: []GraphRuleDef{
-			{Name: "A", Role: "warrant", Qualifier: 1.0},
-			{Name: "B", Role: "defeater", Qualifier: 0.5},
+			{Name: "A", Role: "rule", Qualifier: 1.0},
+			{Name: "B", Role: "except", Qualifier: 0.5},
 		},
 		Defeats: []GraphEdgeDef{{From: "B", To: "A"}},
 	}

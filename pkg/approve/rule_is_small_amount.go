@@ -5,8 +5,8 @@ package approve
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsSmallAmount checks if the requested amount is at or below backing threshold.
-func IsSmallAmount(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	req := claim.(*ApprovalRequest)
+func IsSmallAmount(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	amount, _ := ctx.Get("amount")
 	b := backing.(*ThresholdBacking)
-	return req.Amount <= b.Max, nil
+	return amount.(float64) <= b.Max, nil
 }

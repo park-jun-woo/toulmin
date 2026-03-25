@@ -6,9 +6,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // ContainsSpam checks if the content contains spam.
 // backing is *ClassifierBacking. Returns score as evidence.
-func ContainsSpam(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	content := claim.(*Content)
+func ContainsSpam(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	body, _ := ctx.Get("body")
 	cb := backing.(*ClassifierBacking)
-	score := cb.Classifier.Predict(content.Body, "spam")
+	score := cb.Classifier.Predict(body.(string), "spam")
 	return score > 0.7, score
 }

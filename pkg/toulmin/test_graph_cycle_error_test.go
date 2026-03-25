@@ -7,14 +7,14 @@ import (
 )
 
 func TestGraphCycleError(t *testing.T) {
-	cycleA := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
-	cycleB := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
+	cycleA := func(ctx Context, backing Backing) (bool, any) { return true, nil }
+	cycleB := func(ctx Context, backing Backing) (bool, any) { return true, nil }
 	g := NewGraph("test")
-	a := g.Warrant(cycleA, nil, 1.0)
-	b := g.Rebuttal(cycleB, nil, 1.0)
-	g.Defeat(b, a)
-	g.Defeat(a, b)
-	_, err := g.Evaluate(nil, nil)
+	a := g.Rule(cycleA)
+	b := g.Counter(cycleB)
+	b.Attacks(a)
+	a.Attacks(b)
+	_, err := g.Evaluate(nil)
 	if err == nil {
 		t.Fatal("expected error for circular defeat graph")
 	}

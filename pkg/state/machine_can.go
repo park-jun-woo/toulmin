@@ -5,13 +5,14 @@ package state
 import "fmt"
 
 // Can evaluates whether the transition is allowed. Returns verdict.
-func (m *Machine) Can(req *TransitionRequest, ctx *TransitionContext) (float64, error) {
+func (m *Machine) Can(req *TransitionRequest, tctx *TransitionContext) (float64, error) {
 	key := req.From + ":" + req.Event
 	t, ok := m.transitions[key]
 	if !ok {
 		return -1, fmt.Errorf("no transition registered for %s:%s", req.From, req.Event)
 	}
-	results, err := t.graph.Evaluate(req, ctx)
+	ctx := buildStateContext(req, tctx)
+	results, err := t.graph.Evaluate(ctx)
 	if err != nil {
 		return -1, err
 	}

@@ -8,16 +8,16 @@ import (
 
 func TestLazySkipsRebuttalWhenWarrantFalse(t *testing.T) {
 	rebuttalCalled := false
-	falseWarrant := func(claim any, ground any, backing Backing) (bool, any) { return false, nil }
-	trackedRebuttal := func(claim any, ground any, backing Backing) (bool, any) {
+	falseWarrant := func(ctx Context, backing Backing) (bool, any) { return false, nil }
+	trackedRebuttal := func(ctx Context, backing Backing) (bool, any) {
 		rebuttalCalled = true
 		return true, nil
 	}
 	g := NewGraph("test")
-	w := g.Warrant(falseWarrant, nil, 1.0)
-	r := g.Rebuttal(trackedRebuttal, nil, 1.0)
-	g.Defeat(r, w)
-	results, err := g.Evaluate(nil, nil)
+	w := g.Rule(falseWarrant)
+	r := g.Counter(trackedRebuttal)
+	r.Attacks(w)
+	results, err := g.Evaluate(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

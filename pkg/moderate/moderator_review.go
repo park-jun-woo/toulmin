@@ -6,8 +6,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // Review evaluates the content and returns a ReviewResult.
 // verdict > 0.3 → allow, 0 < verdict <= 0.3 → flag, verdict <= 0 → block.
-func (m *Moderator) Review(content *Content, ctx *ContentContext) (*ReviewResult, error) {
-	results, err := m.graph.Evaluate(content, ctx, toulmin.EvalOption{Trace: true})
+func (m *Moderator) Review(content *Content, cctx *ContentContext) (*ReviewResult, error) {
+	ctx := buildModerateContext(content, cctx)
+	results, err := m.graph.Evaluate(ctx, toulmin.EvalOption{Trace: true})
 	if err != nil {
 		return nil, err
 	}

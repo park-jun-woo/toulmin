@@ -2,7 +2,11 @@
 //ff:what TestIsBudgetFrozen — tests IsBudgetFrozen rule
 package approve
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsBudgetFrozen(t *testing.T) {
 	tests := []struct {
@@ -15,8 +19,9 @@ func TestIsBudgetFrozen(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &ApprovalContext{Budget: &Budget{Frozen: tt.frozen}}
-			got, _ := IsBudgetFrozen(nil, ctx, nil)
+			ctx := toulmin.NewContext()
+			ctx.Set("budget", &Budget{Frozen: tt.frozen})
+			got, _ := IsBudgetFrozen(ctx, nil)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

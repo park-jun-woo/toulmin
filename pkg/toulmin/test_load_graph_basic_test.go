@@ -7,14 +7,14 @@ import (
 )
 
 func TestLoadGraph_Basic(t *testing.T) {
-	wFn := func(c any, g any, b Backing) (bool, any) { return true, nil }
-	rFn := func(c any, g any, b Backing) (bool, any) { return true, nil }
+	wFn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
+	rFn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
 
 	def := GraphDef{
 		Graph: "test",
 		Rules: []GraphRuleDef{
-			{Name: "W", Role: "warrant"},
-			{Name: "R", Role: "rebuttal"},
+			{Name: "W", Role: "rule"},
+			{Name: "R", Role: "counter"},
 		},
 		Defeats: []GraphEdgeDef{
 			{From: "R", To: "W"},
@@ -28,7 +28,7 @@ func TestLoadGraph_Basic(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	results, err := g.Evaluate(nil, nil)
+	results, err := g.Evaluate(nil)
 	if err != nil {
 		t.Fatalf("evaluate error: %v", err)
 	}

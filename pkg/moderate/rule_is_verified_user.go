@@ -5,7 +5,7 @@ package moderate
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsVerifiedUser returns true if the author is verified.
-func IsVerifiedUser(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*ContentContext)
-	return ctx.Author.Verified, nil
+func IsVerifiedUser(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	author, _ := ctx.Get("author")
+	return author.(*Author).Verified, nil
 }

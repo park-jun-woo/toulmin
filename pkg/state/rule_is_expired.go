@@ -8,7 +8,7 @@ import (
 )
 
 // IsExpired checks if the resource is expired using backing (*ExpiryBacking).
-func IsExpired(claim any, ground any, backing toulmin.Backing) (bool, any) {
+func IsExpired(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
 	b := backing.(*ExpiryBacking)
 	return time.Now().After(b.ExpiresAt), nil
 }

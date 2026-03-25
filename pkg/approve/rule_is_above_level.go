@@ -5,8 +5,8 @@ package approve
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsAboveLevel checks if the approver's level is at or above backing.Level.
-func IsAboveLevel(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*ApprovalContext)
+func IsAboveLevel(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	approverLevel, _ := ctx.Get("approverLevel")
 	ab := backing.(*ApproverBacking)
-	return ctx.ApproverLevel >= ab.Level, nil
+	return approverLevel.(int) >= ab.Level, nil
 }

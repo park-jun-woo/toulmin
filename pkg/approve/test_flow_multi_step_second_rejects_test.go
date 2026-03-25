@@ -13,10 +13,10 @@ func TestFlow_MultiStep_SecondRejects(t *testing.T) {
 	ab := &ApproverBacking{}
 
 	g1 := toulmin.NewGraph("expense:manager")
-	g1.Warrant(IsDirectManager, ab, 1.0)
+	g1.Rule(IsDirectManager).Backing(ab)
 
 	g2 := toulmin.NewGraph("expense:finance")
-	g2.Warrant(HasApprovalRole, &ApproverBacking{Role: "finance"}, 1.0)
+	g2.Rule(HasApprovalRole).Backing(&ApproverBacking{Role: "finance"})
 
 	f := NewFlow("expense").AddStep("manager", g1).AddStep("finance", g2)
 

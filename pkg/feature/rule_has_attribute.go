@@ -5,8 +5,8 @@ package feature
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // HasAttribute checks if the user has the attribute key=value specified by backing.
-func HasAttribute(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*UserContext)
+func HasAttribute(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	attributes, _ := ctx.Get("attributes")
 	ab := backing.(*AttributeBacking)
-	return ctx.Attributes[ab.Key] == ab.Value, nil
+	return attributes.(map[string]any)[ab.Key] == ab.Value, nil
 }

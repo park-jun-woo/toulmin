@@ -7,12 +7,12 @@ import (
 )
 
 func TestLoadGraph_DefaultQualifier(t *testing.T) {
-	fn := func(c any, g any, b Backing) (bool, any) { return true, nil }
+	fn := func(ctx Context, backing Backing) (bool, any) { return true, nil }
 
 	def := GraphDef{
 		Graph: "default-q",
 		Rules: []GraphRuleDef{
-			{Name: "W", Role: "warrant"}, // Qualifier=0 → default 1.0
+			{Name: "W", Role: "rule"}, // Qualifier=0 → default 1.0
 		},
 	}
 
@@ -21,7 +21,7 @@ func TestLoadGraph_DefaultQualifier(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	results, _ := g.Evaluate(nil, nil)
+	results, _ := g.Evaluate(nil)
 	if len(results) == 0 || results[0].Verdict != 1.0 {
 		t.Errorf("expected verdict 1.0 with default qualifier, got %v", results)
 	}

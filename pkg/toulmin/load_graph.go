@@ -31,18 +31,24 @@ func LoadGraph(def GraphDef, functions map[string]any, backings map[string]Backi
 
 		var rule *Rule
 		switch rd.Role {
-		case "warrant":
-			rule = g.Warrant(fn, backing, q)
-		case "rebuttal":
-			rule = g.Rebuttal(fn, backing, q)
-		case "defeater":
-			rule = g.Defeater(fn, backing, q)
+		case "rule":
+			rule = g.Rule(fn)
+		case "counter":
+			rule = g.Counter(fn)
+		case "except":
+			rule = g.Except(fn)
+		}
+		if backing != nil {
+			rule.Backing(backing)
+		}
+		if q != 1.0 {
+			rule.Qualifier(q)
 		}
 		refs[rd.Name] = rule
 	}
 
 	for _, ed := range def.Defeats {
-		g.Defeat(refs[ed.From], refs[ed.To])
+		refs[ed.From].Attacks(refs[ed.To])
 	}
 
 	return g, nil

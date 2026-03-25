@@ -2,7 +2,11 @@
 //ff:what TestIsVerifiedUser — tests IsVerifiedUser rule
 package moderate
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsVerifiedUser(t *testing.T) {
 	tests := []struct {
@@ -15,8 +19,9 @@ func TestIsVerifiedUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &ContentContext{Author: &Author{Verified: tt.verified}}
-			got, _ := IsVerifiedUser(nil, ctx, nil)
+			ctx := toulmin.NewContext()
+			ctx.Set("author", &Author{Verified: tt.verified})
+			got, _ := IsVerifiedUser(ctx, nil)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

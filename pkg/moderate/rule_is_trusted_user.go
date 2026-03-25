@@ -6,8 +6,8 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsTrustedUser checks if the author's trust score meets the minimum.
 // backing is *TrustScoreBacking.
-func IsTrustedUser(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*ContentContext)
+func IsTrustedUser(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	author, _ := ctx.Get("author")
 	tb := backing.(*TrustScoreBacking)
-	return ctx.Author.TrustScore >= tb.MinScore, nil
+	return author.(*Author).TrustScore >= tb.MinScore, nil
 }

@@ -2,7 +2,11 @@
 //ff:what TestIsTrustedUser — tests IsTrustedUser rule
 package moderate
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsTrustedUser(t *testing.T) {
 	tests := []struct {
@@ -17,8 +21,9 @@ func TestIsTrustedUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &ContentContext{Author: &Author{TrustScore: tt.score}}
-			got, _ := IsTrustedUser(nil, ctx, &TrustScoreBacking{MinScore: tt.min})
+			ctx := toulmin.NewContext()
+			ctx.Set("author", &Author{TrustScore: tt.score})
+			got, _ := IsTrustedUser(ctx, &TrustScoreBacking{MinScore: tt.min})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

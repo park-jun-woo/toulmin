@@ -6,8 +6,8 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsInternalStaff checks if the user is internal staff.
 // Checks Attributes["internal"].
-func IsInternalStaff(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*UserContext)
-	internal, _ := ctx.Attributes["internal"].(bool)
+func IsInternalStaff(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	attributes, _ := ctx.Get("attributes")
+	internal, _ := attributes.(map[string]any)["internal"].(bool)
 	return internal, nil
 }

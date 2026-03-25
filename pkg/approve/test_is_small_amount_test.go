@@ -2,7 +2,11 @@
 //ff:what TestIsSmallAmount — tests IsSmallAmount rule
 package approve
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsSmallAmount(t *testing.T) {
 	tests := []struct {
@@ -17,8 +21,9 @@ func TestIsSmallAmount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := &ApprovalRequest{Amount: tt.amount}
-			got, _ := IsSmallAmount(req, nil, &ThresholdBacking{Max: tt.threshold})
+			ctx := toulmin.NewContext()
+			ctx.Set("amount", tt.amount)
+			got, _ := IsSmallAmount(ctx, &ThresholdBacking{Max: tt.threshold})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

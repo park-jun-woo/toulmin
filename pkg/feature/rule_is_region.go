@@ -5,8 +5,8 @@ package feature
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsRegion checks if the user's region matches backing.Region.
-func IsRegion(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*UserContext)
+func IsRegion(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	region, _ := ctx.Get("region")
 	rb := backing.(*RegionBacking)
-	return ctx.Region == rb.Region, nil
+	return region.(string) == rb.Region, nil
 }

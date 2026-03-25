@@ -13,11 +13,11 @@ func TestMermaid(t *testing.T) {
 	m := NewMachine()
 
 	g1 := toulmin.NewGraph("proposal:accept")
-	g1.Warrant(IsCurrentState, nil, 1.0)
+	g1.Rule(IsCurrentState)
 	m.Add("pending", "accept", "accepted", g1)
 
 	g2 := toulmin.NewGraph("proposal:reject")
-	g2.Warrant(IsCurrentState, nil, 1.0)
+	g2.Rule(IsCurrentState)
 	m.Add("pending", "reject", "rejected", g2)
 
 	diagram := m.Mermaid()

@@ -5,6 +5,8 @@ package state
 import (
 	"testing"
 	"time"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
 )
 
 func TestIsExpired(t *testing.T) {
@@ -19,8 +21,8 @@ func TestIsExpired(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := &ExpiryBacking{ExpiresAt: tt.exp}
-			ctx := &TransitionContext{Resource: &testResource{ExpiresAt: tt.exp}}
-			got, _ := IsExpired(nil, ctx, b)
+			ctx := toulmin.NewContext()
+			got, _ := IsExpired(ctx, b)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

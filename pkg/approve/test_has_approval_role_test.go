@@ -2,7 +2,11 @@
 //ff:what TestHasApprovalRole — tests HasApprovalRole rule
 package approve
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestHasApprovalRole(t *testing.T) {
 	tests := []struct {
@@ -17,8 +21,9 @@ func TestHasApprovalRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ab := &ApproverBacking{Role: tt.role}
-			ctx := &ApprovalContext{Approver: &testApprover{Role: tt.have}, ApproverRole: tt.have}
-			got, _ := HasApprovalRole(nil, ctx, ab)
+			ctx := toulmin.NewContext()
+			ctx.Set("approverRole", tt.have)
+			got, _ := HasApprovalRole(ctx, ab)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

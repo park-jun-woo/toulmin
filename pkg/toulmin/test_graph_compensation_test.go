@@ -9,12 +9,12 @@ import (
 
 func TestGraphCompensation(t *testing.T) {
 	g := NewGraph("test")
-	w := g.Warrant(WarrantA, nil, 1.0)
-	r := g.Rebuttal(RebuttalB, nil, 1.0)
-	d := g.Defeater(DefeaterC, nil, 1.0)
-	g.Defeat(r, w)
-	g.Defeat(d, r)
-	results, err := g.Evaluate(nil, nil, EvalOption{Trace: true})
+	w := g.Rule(WarrantA)
+	r := g.Counter(RebuttalB)
+	d := g.Except(DefeaterC)
+	r.Attacks(w)
+	d.Attacks(r)
+	results, err := g.Evaluate(nil, EvalOption{Trace: true})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

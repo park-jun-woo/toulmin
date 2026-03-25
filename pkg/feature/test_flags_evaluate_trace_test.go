@@ -12,7 +12,7 @@ func TestFlags_EvaluateTrace(t *testing.T) {
 	flags := NewFlags()
 
 	g := toulmin.NewGraph("feature:dark-mode")
-	g.Warrant(IsBetaUser, nil, 1.0)
+	g.Rule(IsBetaUser)
 	flags.Register("dark-mode", g)
 
 	ctx := &UserContext{Attributes: map[string]any{"beta": true}}

@@ -2,7 +2,11 @@
 //ff:what TestHasAttribute — tests HasAttribute rule
 package feature
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestHasAttribute(t *testing.T) {
 	tests := []struct {
@@ -18,7 +22,9 @@ func TestHasAttribute(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := HasAttribute(nil, &UserContext{Attributes: tt.attr}, &AttributeBacking{Key: tt.key, Value: tt.val})
+			ctx := toulmin.NewContext()
+			ctx.Set("attributes", tt.attr)
+			got, _ := HasAttribute(ctx, &AttributeBacking{Key: tt.key, Value: tt.val})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

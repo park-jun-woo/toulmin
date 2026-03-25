@@ -3,8 +3,11 @@
 package toulmin
 
 // Rule is an opaque reference to a rule registered in a Graph.
-// It is returned by Warrant, Rebuttal, and Defeater, and used
-// by Defeat to declare relationships without repeating rule definitions.
+// It is returned by Rule, Counter, and Except, and supports
+// Attacks, Backing, and Qualifier method chaining.
 type Rule struct {
-	id string
+	id    string
+	graph *Graph
+	idx   int
+	fn    any
 }

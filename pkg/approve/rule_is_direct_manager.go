@@ -5,8 +5,9 @@ package approve
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsDirectManager checks if the approver is the requester's direct manager.
-func IsDirectManager(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	req := claim.(*ApprovalRequest)
-	ctx := ground.(*ApprovalContext)
-	return ctx.OrgTree.IsDirectManager(ctx.ApproverID, req.RequesterID), nil
+func IsDirectManager(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	orgTree, _ := ctx.Get("orgTree")
+	approverID, _ := ctx.Get("approverID")
+	requesterID, _ := ctx.Get("requesterID")
+	return orgTree.(OrgTree).IsDirectManager(approverID.(string), requesterID.(string)), nil
 }

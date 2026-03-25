@@ -2,7 +2,11 @@
 //ff:what TestIsRateLimited — tests IsRateLimited rule
 package policy
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsRateLimited(t *testing.T) {
 	limiter := &mockLimiter{limited: map[string]bool{"1.2.3.4": true}}
@@ -16,7 +20,10 @@ func TestIsRateLimited(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := IsRateLimited(nil, &RequestContext{ClientIP: tt.ip, RateLimiter: limiter}, nil)
+			ctx := toulmin.NewContext()
+			ctx.Set("clientIP", tt.ip)
+			ctx.Set("rateLimiter", limiter)
+			got, _ := IsRateLimited(ctx, nil)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

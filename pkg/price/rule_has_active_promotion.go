@@ -5,10 +5,10 @@ package price
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // HasActivePromotion checks if the promotion named by backing.Name is active.
-func HasActivePromotion(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*PriceContext)
+func HasActivePromotion(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	promotions, _ := ctx.Get("promotions")
 	db := backing.(*DiscountBacking)
-	for _, p := range ctx.Promotions {
+	for _, p := range promotions.([]Promotion) {
 		if p.Name == db.Name && p.Active {
 			return true, db
 		}

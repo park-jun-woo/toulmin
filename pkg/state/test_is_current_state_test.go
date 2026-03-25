@@ -2,7 +2,11 @@
 //ff:what TestIsCurrentState — tests IsCurrentState rule
 package state
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsCurrentState(t *testing.T) {
 	tests := []struct {
@@ -16,9 +20,10 @@ func TestIsCurrentState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := &TransitionRequest{From: tt.from}
-			ctx := &TransitionContext{CurrentState: tt.current}
-			got, _ := IsCurrentState(req, ctx, nil)
+			ctx := toulmin.NewContext()
+			ctx.Set("from", tt.from)
+			ctx.Set("currentState", tt.current)
+			got, _ := IsCurrentState(ctx, nil)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

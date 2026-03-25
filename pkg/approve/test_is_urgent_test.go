@@ -2,7 +2,11 @@
 //ff:what TestIsUrgent — tests IsUrgent rule
 package approve
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsUrgent(t *testing.T) {
 	tests := []struct {
@@ -16,8 +20,9 @@ func TestIsUrgent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := &ApprovalRequest{Metadata: tt.meta}
-			got, _ := IsUrgent(req, nil, nil)
+			ctx := toulmin.NewContext()
+			ctx.Set("requestMetadata", tt.meta)
+			got, _ := IsUrgent(ctx, nil)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

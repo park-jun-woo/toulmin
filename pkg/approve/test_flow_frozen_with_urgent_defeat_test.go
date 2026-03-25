@@ -10,11 +10,11 @@ import (
 
 func TestFlow_FrozenWithUrgentDefeat(t *testing.T) {
 	g := toulmin.NewGraph("expense:manager")
-	budget := g.Warrant(IsUnderBudget, nil, 1.0)
-	frozen := g.Rebuttal(IsBudgetFrozen, nil, 1.0)
-	urgent := g.Defeater(IsUrgent, nil, 1.0)
-	g.Defeat(frozen, budget)
-	g.Defeat(urgent, frozen)
+	budget := g.Rule(IsUnderBudget)
+	frozen := g.Counter(IsBudgetFrozen)
+	urgent := g.Except(IsUrgent)
+	frozen.Attacks(budget)
+	urgent.Attacks(frozen)
 
 	f := NewFlow("expense").AddStep("manager", g)
 

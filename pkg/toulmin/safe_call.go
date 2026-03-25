@@ -5,7 +5,7 @@ package toulmin
 import "fmt"
 
 // safeCall runs fn with panic recovery. Returns error if fn panics.
-func safeCall(fn func(any, any, Backing) (bool, any), claim, ground any, backing Backing) (activated bool, evidence any, err error) {
+func safeCall(fn func(Context, Backing) (bool, any), ctx Context, backing Backing) (activated bool, evidence any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			activated = false
@@ -13,6 +13,6 @@ func safeCall(fn func(any, any, Backing) (bool, any), claim, ground any, backing
 			err = fmt.Errorf("rule panicked: %v", r)
 		}
 	}()
-	activated, evidence = fn(claim, ground, backing)
+	activated, evidence = fn(ctx, backing)
 	return
 }

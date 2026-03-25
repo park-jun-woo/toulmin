@@ -5,8 +5,8 @@ package policy
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // HasHeader checks if the request has a non-empty header specified by backing.
-func HasHeader(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*RequestContext)
+func HasHeader(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	headers, _ := ctx.Get("headers")
 	b := backing.(*HeaderBacking)
-	return ctx.Headers[b.Header] != "", nil
+	return headers.(map[string]string)[b.Header] != "", nil
 }

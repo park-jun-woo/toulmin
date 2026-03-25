@@ -6,11 +6,12 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsInRole checks if the user has the role specified by backing (*RoleBacking).
 // Reads the role from RequestContext.Role.
-func IsInRole(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	ctx := ground.(*RequestContext)
-	if ctx.User == nil {
+func IsInRole(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	user, _ := ctx.Get("user")
+	if user == nil {
 		return false, nil
 	}
+	role, _ := ctx.Get("role")
 	rb := backing.(*RoleBacking)
-	return ctx.Role == rb.Role, nil
+	return role == rb.Role, nil
 }

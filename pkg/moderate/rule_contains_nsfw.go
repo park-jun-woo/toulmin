@@ -6,9 +6,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // ContainsNSFW checks if the content contains NSFW material.
 // backing is *ClassifierBacking. Returns score as evidence.
-func ContainsNSFW(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	content := claim.(*Content)
+func ContainsNSFW(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	body, _ := ctx.Get("body")
 	cb := backing.(*ClassifierBacking)
-	score := cb.Classifier.Predict(content.Body, "nsfw")
+	score := cb.Classifier.Predict(body.(string), "nsfw")
 	return score > 0.8, score
 }

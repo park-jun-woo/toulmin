@@ -10,7 +10,7 @@ func TestLoadGraph_MissingFunc(t *testing.T) {
 	def := GraphDef{
 		Graph: "missing",
 		Rules: []GraphRuleDef{
-			{Name: "unknown", Role: "warrant"},
+			{Name: "unknown", Role: "rule"},
 		},
 	}
 

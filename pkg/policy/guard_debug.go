@@ -14,8 +14,9 @@ import (
 func GuardDebug(g *toulmin.Graph, ctxFn ContextFunc) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := ctxFn(r)
-			results, err := g.Evaluate(nil, ctx, toulmin.EvalOption{Trace: true})
+			reqCtx := ctxFn(r)
+			ctx := buildPolicyContext(reqCtx)
+			results, err := g.Evaluate(ctx, toulmin.EvalOption{Trace: true})
 			if err != nil {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)

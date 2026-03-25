@@ -5,10 +5,10 @@ package toulmin
 import "testing"
 
 func TestRunCasesNoResult(t *testing.T) {
-	inactive := func(claim any, ground any, backing Backing) (bool, any) { return false, nil }
+	inactive := func(ctx Context, backing Backing) (bool, any) { return false, nil }
 	g := NewGraph("test")
-	g.Warrant(inactive, nil, 1.0)
+	g.Rule(inactive)
 	RunCases(t, g, []TestCase{
-		{Name: "inactive warrant", Ground: nil, Expect: NoResult},
+		{Name: "inactive warrant", Context: nil, Expect: NoResult},
 	})
 }

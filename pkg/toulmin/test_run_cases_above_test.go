@@ -6,8 +6,8 @@ import "testing"
 
 func TestRunCasesAbove(t *testing.T) {
 	g := NewGraph("test")
-	g.Warrant(WarrantA, nil, 1.0)
+	g.Rule(WarrantA)
 	RunCases(t, g, []TestCase{
-		{Name: "warrant active", Ground: nil, Expect: VerdictAbove(0)},
+		{Name: "warrant active", Context: nil, Expect: VerdictAbove(0)},
 	})
 }

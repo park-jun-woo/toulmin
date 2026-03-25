@@ -2,7 +2,11 @@
 //ff:what TestIsAboveLevel — tests IsAboveLevel rule
 package approve
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsAboveLevel(t *testing.T) {
 	tests := []struct {
@@ -18,8 +22,9 @@ func TestIsAboveLevel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ab := &ApproverBacking{Level: tt.min}
-			ctx := &ApprovalContext{Approver: &testApprover{Level: tt.level}, ApproverLevel: tt.level}
-			got, _ := IsAboveLevel(nil, ctx, ab)
+			ctx := toulmin.NewContext()
+			ctx.Set("approverLevel", tt.level)
+			got, _ := IsAboveLevel(ctx, ab)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

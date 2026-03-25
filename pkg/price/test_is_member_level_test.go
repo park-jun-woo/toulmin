@@ -2,7 +2,11 @@
 //ff:what TestIsMemberLevel — tests IsMemberLevel rule
 package price
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 func TestIsMemberLevel(t *testing.T) {
 	tests := []struct {
@@ -17,9 +21,10 @@ func TestIsMemberLevel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := &PriceContext{User: &testUser{Membership: tt.membership}, Membership: tt.membership}
+			ctx := toulmin.NewContext()
+			ctx.Set("membership", tt.membership)
 			mb := &MemberBacking{Level: tt.level, Discount: &DiscountBacking{Name: tt.level, Rate: 0.1}}
-			got, _ := IsMemberLevel(nil, ctx, mb)
+			got, _ := IsMemberLevel(ctx, mb)
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

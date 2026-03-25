@@ -8,10 +8,10 @@ import (
 
 func TestGraphTraceIncludesInactive(t *testing.T) {
 	g := NewGraph("test")
-	w := g.Warrant(WarrantA, nil, 1.0)
-	r := g.Rebuttal(InactiveR, nil, 1.0)
-	g.Defeat(r, w)
-	results, err := g.Evaluate(nil, nil, EvalOption{Trace: true})
+	w := g.Rule(WarrantA)
+	r := g.Counter(InactiveR)
+	r.Attacks(w)
+	results, err := g.Evaluate(nil, EvalOption{Trace: true})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

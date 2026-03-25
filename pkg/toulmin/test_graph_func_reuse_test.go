@@ -8,20 +8,20 @@ import (
 
 func TestGraphFuncReuse(t *testing.T) {
 	g1 := NewGraph("graph1")
-	w1 := g1.Warrant(WarrantA, nil, 1.0)
-	r1 := g1.Rebuttal(RebuttalB, nil, 1.0)
-	g1.Defeat(r1, w1)
+	w1 := g1.Rule(WarrantA)
+	r1 := g1.Counter(RebuttalB)
+	r1.Attacks(w1)
 
 	g2 := NewGraph("graph2")
-	w2 := g2.Warrant(WarrantA, nil, 1.0)
-	d2 := g2.Defeater(DefeaterC, nil, 1.0)
-	g2.Defeat(d2, w2)
+	w2 := g2.Rule(WarrantA)
+	d2 := g2.Except(DefeaterC)
+	d2.Attacks(w2)
 
-	res1, err := g1.Evaluate(nil, nil)
+	res1, err := g1.Evaluate(nil)
 	if err != nil {
 		t.Fatalf("g1 error: %v", err)
 	}
-	res2, err := g2.Evaluate(nil, nil)
+	res2, err := g2.Evaluate(nil)
 	if err != nil {
 		t.Fatalf("g2 error: %v", err)
 	}

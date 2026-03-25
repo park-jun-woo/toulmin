@@ -12,11 +12,11 @@ func TestFlags_IsEnabled_LegacyDefeat(t *testing.T) {
 	flags := NewFlags()
 
 	g := toulmin.NewGraph("feature:dark-mode")
-	beta := g.Warrant(IsBetaUser, nil, 1.0)
-	legacy := g.Rebuttal(IsLegacyBrowser, nil, 1.0)
-	internal := g.Defeater(IsInternalStaff, nil, 1.0)
-	g.Defeat(legacy, beta)
-	g.Defeat(internal, legacy)
+	beta := g.Rule(IsBetaUser)
+	legacy := g.Counter(IsLegacyBrowser)
+	internal := g.Except(IsInternalStaff)
+	legacy.Attacks(beta)
+	internal.Attacks(legacy)
 	flags.Register("dark-mode", g)
 
 	// beta + legacy + internal → internal defeats legacy → enabled

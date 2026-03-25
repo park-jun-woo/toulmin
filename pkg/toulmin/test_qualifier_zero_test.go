@@ -8,8 +8,8 @@ import (
 
 func TestQualifierZero(t *testing.T) {
 	g := NewGraph("test")
-	g.Warrant(WarrantA, nil, 0.0)
-	results, err := g.Evaluate(nil, nil)
+	g.Rule(WarrantA).Qualifier(0.0)
+	results, err := g.Evaluate(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

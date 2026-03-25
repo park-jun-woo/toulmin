@@ -8,8 +8,8 @@ func TestValidateGraphDefCycle(t *testing.T) {
 	def := GraphDef{
 		Graph: "test",
 		Rules: []GraphRuleDef{
-			{Name: "A", Role: "warrant"},
-			{Name: "B", Role: "rebuttal"},
+			{Name: "A", Role: "rule"},
+			{Name: "B", Role: "counter"},
 		},
 		Defeats: []GraphEdgeDef{
 			{From: "A", To: "B"},

@@ -13,7 +13,7 @@ func TestFlow_StepRejected(t *testing.T) {
 	ab := &ApproverBacking{}
 
 	g := toulmin.NewGraph("expense:manager")
-	g.Warrant(IsDirectManager, ab, 1.0)
+	g.Rule(IsDirectManager).Backing(ab)
 
 	f := NewFlow("expense").AddStep("manager", g)
 

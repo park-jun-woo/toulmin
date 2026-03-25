@@ -5,8 +5,8 @@ package approve
 import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 
 // IsUnderBudget checks if the requested amount is within remaining budget.
-func IsUnderBudget(claim any, ground any, backing toulmin.Backing) (bool, any) {
-	req := claim.(*ApprovalRequest)
-	ctx := ground.(*ApprovalContext)
-	return req.Amount <= ctx.Budget.Remaining, nil
+func IsUnderBudget(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+	amount, _ := ctx.Get("amount")
+	budget, _ := ctx.Get("budget")
+	return amount.(float64) <= budget.(*Budget).Remaining, nil
 }
