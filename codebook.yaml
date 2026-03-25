@@ -14,6 +14,7 @@ required:
     price: "price judgment framework (discounts, coupons, promotions)"
     feature: "feature flag framework (rollout, toggle, percentage)"
     moderate: "content moderation framework (hate speech, spam, NSFW)"
+    tangl: "TANGL parser and validator (markdown policy DSL)"
   type:
     command: "cobra command entrypoint"
     model: "domain struct (Claim, Ground, Rule, Node, Graph)"
