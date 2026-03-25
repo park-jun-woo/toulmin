@@ -8,8 +8,8 @@ import (
 )
 
 func TestEngineGraphBuilderConsistency(t *testing.T) {
-	w := func(c any, g any, b any) (bool, any) { return true, nil }
-	r := func(c any, g any, b any) (bool, any) { return true, nil }
+	w := func(c any, g any, b Backing) (bool, any) { return true, nil }
+	r := func(c any, g any, b Backing) (bool, any) { return true, nil }
 
 	eng := NewEngine()
 	eng.Register(RuleMeta{Name: "w", Qualifier: 1.0, Strength: Defeasible, Fn: w})

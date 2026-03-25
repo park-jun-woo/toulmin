@@ -2,4 +2,4 @@
 //ff:what RebuttalB — test helper: always-active rebuttal rule
 package toulmin
 
-func RebuttalB(claim any, ground any, backing any) (bool, any) { return true, nil }
+func RebuttalB(claim any, ground any, backing Backing) (bool, any) { return true, nil }

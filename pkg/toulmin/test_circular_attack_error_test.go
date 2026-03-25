@@ -11,12 +11,12 @@ func TestCircularAttackError(t *testing.T) {
 	eng.Register(RuleMeta{
 		Name: "A", Qualifier: 1.0, Strength: Defeasible,
 		Defeats: []string{"B"},
-		Fn:      func(c any, g any, b any) (bool, any) { return true, nil },
+		Fn:      func(c any, g any, b Backing) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "B", Qualifier: 1.0, Strength: Defeasible,
 		Defeats: []string{"A"},
-		Fn:      func(c any, g any, b any) (bool, any) { return true, nil },
+		Fn:      func(c any, g any, b Backing) (bool, any) { return true, nil },
 	})
 	_, err := eng.Evaluate(nil, nil)
 	if err == nil {

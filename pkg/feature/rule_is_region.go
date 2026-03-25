@@ -2,8 +2,10 @@
 //ff:what IsRegion: backing(RegionBacking)으로 지정된 지역인지 판정
 package feature
 
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
 // IsRegion checks if the user's region matches backing.Region.
-func IsRegion(claim any, ground any, backing any) (bool, any) {
+func IsRegion(claim any, ground any, backing toulmin.Backing) (bool, any) {
 	ctx := ground.(*UserContext)
 	rb := backing.(*RegionBacking)
 	return ctx.Region == rb.Region, nil

@@ -4,10 +4,10 @@ package toulmin
 
 // evalContext holds the shared state for h-Categoriser lazy evaluation.
 type evalContext struct {
-	fnMap       map[string]func(any, any, any) (bool, any)
+	fnMap       map[string]func(any, any, Backing) (bool, any)
 	qualMap     map[string]float64
 	strMap      map[string]Strength
-	backingMap  map[string]any
+	backingMap  map[string]Backing
 	edges       map[string][]string
 	attackerSet map[string]bool
 	ran         map[string]bool

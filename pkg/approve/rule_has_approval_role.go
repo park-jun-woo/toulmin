@@ -2,8 +2,10 @@
 //ff:what HasApprovalRole: backing(ApproverBacking)으로 지정된 결재 역할을 가졌는지 판정
 package approve
 
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
 // HasApprovalRole checks if the approver has the role specified by backing.
-func HasApprovalRole(claim any, ground any, backing any) (bool, any) {
+func HasApprovalRole(claim any, ground any, backing toulmin.Backing) (bool, any) {
 	ctx := ground.(*ApprovalContext)
 	ab := backing.(*ApproverBacking)
 	return ctx.ApproverRole == ab.Role, nil

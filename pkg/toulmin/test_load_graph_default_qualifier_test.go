@@ -7,7 +7,7 @@ import (
 )
 
 func TestLoadGraph_DefaultQualifier(t *testing.T) {
-	fn := func(c any, g any, b any) (bool, any) { return true, nil }
+	fn := func(c any, g any, b Backing) (bool, any) { return true, nil }
 
 	def := GraphDef{
 		Graph: "default-q",

@@ -2,9 +2,11 @@
 //ff:what IsMemberLevel: backing(MemberBacking)으로 사용자 멤버십 등급 비교
 package price
 
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
 // IsMemberLevel checks if the user's membership matches backing.Level.
 // Returns the Discount as evidence if matched.
-func IsMemberLevel(claim any, ground any, backing any) (bool, any) {
+func IsMemberLevel(claim any, ground any, backing toulmin.Backing) (bool, any) {
 	ctx := ground.(*PriceContext)
 	mb := backing.(*MemberBacking)
 	if ctx.Membership == "" {

@@ -17,7 +17,7 @@ func TestHasHeader(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _ := HasHeader(nil, &RequestContext{Headers: tt.headers}, tt.header)
+			got, _ := HasHeader(nil, &RequestContext{Headers: tt.headers}, &HeaderBacking{Header: tt.header})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

@@ -7,8 +7,8 @@ import (
 )
 
 func TestLoadGraph_Basic(t *testing.T) {
-	wFn := func(c any, g any, b any) (bool, any) { return true, nil }
-	rFn := func(c any, g any, b any) (bool, any) { return true, nil }
+	wFn := func(c any, g any, b Backing) (bool, any) { return true, nil }
+	rFn := func(c any, g any, b Backing) (bool, any) { return true, nil }
 
 	def := GraphDef{
 		Graph: "test",

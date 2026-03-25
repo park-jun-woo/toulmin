@@ -2,8 +2,10 @@
 //ff:what IsAuthenticated: 사용자가 인증되었는지 판정
 package policy
 
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
 // IsAuthenticated returns true if the request has a non-nil user.
-func IsAuthenticated(claim any, ground any, backing any) (bool, any) {
+func IsAuthenticated(claim any, ground any, backing toulmin.Backing) (bool, any) {
 	ctx := ground.(*RequestContext)
 	return ctx.User != nil, nil
 }

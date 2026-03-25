@@ -7,7 +7,7 @@ import (
 )
 
 func TestLoadGraph_WithBacking(t *testing.T) {
-	fn := func(c any, g any, b any) (bool, any) {
+	fn := func(c any, g any, b Backing) (bool, any) {
 		tb, ok := b.(*testBacking)
 		return ok && tb.Value == "admin", b
 	}

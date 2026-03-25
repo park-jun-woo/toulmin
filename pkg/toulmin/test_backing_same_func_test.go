@@ -7,7 +7,7 @@ import (
 )
 
 func TestBackingSameFunc(t *testing.T) {
-	isInRole := func(claim any, ground any, backing any) (bool, any) { return true, nil }
+	isInRole := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
 	g := NewGraph("test")
 	g.Warrant(isInRole, &testBacking{Value: "admin"}, 1.0)
 	g.Warrant(isInRole, &testBacking{Value: "editor"}, 1.0)

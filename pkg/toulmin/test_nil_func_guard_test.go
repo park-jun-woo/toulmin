@@ -10,7 +10,7 @@ func TestNilFuncGuard(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(c any, g any, b any) (bool, any) { return true, nil },
+		Fn: func(c any, g any, b Backing) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "Ghost", Qualifier: 1.0, Strength: Defeasible,

@@ -2,4 +2,4 @@
 //ff:what WarrantA — test helper: always-active warrant rule
 package toulmin
 
-func WarrantA(claim any, ground any, backing any) (bool, any) { return true, nil }
+func WarrantA(claim any, ground any, backing Backing) (bool, any) { return true, nil }

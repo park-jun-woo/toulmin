@@ -2,4 +2,6 @@
 //ff:what isAdmin — test helper admin function stub
 package state
 
-func isAdmin(claim any, ground any, backing any) (bool, any) { return true, nil }
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
+func isAdmin(claim any, ground any, backing toulmin.Backing) (bool, any) { return true, nil }

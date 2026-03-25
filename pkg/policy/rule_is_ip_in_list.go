@@ -2,8 +2,10 @@
 //ff:what IsIPInList: backing(IPListBacking)으로 전달된 IP 목록에 클라이언트 IP가 있는지 판정
 package policy
 
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
 // IsIPInList checks if the client IP is in the list provided by backing.
-func IsIPInList(claim any, ground any, backing any) (bool, any) {
+func IsIPInList(claim any, ground any, backing toulmin.Backing) (bool, any) {
 	ctx := ground.(*RequestContext)
 	b := backing.(*IPListBacking)
 	for _, ip := range b.List {

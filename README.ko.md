@@ -7,18 +7,18 @@ Go 룰 엔진. 규칙은 Go 함수다. 예외는 그래프 엣지다. DSL 없음
 규칙은 Go 함수다. 각 함수는 1-2 depth:
 
 ```go
-func isAuthenticated(claim, ground, backing any) (bool, any) {
+func isAuthenticated(claim any, ground any, backing Backing) (bool, any) {
     return ground.(*Req).User != nil, nil
 }
-func isIPBlocked(claim, ground, backing any) (bool, any) {
+func isIPBlocked(claim any, ground any, backing Backing) (bool, any) {
     return blockedIPs[ground.(*Req).IP], nil
 }
-func isInternalIP(claim, ground, backing any) (bool, any) {
+func isInternalIP(claim any, ground any, backing Backing) (bool, any) {
     return strings.HasPrefix(ground.(*Req).IP, "10."), nil
 }
-func isRateLimited(claim, ground, backing any) (bool, any) { /* ... */ }
-func isPremiumUser(claim, ground, backing any) (bool, any) { /* ... */ }
-func isIncidentMode(claim, ground, backing any) (bool, any) { /* ... */ }
+func isRateLimited(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
+func isPremiumUser(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
+func isIncidentMode(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
 ```
 
 요구사항은 진화한다. 양쪽이 어떻게 대응하는지 보라:
@@ -121,7 +121,7 @@ go get github.com/park-jun-woo/toulmin/pkg/toulmin
 ### 규칙은 Go 함수다
 
 ```go
-func(claim any, ground any, backing any) (bool, any)
+func(claim any, ground any, backing Backing) (bool, any)
 ```
 
 - `ground` = 요청마다 달라지는 판정 재료 (사용자, IP, 컨텍스트)
@@ -129,7 +129,7 @@ func(claim any, ground any, backing any) (bool, any)
 - 반환 = `(판정 결과, 증거)`. 증거는 도메인별 자유 타입.
 
 ```go
-func isInRole(claim, ground, backing any) (bool, any) {
+func isInRole(claim any, ground any, backing Backing) (bool, any) {
     user := ground.(*User)
     b := backing.(*RoleBacking)
     return user.Role == b.Role, user.Role

@@ -8,7 +8,7 @@ import (
 )
 
 func TestPanicRecoverRebuttal(t *testing.T) {
-	panicRebuttal := func(claim, ground, backing any) (bool, any) {
+	panicRebuttal := func(claim any, ground any, backing Backing) (bool, any) {
 		panic("unexpected")
 	}
 	g := NewGraph("test")

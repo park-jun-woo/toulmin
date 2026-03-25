@@ -18,7 +18,7 @@ func TestIsSmallAmount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := &ApprovalRequest{Amount: tt.amount}
-			got, _ := IsSmallAmount(req, nil, tt.threshold)
+			got, _ := IsSmallAmount(req, nil, &ThresholdBacking{Max: tt.threshold})
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}

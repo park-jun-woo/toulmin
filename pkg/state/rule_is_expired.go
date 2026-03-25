@@ -2,10 +2,13 @@
 //ff:what IsExpired: backing(ExpiryBacking)의 만료 시간으로 만료 판정
 package state
 
-import "time"
+import (
+	"time"
+	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+)
 
 // IsExpired checks if the resource is expired using backing (*ExpiryBacking).
-func IsExpired(claim any, ground any, backing any) (bool, any) {
+func IsExpired(claim any, ground any, backing toulmin.Backing) (bool, any) {
 	b := backing.(*ExpiryBacking)
 	return time.Now().After(b.ExpiresAt), nil
 }

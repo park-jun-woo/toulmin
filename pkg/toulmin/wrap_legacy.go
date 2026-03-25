@@ -3,8 +3,8 @@
 package toulmin
 
 // wrapLegacy converts a legacy func(claim, ground) to func(claim, ground, backing).
-func wrapLegacy(fn func(any, any) (bool, any)) func(any, any, any) (bool, any) {
-	return func(claim any, ground any, backing any) (bool, any) {
+func wrapLegacy(fn func(any, any) (bool, any)) func(any, any, Backing) (bool, any) {
+	return func(claim any, ground any, backing Backing) (bool, any) {
 		return fn(claim, ground)
 	}
 }

@@ -7,8 +7,8 @@ import (
 )
 
 func TestTraceOnlyRelevantRules(t *testing.T) {
-	warrantX := func(claim any, ground any, backing any) (bool, any) { return true, nil }
-	unrelatedDefeater := func(claim any, ground any, backing any) (bool, any) { return true, nil }
+	warrantX := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
+	unrelatedDefeater := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
 	g := NewGraph("test")
 	wA := g.Warrant(WarrantA, nil, 1.0)
 	wX := g.Warrant(warrantX, nil, 1.0)

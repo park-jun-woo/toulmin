@@ -8,8 +8,8 @@ import (
 
 func TestLazySkipsRebuttalWhenWarrantFalse(t *testing.T) {
 	rebuttalCalled := false
-	falseWarrant := func(claim any, ground any, backing any) (bool, any) { return false, nil }
-	trackedRebuttal := func(claim any, ground any, backing any) (bool, any) {
+	falseWarrant := func(claim any, ground any, backing Backing) (bool, any) { return false, nil }
+	trackedRebuttal := func(claim any, ground any, backing Backing) (bool, any) {
 		rebuttalCalled = true
 		return true, nil
 	}

@@ -2,8 +2,10 @@
 //ff:what HasCoupon: backing(DiscountBacking)의 쿠폰 적용 조건 판정
 package price
 
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
 // HasCoupon checks if a coupon applies. backing is *DiscountBacking.
-func HasCoupon(claim any, ground any, backing any) (bool, any) {
+func HasCoupon(claim any, ground any, backing toulmin.Backing) (bool, any) {
 	req := claim.(*PurchaseRequest)
 	ctx := ground.(*PriceContext)
 	db := backing.(*DiscountBacking)

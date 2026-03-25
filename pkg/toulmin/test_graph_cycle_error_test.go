@@ -7,8 +7,8 @@ import (
 )
 
 func TestGraphCycleError(t *testing.T) {
-	cycleA := func(claim any, ground any, backing any) (bool, any) { return true, nil }
-	cycleB := func(claim any, ground any, backing any) (bool, any) { return true, nil }
+	cycleA := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
+	cycleB := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
 	g := NewGraph("test")
 	a := g.Warrant(cycleA, nil, 1.0)
 	b := g.Rebuttal(cycleB, nil, 1.0)

@@ -2,9 +2,11 @@
 //ff:what IsUserInPercentage: backing(PercentageBacking)으로 지정된 비율 내에 사용자가 포함되는지 판정
 package feature
 
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
 // IsUserInPercentage checks if the user falls within the rollout percentage.
 // Uses deterministic hash, not rand.
-func IsUserInPercentage(claim any, ground any, backing any) (bool, any) {
+func IsUserInPercentage(claim any, ground any, backing toulmin.Backing) (bool, any) {
 	ctx := ground.(*UserContext)
 	pb := backing.(*PercentageBacking)
 	return hashPercentage(ctx.ID) < pb.Percentage, nil

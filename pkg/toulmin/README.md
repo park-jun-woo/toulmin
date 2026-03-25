@@ -5,7 +5,7 @@ Toulmin argumentation-based rule engine core. Defeats graph + h-Categoriser verd
 ## Rule Function Signature
 
 ```go
-func(claim any, ground any, backing any) (bool, any)
+func(claim any, ground any, backing Backing) (bool, any)
 // ground = per-request facts, backing = fixed criteria at declaration
 // returns (judgment, evidence)
 ```

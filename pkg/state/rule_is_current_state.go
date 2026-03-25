@@ -2,8 +2,10 @@
 //ff:what IsCurrentState: 현재 상태가 전이 요청의 from과 일치하는지 판정
 package state
 
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
 // IsCurrentState returns true if the current state matches the transition request's From.
-func IsCurrentState(claim any, ground any, backing any) (bool, any) {
+func IsCurrentState(claim any, ground any, backing toulmin.Backing) (bool, any) {
 	req := claim.(*TransitionRequest)
 	ctx := ground.(*TransitionContext)
 	return ctx.CurrentState == req.From, nil

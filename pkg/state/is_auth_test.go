@@ -2,4 +2,6 @@
 //ff:what isAuth — test helper auth function stub
 package state
 
-func isAuth(claim any, ground any, backing any) (bool, any) { return true, nil }
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
+func isAuth(claim any, ground any, backing toulmin.Backing) (bool, any) { return true, nil }

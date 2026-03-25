@@ -2,8 +2,10 @@
 //ff:what HasActivePromotion: backing(DiscountBacking).Name의 프로모션이 활성인지 판정
 package price
 
+import "github.com/park-jun-woo/toulmin/pkg/toulmin"
+
 // HasActivePromotion checks if the promotion named by backing.Name is active.
-func HasActivePromotion(claim any, ground any, backing any) (bool, any) {
+func HasActivePromotion(claim any, ground any, backing toulmin.Backing) (bool, any) {
 	ctx := ground.(*PriceContext)
 	db := backing.(*DiscountBacking)
 	for _, p := range ctx.Promotions {

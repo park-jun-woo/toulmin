@@ -7,8 +7,8 @@ import (
 )
 
 func TestFuncIDUniqueness(t *testing.T) {
-	fn1 := func(claim any, ground any, backing any) (bool, any) { return true, nil }
-	fn2 := func(claim any, ground any, backing any) (bool, any) { return false, nil }
+	fn1 := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
+	fn2 := func(claim any, ground any, backing Backing) (bool, any) { return false, nil }
 	id1 := funcID(fn1)
 	id2 := funcID(fn2)
 	if id1 == id2 {

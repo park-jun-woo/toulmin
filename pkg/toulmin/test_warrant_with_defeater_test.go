@@ -10,12 +10,12 @@ func TestWarrantWithDefeater(t *testing.T) {
 	eng := NewEngine()
 	eng.Register(RuleMeta{
 		Name: "W", Qualifier: 1.0, Strength: Defeasible,
-		Fn: func(c any, g any, b any) (bool, any) { return true, nil },
+		Fn: func(c any, g any, b Backing) (bool, any) { return true, nil },
 	})
 	eng.Register(RuleMeta{
 		Name: "D", Qualifier: 1.0, Strength: Defeater,
 		Defeats: []string{"W"},
-		Fn:      func(c any, g any, b any) (bool, any) { return true, nil },
+		Fn:      func(c any, g any, b Backing) (bool, any) { return true, nil },
 	})
 	results, err := eng.Evaluate(nil, nil)
 	if err != nil {

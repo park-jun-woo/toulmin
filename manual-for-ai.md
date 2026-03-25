@@ -27,7 +27,7 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 ### Rule
 
 ```go
-func(claim any, ground any, backing any) (bool, any)
+func(claim any, ground any, backing Backing) (bool, any)
 ```
 
 Returns `(judgment, evidence)`. `backing` receives judgment criteria from graph declaration. Legacy `func(any, any) (bool, any)` supported via internal wrapping.
@@ -90,7 +90,7 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 ## Writing Rules
 
 ```go
-func CheckOneFileOneFunc(claim any, ground any, backing any) (bool, any) {
+func CheckOneFileOneFunc(claim any, ground any, backing Backing) (bool, any) {
     gf := ground.(*FileGround)
     if len(gf.Funcs) > 1 {
         return true, &Evidence{Got: len(gf.Funcs), Expected: 1}
@@ -320,7 +320,7 @@ toulmin evaluate                              # run example
 
 | Mistake | Fix |
 |---|---|
-| Rule func wrong signature | `func(claim, ground, backing any) (bool, any)` (legacy 2-arg also OK) |
+| Rule func wrong signature | `func(claim any, ground any, backing Backing) (bool, any)` (legacy 2-arg also OK) |
 | Chaining calls | Warrant/Rebuttal/Defeater return `*Rule`, not `*Graph` — use separate statements |
 | Defeat without registration | Must Warrant/Rebuttal/Defeater first to get `*Rule` |
 | Verdict 0.0 as allow/deny | 0.0 = undecided — threshold is framework's decision |

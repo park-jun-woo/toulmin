@@ -8,8 +8,8 @@ import (
 )
 
 func TestDefeatWithBacking(t *testing.T) {
-	isIPInList := func(claim any, ground any, backing any) (bool, any) { return true, nil }
-	isAuth := func(claim any, ground any, backing any) (bool, any) { return true, nil }
+	isIPInList := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
+	isAuth := func(claim any, ground any, backing Backing) (bool, any) { return true, nil }
 	g := NewGraph("test")
 	auth := g.Warrant(isAuth, nil, 1.0)
 	blocked := g.Rebuttal(isIPInList, &testBacking{Value: "blocklist"}, 1.0)

@@ -7,18 +7,18 @@ A rule engine for Go. Rules are Go functions. Exceptions are graph edges. No DSL
 Rules are Go functions. Each stays at 1-2 depth:
 
 ```go
-func isAuthenticated(claim, ground, backing any) (bool, any) {
+func isAuthenticated(claim any, ground any, backing Backing) (bool, any) {
     return ground.(*Req).User != nil, nil
 }
-func isIPBlocked(claim, ground, backing any) (bool, any) {
+func isIPBlocked(claim any, ground any, backing Backing) (bool, any) {
     return blockedIPs[ground.(*Req).IP], nil
 }
-func isInternalIP(claim, ground, backing any) (bool, any) {
+func isInternalIP(claim any, ground any, backing Backing) (bool, any) {
     return strings.HasPrefix(ground.(*Req).IP, "10."), nil
 }
-func isRateLimited(claim, ground, backing any) (bool, any) { /* ... */ }
-func isPremiumUser(claim, ground, backing any) (bool, any) { /* ... */ }
-func isIncidentMode(claim, ground, backing any) (bool, any) { /* ... */ }
+func isRateLimited(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
+func isPremiumUser(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
+func isIncidentMode(claim any, ground any, backing Backing) (bool, any) { /* ... */ }
 ```
 
 Requirements evolve. Watch how each side handles it:
@@ -122,7 +122,7 @@ go get github.com/park-jun-woo/toulmin/pkg/toulmin
 ### Rules are Go functions
 
 ```go
-func(claim any, ground any, backing any) (bool, any)
+func(claim any, ground any, backing Backing) (bool, any)
 ```
 
 - `ground` = per-request facts (user, IP, context)
@@ -130,7 +130,7 @@ func(claim any, ground any, backing any) (bool, any)
 - Returns `(judgment, evidence)`. Evidence is any domain-specific type.
 
 ```go
-func isInRole(claim, ground, backing any) (bool, any) {
+func isInRole(claim any, ground any, backing Backing) (bool, any) {
     user := ground.(*User)
     b := backing.(*RoleBacking)
     return user.Role == b.Role, user.Role
