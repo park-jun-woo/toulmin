@@ -132,8 +132,8 @@ func(claim any, ground any, backing any) (bool, any)
 ```go
 func isInRole(claim, ground, backing any) (bool, any) {
     user := ground.(*User)
-    role := backing.(string)
-    return user.Role == role, user.Role
+    b := backing.(*RoleBacking)
+    return user.Role == b.Role, user.Role
 }
 ```
 
