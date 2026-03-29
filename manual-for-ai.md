@@ -6,8 +6,7 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 
 | Package | Description | README |
 |---|---|---|
-| `pkg/toulmin` | Core engine (Graph, Rule, Evaluate, h-Categoriser, ParseYAML, ValidateGraphDef, GenerateGraph) | `pkg/toulmin/README.md` |
-| `pkg/analyzer` | Go AST analysis (extract defeat graphs from source) | — |
+| `pkg/toulmin` | Core engine (Graph, Rule, Evaluate, h-Categoriser) | `pkg/toulmin/README.md` |
 | `pkg/policy` | Policy judgment (auth, IP, rate limit, net/http Guard) | `pkg/policy/README.md` |
 | `pkg/state` | State transition (Machine, Mermaid diagram) | `pkg/state/README.md` |
 | `pkg/approve` | Approval workflow (multi-step Flow) | `pkg/approve/README.md` |
@@ -27,29 +26,29 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 ### Rule
 
 ```go
-func(ctx Context, backing Backing) (bool, any)
+func(ctx Context, specs Specs) (bool, any)
 ```
 
-Returns `(judgment, evidence)`. `ctx` is a Context interface with `Get(key string) (any, bool)` and `Set(key string, value any)`. `backing` receives judgment criteria from graph declaration.
+Returns `(judgment, evidence)`. `ctx` is a Context interface with `Get(key string) (any, bool)` and `Set(key string, value any)`. `specs` receives judgment criteria from graph declaration via `.With()`.
 
-### Backing Interface
+### Spec Interface
 
 ```go
-type Backing interface {
-    BackingName() string
+type Spec interface {
+    SpecName() string
     Validate() error
 }
 ```
 
-Backing structs must implement `BackingName()` (returns identifier for ruleID) and `Validate()` (validates fields at registration time). `nil` backing is allowed for rules that don't need criteria. Func fields in Backing structs are forbidden — `Validate()` rejects them.
+Spec structs must implement `SpecName()` (returns identifier for ruleID) and `Validate()` (validates fields at registration time). `nil` specs is allowed for rules that don't need criteria. Func fields in Spec structs are forbidden — `Validate()` rejects them.
 
-### Ground vs Backing
+### Ground vs Spec
 
-| | Ground | Backing |
+| | Ground | Spec |
 |---|---|---|
 | What | Facts about judgment target | Judgment criteria |
 | When | Per request (runtime) | Fixed at declaration |
-| Passed by | `ctx.Set(key, value)` before `Evaluate(ctx)` | `g.Rule(fn).Backing(b)` |
+| Passed by | `ctx.Set(key, value)` before `Evaluate(ctx)` | `g.Rule(fn).With(spec)` |
 | Example | User, IP, request context | Threshold, role name, config |
 
 ### Strength
@@ -83,14 +82,14 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 
 ### Rule Identity
 
-`ruleID = funcID + "#" + backing` (non-nil backing). `ruleID = funcID` (nil backing). Same function + different backing = different rule.
+`ruleID = funcID + "#" + spec` (non-nil spec). `ruleID = funcID` (nil spec). Same function + different spec = different rule.
 
 ---
 
 ## Writing Rules
 
 ```go
-func CheckOneFileOneFunc(ctx toulmin.Context, backing toulmin.Backing) (bool, any) {
+func CheckOneFileOneFunc(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
     gf, _ := ctx.Get("file")
     f := gf.(*FileGround)
     if len(f.Funcs) > 1 {
@@ -108,7 +107,7 @@ Rule/Counter/Except return `*Rule` reference with builder pattern. Attacks is a 
 
 ```go
 g := toulmin.NewGraph("voting")
-w := g.Rule(IsAdult)                           // backing/qualifier optional via builder
+w := g.Rule(IsAdult)                           // spec/qualifier optional via builder
 r := g.Counter(HasCriminalRecord)
 r.Attacks(w)
 
@@ -150,97 +149,20 @@ type TraceEntry struct {
     Activated bool          `json:"activated"`
     Qualifier float64       `json:"qualifier"`
     Evidence  any           `json:"evidence,omitempty"`
-    Backing   any           `json:"backing,omitempty"`
+    Specs     any           `json:"specs,omitempty"`
     Duration  time.Duration `json:"duration,omitempty"`
 }
 ```
 
-### Same Function, Different Backing
+### Same Function, Different Spec
 
 ```go
 g := toulmin.NewGraph("limits")
-w1 := g.Rule(CheckThreshold).Backing(&ThresholdBacking{Max: 100})
-w2 := g.Rule(CheckThreshold).Backing(&ThresholdBacking{Max: 200}).Qualifier(0.8)
-r := g.Counter(HasExemption).Backing(&ExemptionBacking{Type: "vip"})
+w1 := g.Rule(CheckThreshold).With(&ThresholdSpec{Max: 100})
+w2 := g.Rule(CheckThreshold).With(&ThresholdSpec{Max: 200}).Qualifier(0.8)
+r := g.Counter(HasExemption).With(&ExemptionSpec{Type: "vip"})
 r.Attacks(w1)
 ```
-
-### LoadGraph — Dynamic Graph from Definition
-
-Builds a live `*Graph` from a `GraphDef`, function registry, and optional backing registry. No code generation, no recompilation.
-
-```go
-funcs := map[string]any{
-    "isAuthenticated": isAuthenticated,
-    "isIPBlocked":     isIPBlocked,
-}
-backings := map[string]toulmin.Backing{
-    "isIPBlocked": fetchBlocklistFromRedis(),
-}
-
-g, err := toulmin.LoadGraph(def, funcs, backings)
-ctx := toulmin.NewContext()
-results, _ := g.Evaluate(ctx)
-```
-
-`GraphDef` can come from YAML, DB, or API — graph structure and backing change without redeployment. Functions stay compiled.
-
-```go
-type GraphDef struct {
-    Graph   string
-    Rules   []GraphRuleDef   // Name, Role, Qualifier
-    Defeats []GraphEdgeDef   // From, To
-}
-```
-
-### YAML Graph Schema
-
-```yaml
-graph: <name>              # graph name (required)
-rules:                     # rule list (required)
-  - name: <rule_name>      # rule name, matches function registry key (required)
-    role: <role>           # rule | counter | except (required)
-    qualifier: <float>     # 0.0–1.0, default 1.0 if omitted (optional)
-defeats:                   # defeat edge list (optional)
-  - from: <attacker_name>  # rule name of attacker (must exist in rules)
-    to: <target_name>      # rule name of target (must exist in rules)
-```
-
-Example:
-
-```yaml
-graph: api:access
-rules:
-  - name: isAuthenticated
-    role: rule
-  - name: isIPBlocked
-    role: counter
-  - name: isInternalIP
-    role: except
-    qualifier: 0.8
-defeats:
-  - from: isIPBlocked
-    to: isAuthenticated
-  - from: isInternalIP
-    to: isIPBlocked
-```
-
-### ParseYAML + ValidateGraphDef
-
-`ParseYAML` parses YAML into `GraphDef` (AST). `ValidateGraphDef` checks graph name, defeat edge references, and cycles.
-
-```go
-def, err := toulmin.ParseYAML("policy.yaml")
-if err := toulmin.ValidateGraphDef(def); err != nil { /* handle */ }
-g, err := toulmin.LoadGraph(def, funcs, backings)
-ctx := toulmin.NewContext()
-ctx.Set("req", req)
-results, _ := g.Evaluate(ctx)
-```
-
-### Engine API (legacy)
-
-`Engine.Register(RuleMeta{...})` + `Engine.Evaluate()` — string-based names, still available.
 
 ---
 
@@ -252,9 +174,9 @@ results, _ := g.Evaluate(ctx)
 func TestAccessPolicy(t *testing.T) {
     g := buildAccessGraph()
     toulmin.RunCases(t, g, []toulmin.TestCase{
-        {Name: "admin allowed",  Ground: &Ctx{Role: "admin"},  Expect: toulmin.VerdictAbove(0)},
-        {Name: "blocked IP",     Ground: &Ctx{IP: "blocked"},  Expect: toulmin.VerdictAtMost(0)},
-        {Name: "unauthenticated", Ground: &Ctx{User: nil},     Expect: toulmin.NoResult},
+        {Name: "admin allowed",  Ctx: &Ctx{Role: "admin"},  Expect: toulmin.VerdictAbove(0)},
+        {Name: "blocked IP",     Ctx: &Ctx{IP: "blocked"},  Expect: toulmin.VerdictAtMost(0)},
+        {Name: "unauthenticated", Ctx: &Ctx{User: nil},     Expect: toulmin.NoResult},
     })
 }
 ```
@@ -283,24 +205,13 @@ type TestCase struct {
 
 ## Cycle Detection
 
-Detected at evaluation time via DFS. CLI also detects before codegen:
-
-```bash
-toulmin graph voting.yaml --check   # validate only
-toulmin graph voting.go             # analyze Go file
-```
+Detected at evaluation time via DFS.
 
 ---
 
 ## Commands
 
 ```bash
-toulmin graph <yaml>                          # validate + generate
-toulmin graph <yaml> --dry-run                # print to stdout
-toulmin graph <yaml> --output path/out.go     # custom output
-toulmin graph <yaml> --package mypkg          # override package
-toulmin graph <yaml> --check                  # validate only
-toulmin graph <file.go>                       # analyze defeat cycles
 toulmin evaluate                              # run example
 ```
 
@@ -310,12 +221,12 @@ toulmin evaluate                              # run example
 
 ```
 0. Cycle detection (DFS) → error if cycle found
-1. Each rule node → run func(ctx, backing) → false? skip
+1. Each rule node → run func(ctx, specs) → false? skip
 2. If true → traverse attackers recursively
 3. Each attacker: func → false? contributes 0 → true? recurse deeper
 4. h-Categoriser: raw(a) = w(a) / (1 + Σ raw(attackers)), verdict = 2*raw - 1
 5. Cache per ruleID — each rule runs at most once
-6. Only reachable rules executed. Backing passed as 3rd arg.
+6. Only reachable rules executed. Specs passed as 2nd arg.
 ```
 
 ---
@@ -324,22 +235,22 @@ toulmin evaluate                              # run example
 
 | Mistake | Fix |
 |---|---|
-| Rule func wrong signature | `func(ctx Context, backing Backing) (bool, any)` |
-| Chaining calls | Rule/Counter/Except return `*Rule` with builder pattern — backing/qualifier are optional |
+| Rule func wrong signature | `func(ctx Context, specs Specs) (bool, any)` |
+| Chaining calls | Rule/Counter/Except return `*Rule` with builder pattern — spec/qualifier are optional |
 | Attacks without registration | Must Rule/Counter/Except first to get `*Rule` |
 | Verdict 0.0 as allow/deny | 0.0 = undecided — threshold is framework's decision |
-| Confusing context and backing | ctx = per-request facts via Get/Set, backing = fixed criteria at declaration |
-| Forgetting backing | Use `nil` when no backing needed |
-| Func field in Backing struct | `Validate()` rejects func fields — use plain data fields only |
+| Confusing context and spec | ctx = per-request facts via Get/Set, spec = fixed criteria at declaration |
+| Forgetting spec | Use `nil` when no spec needed |
+| Func field in Spec struct | `Validate()` rejects func fields — use plain data fields only |
 
-### Backing Replaces Closures
+### Spec Replaces Closures
 
-Same function + different backing values — no closure factories needed. `ruleID` distinguishes them.
+Same function + different spec values — no closure factories needed. `ruleID` distinguishes them.
 
 ```go
 g := toulmin.NewGraph("example")
-r1 := g.Counter(HasRole).Backing(&RoleBacking{Role: "admin"})   // ruleID = "HasRole#admin"
-r2 := g.Counter(HasRole).Backing(&RoleBacking{Role: "editor"})  // ruleID = "HasRole#editor"
+r1 := g.Counter(HasRole).With(&RoleSpec{Role: "admin"})   // ruleID = "HasRole#admin"
+r2 := g.Counter(HasRole).With(&RoleSpec{Role: "editor"})  // ruleID = "HasRole#editor"
 r1.Attacks(someRule)
 ```
 

@@ -7,21 +7,21 @@ A rule engine for Go. Rules are Go functions. Exceptions are graph edges. No DSL
 Rules are Go functions. Each stays at 1-2 depth:
 
 ```go
-func isAuthenticated(ctx Context, backing Backing) (bool, any) {
+func isAuthenticated(ctx Context, specs Specs) (bool, any) {
     req, _ := ctx.Get("req")
     return req.(*Req).User != nil, nil
 }
-func isIPBlocked(ctx Context, backing Backing) (bool, any) {
+func isIPBlocked(ctx Context, specs Specs) (bool, any) {
     req, _ := ctx.Get("req")
     return blockedIPs[req.(*Req).IP], nil
 }
-func isInternalIP(ctx Context, backing Backing) (bool, any) {
+func isInternalIP(ctx Context, specs Specs) (bool, any) {
     req, _ := ctx.Get("req")
     return strings.HasPrefix(req.(*Req).IP, "10."), nil
 }
-func isRateLimited(ctx Context, backing Backing) (bool, any) { /* ... */ }
-func isPremiumUser(ctx Context, backing Backing) (bool, any) { /* ... */ }
-func isIncidentMode(ctx Context, backing Backing) (bool, any) { /* ... */ }
+func isRateLimited(ctx Context, specs Specs) (bool, any) { /* ... */ }
+func isPremiumUser(ctx Context, specs Specs) (bool, any) { /* ... */ }
+func isIncidentMode(ctx Context, specs Specs) (bool, any) { /* ... */ }
 ```
 
 Requirements evolve. Watch how each side handles it:
@@ -127,18 +127,18 @@ go get github.com/park-jun-woo/toulmin/pkg/toulmin
 ### Rules are Go functions
 
 ```go
-func(ctx Context, backing Backing) (bool, any)
+func(ctx Context, specs Specs) (bool, any)
 ```
 
 - `ctx` = context with Get/Set for per-request facts (user, IP, context)
-- `backing` = fixed criteria at graph declaration (threshold, role name, config)
+- `specs` = fixed criteria at graph declaration via `.With()` (threshold, role name, config)
 - Returns `(judgment, evidence)`. Evidence is any domain-specific type.
 
 ```go
-func isInRole(ctx Context, backing Backing) (bool, any) {
+func isInRole(ctx Context, specs Specs) (bool, any) {
     user, _ := ctx.Get("user")
-    b := backing.(*RoleBacking)
-    return user.(*User).Role == b.Role, user.(*User).Role
+    s := specs[0].(*RoleSpec)
+    return user.(*User).Role == s.Role, user.(*User).Role
 }
 ```
 
@@ -197,26 +197,26 @@ results, _ = g.Evaluate(ctx, toulmin.EvalOption{Duration: true})                
 
 `EvalOption` controls evaluation behavior: `Method` (Matrix/Recursive), `Trace` (collect TraceEntry), `Duration` (measure per-rule execution time).
 
-### Backing
+### Spec
 
-Backing values must implement the `Backing` interface:
+Spec values must implement the `Spec` interface:
 
 ```go
-type Backing interface {
-    BackingName() string
+type Spec interface {
+    SpecName() string
     Validate() error
 }
 ```
 
-Same function + different backing = different rule. Reuse without closure factories:
+Same function + different spec = different rule. Reuse without closure factories:
 
 ```go
 g := toulmin.NewGraph("access")
-admin  := g.Rule(isInRole).Backing(&RoleBacking{Role: "admin"})
-editor := g.Rule(isInRole).Backing(&RoleBacking{Role: "editor"}).Qualifier(0.8)
+admin  := g.Rule(isInRole).With(&RoleSpec{Role: "admin"})
+editor := g.Rule(isInRole).With(&RoleSpec{Role: "editor"}).Qualifier(0.8)
 ```
 
-`nil` backing means the rule needs no judgment criteria. Func fields in Backing structs are forbidden — `Validate()` rejects them.
+`nil` specs means the rule needs no judgment criteria. Func fields in Spec structs are forbidden — `Validate()` rejects them.
 
 ## Trace
 
@@ -233,83 +233,13 @@ for _, t := range results[0].Trace {
 
 Moderation logs, audit trails, debugging — built into the engine, no extra logging.
 
-## Dynamic Loading
-
-`LoadGraph` builds a live graph from a definition + function registry. Graph structure and backing change without redeployment — functions stay compiled.
-
-```go
-// Register compiled functions once at startup
-funcs := map[string]any{
-    "isAuthenticated": isAuthenticated,
-    "isIPBlocked":     isIPBlocked,
-    "isRateLimited":   isRateLimited,
-}
-
-// Parse YAML into GraphDef, validate, then build live graph
-def, _ := toulmin.ParseYAML("policy.yaml")
-toulmin.ValidateGraphDef(def)
-backings := map[string]toulmin.Backing{"isIPBlocked": fetchBlocklistFromRedis()}
-g, err := toulmin.LoadGraph(def, funcs, backings)
-ctx := toulmin.NewContext()
-ctx.Set("req", req)
-results, _ := g.Evaluate(ctx)
-```
-
-`ParseYAML` parses YAML into `GraphDef`. `ValidateGraphDef` checks defeat edge references and cycles. `LoadGraph` builds the live graph from any `GraphDef` — YAML, DB, or API.
-
-Compiled execution speed + dynamic rule updates. No DSL parser, no interpreter, no VM — just graph rewiring.
-
-### YAML Graph Schema
-
-```yaml
-graph: <name>              # graph name (required)
-rules:                     # rule list (required)
-  - name: <rule_name>      # rule name, matches function registry key (required)
-    role: <role>           # rule | counter | except (required)
-    qualifier: <float>     # 0.0–1.0, default 1.0 if omitted (optional)
-defeats:                   # defeat edge list (optional)
-  - from: <attacker_name>  # rule name of attacker (must exist in rules)
-    to: <target_name>      # rule name of target (must exist in rules)
-```
-
-Example — the same access control graph from above:
-
-```yaml
-graph: api:access
-rules:
-  - name: isAuthenticated
-    role: rule
-  - name: isIPBlocked
-    role: counter
-  - name: isInternalIP
-    role: except
-  - name: isRateLimited
-    role: counter
-  - name: isPremiumUser
-    role: except
-  - name: isIncidentMode
-    role: counter
-defeats:
-  - from: isIPBlocked
-    to: isAuthenticated
-  - from: isInternalIP
-    to: isIPBlocked
-  - from: isRateLimited
-    to: isAuthenticated
-  - from: isPremiumUser
-    to: isRateLimited
-  - from: isIncidentMode
-    to: isPremiumUser
-```
-
 ## Framework Packages
 
 Domain-specific frameworks built on the core. Pre-built rule functions and wrappers.
 
 | Package | Domain | Key API |
 |---|---|---|
-| `pkg/toulmin` | Core engine, YAML parser, validator, codegen | `Graph`, `ParseYAML`, `ValidateGraphDef`, `GenerateGraph` |
-| `pkg/analyzer` | Go AST defeat graph extraction | `ExtractDefeats` |
+| `pkg/toulmin` | Core engine | `Graph`, `EvalOption` |
 | `pkg/policy` | Access control (auth, IP, rate limit) | `Guard` (net/http middleware) |
 | `pkg/state` | State transitions (FSM) | `Machine.Can`, `Mermaid()` |
 | `pkg/approve` | Multi-step approval workflow | `Flow.Evaluate` |
@@ -374,10 +304,7 @@ func TestAccessPolicy(t *testing.T) {
 ## CLI
 
 ```bash
-toulmin graph voting.yaml                  # YAML → Go code generation
-toulmin graph voting.yaml --check          # cycle validation only
-toulmin graph voting.yaml --dry-run        # print to stdout
-toulmin graph voting.go                    # analyze Go file for cycles
+toulmin evaluate    # run example
 ```
 
 ## Used By

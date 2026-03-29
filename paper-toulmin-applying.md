@@ -4,7 +4,7 @@
 
 Software rule engines — Rego/OPA, Drools, Semgrep, JSON Schema — share a common design assumption: the data being validated is a "fact." This paper argues that validation targets are not facts but **claims**, and that Toulmin's argumentation model (1958) provides the correct design foundation for software rule engines that has been overlooked for over 60 years.
 
-We present `toulmin`, a Go rule engine that implements Toulmin's six elements — Claim, Ground, Warrant, Backing, Qualifier, Rebuttal — with Nute's strict/defeasible/defeater classification for rule strength and Amgoud's h-Categoriser for verdict computation on a [-1, 1] scale. Rules are Go functions (`func(ctx, backing) → (bool, evidence)`) organized into defeats graphs; backing is a first-class runtime value carrying the judgment criteria for each rule. The engine computes verdicts and provides full trace explainability without requiring a custom DSL.
+We present `toulmin`, a Go rule engine that implements Toulmin's six elements — Claim, Ground, Warrant, Backing, Qualifier, Rebuttal — with Nute's strict/defeasible/defeater classification for rule strength and Amgoud's h-Categoriser for verdict computation on a [-1, 1] scale. Rules are Go functions (`func(ctx, specs) → (bool, evidence)`) organized into defeats graphs; spec is a first-class runtime value carrying the judgment criteria for each rule. The engine computes verdicts and provides full trace explainability without requiring a custom DSL.
 
 We validate the design by converting filefunc's 22 code structure rules into Toulmin warrants and measuring quantitative effects across three projects. We further demonstrate phase-optional architecture through fullend's compile-time/runtime policy integration.
 
@@ -73,7 +73,7 @@ where `w(a)` is the initial weight and `attackers` are nodes attacking `a`. The 
 | JSON Schema | JSON document | None | `description` | Compile-time only |
 | LegalRuleML | fact | XML elements (bolt-on) | None | N/A |
 
-No existing system treats inputs as claims, provides first-class defeasibility, includes semantic backing/qualifier, and supports phase-optional evaluation simultaneously.
+No existing system treats inputs as claims, provides first-class defeasibility, includes semantic spec/qualifier, and supports phase-optional evaluation simultaneously.
 
 ### 2.5 Phase Integration
 
@@ -106,7 +106,7 @@ JWT (RFC 7519) names token fields "claims," not "facts." `sub`, `exp`, `iss` are
 | Claim | Proposition to be judged. Input to rules | 1 |
 | Ground | Evidence data. Supplied by Ground Adapter | 0..N |
 | Warrant | Rule (bool function). Node in defeats graph | 1..N |
-| Backing | Justification for warrant. Runtime value + annotation | 1..N |
+| Spec | Justification for warrant. Runtime value + annotation | 1..N |
 | Qualifier | Initial weight w ∈ [0.0, 1.0] per rule **(see §3.3)** | 1 per rule |
 | Rebuttal | Rule (bool function). Attacker in defeats graph | 0..N |
 
@@ -141,22 +141,22 @@ Therefore, this model takes a pragmatic position: **warrants are treated as fact
 
 ## 4. Engine Design
 
-### 4.1 Rules as Functions with Evidence and Backing
+### 4.1 Rules as Functions with Evidence and Spec
 
 All rules — warrants, rebuttals, defeaters — share the same signature:
 
 ```go
-type Rule func(ctx Context, backing Backing) (bool, any)
+type Rule func(ctx Context, specs Specs) (bool, any)
 ```
 
-A rule returns `(judgment, evidence)`. The bool is the judgment; the second value is domain-specific evidence (e.g., error details, violation context). This enables the engine to not only compute verdicts but also **explain why**.
+A rule returns `(judgment, evidence)`. The bool is the judgment; the second value is domain-specific evidence (e.g., error details, evidence context). This enables the engine to not only compute verdicts but also **explain why**.
 
-The first parameter, `ctx`, is a `Context` interface providing `Get(key string) (any, bool)` and `Set(key string, value any)` for accessing per-request facts. The second parameter, `backing`, carries the judgment criteria for the rule. Context and backing serve distinct epistemic roles:
+The first parameter, `ctx`, is a `Context` interface providing `Get(key string) (any, bool)` and `Set(key string, value any)` for accessing per-request facts. The second parameter, `specs`, carries the judgment criteria for the rule. Context and spec serve distinct epistemic roles:
 
 - **Context** = facts about the judgment target. Context carries per-request data that varies with each evaluation (e.g., a file's AST, a user's HTTP request), accessed via `Get`/`Set`.
-- **Backing** = judgment criteria for the rule. Backing is fixed at declaration time and represents the standard or authority that justifies the warrant (e.g., a threshold value, a regulatory reference, a configuration policy).
+- **Spec** = judgment criteria for the rule. Spec is fixed at declaration time and represents the standard or authority that justifies the warrant (e.g., a threshold value, a regulatory reference, a configuration policy).
 
-This distinction maps directly to Toulmin's original model: context (ground) supports the claim, while backing supports the warrant. By making backing a first-class runtime value, the engine enables the same rule function to be registered multiple times with different backing values, producing different judgment criteria without duplicating logic.
+This distinction maps directly to Toulmin's original model: context (ground) supports the claim, while spec supports the warrant. By making spec a first-class runtime value, the engine enables the same rule function to be registered multiple times with different spec values, producing different judgment criteria without duplicating logic.
 
 The distinction between warrant, rebuttal, and defeater is not in the function signature but in the **defeats graph**:
 
@@ -168,7 +168,7 @@ The distinction between warrant, rebuttal, and defeater is not in the function s
 
 ### 4.2 Graph: Separating Logic from Structure
 
-The engine provides two APIs. The Graph API (recommended) separates rule logic (Go functions) from graph structure (defeats, qualifier, strength). The `Rule`, `Counter`, and `Except` methods accept `(fn)` and return a `*Rule` reference with a builder pattern: `.Backing(b)` sets the backing (where `Backing` is an interface requiring `BackingName() string` and `Validate() error`), and `.Qualifier(q)` sets the qualifier (default 1.0). The `Attacks` method on `*Rule` declares a defeat edge:
+The engine provides two APIs. The Graph API (recommended) separates rule logic (Go functions) from graph structure (defeats, qualifier, strength). The `Rule`, `Counter`, and `Except` methods accept `(fn)` and return a `*Rule` reference with a builder pattern: `.With(spec)` sets the spec (where `Spec` is an interface requiring `SpecName() string` and `Validate() error`), and `.Qualifier(q)` sets the qualifier (default 1.0). The `Attacks` method on `*Rule` declares a defeat edge:
 
 ```go
 g := toulmin.NewGraph("file-structure")
@@ -192,12 +192,12 @@ r2 := contractGraph.Counter(IsBankrupt)
 r2.Attacks(w2)
 ```
 
-Since each registration call returns a distinct `*Rule` reference, the same function can be registered multiple times with different backing values. For example, two instances of a threshold-checking function — one backed by "corporate policy: max 100 lines" and another by "team convention: max 50 lines" — can coexist in the same graph with distinct identities:
+Since each registration call returns a distinct `*Rule` reference, the same function can be registered multiple times with different spec values. For example, two instances of a threshold-checking function — one with "corporate policy: max 100 lines" and another with "team convention: max 50 lines" — can coexist in the same graph with distinct identities:
 
 ```go
 g := toulmin.NewGraph("line-limit")
-corp := g.Rule(CheckMaxLines).Backing(&LinePolicy{Max: 100, Source: "corporate"})
-team := g.Except(CheckMaxLines).Backing(&LinePolicy{Max: 50, Source: "team"}).Qualifier(0.8)
+corp := g.Rule(CheckMaxLines).With(&LinePolicy{Max: 100, Source: "corporate"})
+team := g.Except(CheckMaxLines).With(&LinePolicy{Max: 50, Source: "team"}).Qualifier(0.8)
 team.Attacks(corp)
 ```
 
@@ -224,11 +224,11 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 
 | Verdict | Meaning |
 |---------|---------|
-| +1.0 | Fully confirmed violation |
+| +1.0 | Claim confirmed |
 | 0.0 | Undecided |
 | -1.0 | Fully rebutted |
 
-Judgment: `verdict > 0` → violation, `verdict == 0` → undecided, `verdict < 0` → rebutted.
+Judgment: `verdict > 0` → claim holds, `verdict == 0` → undecided, `verdict < 0` → rebutted.
 
 ### 4.5 Evaluate with EvalOption
 
@@ -262,12 +262,12 @@ type TraceEntry struct {
     Role      string  `json:"role"`       // "rule", "counter", "except"
     Activated bool    `json:"activated"`
     Qualifier float64 `json:"qualifier"`
-    Backing   any     `json:"backing,omitempty"`
+    Spec      any     `json:"spec,omitempty"`
     Evidence  any     `json:"evidence,omitempty"`
 }
 ```
 
-`Evaluate` with `EvalOption{Trace: true}` provides full explainability: which rules activated, in what role, with what qualifier, under what backing, producing what evidence. The `Backing` field in TraceEntry records the judgment criteria that were in effect for each rule execution, enabling auditors to understand not only what the rule decided but on what authority. This is a key advantage of symbolic reasoning — the verdict's derivation is transparent and auditable.
+`Evaluate` with `EvalOption{Trace: true}` provides full explainability: which rules activated, in what role, with what qualifier, under what spec, producing what evidence. The `Spec` field in TraceEntry records the judgment criteria that were in effect for each rule execution, enabling auditors to understand not only what the rule decided but on what authority. This is a key advantage of symbolic reasoning — the verdict's derivation is transparent and auditable.
 
 ### 4.6 Evaluation Flow
 
@@ -275,44 +275,22 @@ type TraceEntry struct {
 0. Cycle detection: DFS on defeat edges at graph construction time
    → error returned if cycle found (before any func execution)
 1. Start from each rule node
-2. Run rule func(ctx, backing) → false? skip
-   backing is the value registered with the node at graph construction time
+2. Run rule func(ctx, specs) → false? skip
+   spec is the value registered with the node at graph construction time
 3. If true, traverse attackers (counter/except) recursively
-4. Each attacker: run func(ctx, attacker's backing) → false? contributes 0 → true? recurse deeper
+4. Each attacker: run func(ctx, attacker's specs) → false? contributes 0 → true? recurse deeper
 5. h-Categoriser at each node: raw(a) = w(a) / (1 + Σ raw(attackers))
    verdict(a) = 2 * raw(a) - 1
-6. Func results cached — each (func, backing) pair runs at most once per evaluation
+6. Func results cached — each (func, spec) pair runs at most once per evaluation
 7. Only rules reachable from the warrant's attack chain are executed
 ```
 
-### 4.7 YAML Graph Definition and Code Generation
+### 4.7 Spec as First-Class Runtime Value
 
-Graphs can be defined in YAML and compiled to Go code:
-
-```yaml
-graph: file-structure
-rules:
-  - name: CheckOneFileOneFunc
-    role: rule
-    qualifier: 1.0
-  - name: TestFileException
-    role: except
-    qualifier: 1.0
-defeats:
-  - from: TestFileException
-    to: CheckOneFileOneFunc
-```
-
-```bash
-toulmin graph file-structure.yaml   # generates graph_gen.go
-```
-
-### 4.8 Backing as First-Class Runtime Value
-
-Backing is a first-class runtime value passed to the rule function via the Graph API (§4.2). `g.Rule(fn).Backing(b)` sets the backing via builder pattern, where `Backing` is an interface requiring `BackingName() string` and `Validate() error`; the engine injects it as the second parameter when calling the rule function. Rules that need no judgment criteria omit `.Backing()`:
+Spec is a first-class runtime value passed to the rule function via the Graph API (§4.2). `g.Rule(fn).With(spec)` sets the spec via builder pattern, where `Spec` is an interface requiring `SpecName() string` and `Validate() error`; the engine injects it as the second parameter when calling the rule function. Rules that need no judgment criteria omit `.With()`:
 
 ```go
-func CheckOneFileOneFunc(ctx Context, backing Backing) (bool, any) {
+func CheckOneFileOneFunc(ctx Context, specs Specs) (bool, any) {
     gf, _ := ctx.Get("file")
     f := gf.(*FileGround)
     if len(f.Funcs) > 1 {
@@ -322,11 +300,11 @@ func CheckOneFileOneFunc(ctx Context, backing Backing) (bool, any) {
 }
 ```
 
-Rules that need judgment criteria use backing directly:
+Rules that need judgment criteria use specs directly:
 
 ```go
-func CheckMaxLines(ctx Context, backing Backing) (bool, any) {
-    policy := backing.(*LinePolicy)
+func CheckMaxLines(ctx Context, specs Specs) (bool, any) {
+    policy := specs[0].(*LinePolicy)
     gf, _ := ctx.Get("file")
     f := gf.(*FileGround)
     if f.Lines > policy.Max {
@@ -336,7 +314,7 @@ func CheckMaxLines(ctx Context, backing Backing) (bool, any) {
 }
 ```
 
-Backing appears in trace output (via `EvalOption{Trace: true}`), enabling auditors to distinguish between nodes that use the same function with different judgment criteria. To document why a rule exists, use standard Go comments (`//`) — no special annotation syntax is needed.
+Spec appears in trace output (via `EvalOption{Trace: true}`), enabling auditors to distinguish between nodes that use the same function with different judgment criteria. To document why a rule exists, use standard Go comments (`//`) — no special annotation syntax is needed.
 
 ---
 
@@ -366,7 +344,7 @@ Most rules are strict — code structure conventions inherently minimize excepti
 
 ### 5.4 Benefits of Toulmin Conversion
 
-1. **Backing as first-class value**: Judgment criteria (thresholds, policies) are passed as runtime backing values to rule functions. The same function registered with different backing values produces distinct rules, each returning a distinct `*Rule` reference.
+1. **Spec as first-class value**: Judgment criteria (thresholds, policies) are passed as runtime spec values to rule functions. The same function registered with different spec values produces distinct rules, each returning a distinct `*Rule` reference.
 2. **Rebuttal/Defeater structured**: Exception conditions (F5 test files, F6 grouped consts) are explicit `defeats` relations, not if-branches buried in code.
 3. **Strength classification**: "This rule has no exceptions" (strict) vs "this rule may be defeated" (defeasible) is declaratively expressed.
 
@@ -399,7 +377,7 @@ allow if {
 
 ```go
 // OWASP API Security Top 10 A2:2023
-func AuthEndpointRequiresClaims(ctx Context, backing Backing) (bool, any) {
+func AuthEndpointRequiresClaims(ctx Context, specs Specs) (bool, any) {
     ep, _ := ctx.Get("endpoint")
     g := ep.(*EndpointGround)
     if g.Security.Contains("bearerAuth") && !g.PolicyRule.References("claims") {
@@ -409,7 +387,7 @@ func AuthEndpointRequiresClaims(ctx Context, backing Backing) (bool, any) {
 }
 
 // Public API endpoints do not require authentication by design
-func PublicEndpointException(ctx Context, backing Backing) (bool, any) {
+func PublicEndpointException(ctx Context, specs Specs) (bool, any) {
     ep, _ := ctx.Get("endpoint")
     g := ep.(*EndpointGround)
     return g.Annotation.Contains("x-public"), nil
@@ -453,9 +431,9 @@ This engine does not replace Rego, Drools, or Semgrep. It provides a **superordi
 
 For 60 years, software rule engines have treated validation targets as "facts" and built designs on this assumption. Toulmin's argumentation model (1958) already provided the correct structure — Claim (not Fact), Ground, Warrant, Backing, Qualifier, Rebuttal — but the disciplinary gap between philosophy and software engineering prevented its application.
 
-We implemented `toulmin`, a Go rule engine that bridges this gap. Rules are Go functions accepting `(ctx, backing)` and returning `(bool, evidence)` — judgment and its basis. Backing is a first-class runtime value carrying the judgment criteria for each rule. The engine organizes rules into defeats graphs via the Graph API, evaluates them, and computes verdicts via Amgoud's h-Categoriser on a [-1, 1] scale. Nute's strict/defeasible/defeater classification controls attack edges in the graph. `Evaluate` with `EvalOption{Trace: true}` provides full explainability — which rules activated, in what role, under what backing, with what evidence.
+We implemented `toulmin`, a Go rule engine that bridges this gap. Rules are Go functions accepting `(ctx, specs)` and returning `(bool, evidence)` — judgment and its basis. Spec is a first-class runtime value carrying the judgment criteria for each rule. The engine organizes rules into defeats graphs via the Graph API, evaluates them, and computes verdicts via Amgoud's h-Categoriser on a [-1, 1] scale. Nute's strict/defeasible/defeater classification controls attack edges in the graph. `Evaluate` with `EvalOption{Trace: true}` provides full explainability — which rules activated, in what role, under what spec, with what evidence.
 
-The design requires no custom DSL — Go's type system handles claim-rule matching, and the engine core is under a few hundred lines. The same rule function can be reused across different graphs with different defeats relationships, separating rule logic from graph structure. Validation on filefunc's 22 rules across three projects demonstrates that the Toulmin model naturally accommodates rule strength classification, structured defeasibility, and explicit backing. fullend's cross-phase case demonstrates that Ground Adapters enable phase-optional rule reuse.
+The design requires no custom DSL — Go's type system handles claim-rule matching, and the engine core is under a few hundred lines. The same rule function can be reused across different graphs with different defeats relationships, separating rule logic from graph structure. Validation on filefunc's 22 rules across three projects demonstrates that the Toulmin model naturally accommodates rule strength classification, structured defeasibility, and explicit spec. fullend's cross-phase case demonstrates that Ground Adapters enable phase-optional rule reuse.
 
 The `toulmin` library is available under MIT License.
 

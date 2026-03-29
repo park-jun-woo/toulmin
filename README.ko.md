@@ -7,21 +7,21 @@ Go 룰 엔진. 규칙은 Go 함수다. 예외는 그래프 엣지다. DSL 없음
 규칙은 Go 함수다. 각 함수는 1-2 depth:
 
 ```go
-func isAuthenticated(ctx Context, backing Backing) (bool, any) {
+func isAuthenticated(ctx Context, specs Specs) (bool, any) {
     req, _ := ctx.Get("req")
     return req.(*Req).User != nil, nil
 }
-func isIPBlocked(ctx Context, backing Backing) (bool, any) {
+func isIPBlocked(ctx Context, specs Specs) (bool, any) {
     req, _ := ctx.Get("req")
     return blockedIPs[req.(*Req).IP], nil
 }
-func isInternalIP(ctx Context, backing Backing) (bool, any) {
+func isInternalIP(ctx Context, specs Specs) (bool, any) {
     req, _ := ctx.Get("req")
     return strings.HasPrefix(req.(*Req).IP, "10."), nil
 }
-func isRateLimited(ctx Context, backing Backing) (bool, any) { /* ... */ }
-func isPremiumUser(ctx Context, backing Backing) (bool, any) { /* ... */ }
-func isIncidentMode(ctx Context, backing Backing) (bool, any) { /* ... */ }
+func isRateLimited(ctx Context, specs Specs) (bool, any) { /* ... */ }
+func isPremiumUser(ctx Context, specs Specs) (bool, any) { /* ... */ }
+func isIncidentMode(ctx Context, specs Specs) (bool, any) { /* ... */ }
 ```
 
 요구사항은 진화한다. 양쪽이 어떻게 대응하는지 보라:
@@ -126,18 +126,18 @@ go get github.com/park-jun-woo/toulmin/pkg/toulmin
 ### 규칙은 Go 함수다
 
 ```go
-func(ctx Context, backing Backing) (bool, any)
+func(ctx Context, specs Specs) (bool, any)
 ```
 
 - `ctx` = Get/Set 기반의 요청별 컨텍스트 (사용자, IP, 컨텍스트)
-- `backing` = 그래프 선언 시 고정되는 판정 기준 (임계값, 역할명, 설정)
+- `specs` = 그래프 선언 시 `.With()`로 설정되는 판정 기준 (임계값, 역할명, 설정)
 - 반환 = `(판정 결과, 증거)`. 증거는 도메인별 자유 타입.
 
 ```go
-func isInRole(ctx Context, backing Backing) (bool, any) {
+func isInRole(ctx Context, specs Specs) (bool, any) {
     user, _ := ctx.Get("user")
-    b := backing.(*RoleBacking)
-    return user.(*User).Role == b.Role, user.(*User).Role
+    s := specs[0].(*RoleSpec)
+    return user.(*User).Role == s.Role, user.(*User).Role
 }
 ```
 
@@ -198,26 +198,26 @@ results, _ = g.Evaluate(ctx, toulmin.EvalOption{Duration: true})                
 
 `EvalOption`으로 평가 동작을 제어한다: `Method` (Matrix/Recursive), `Trace` (TraceEntry 수집), `Duration` (규칙별 실행 시간 측정).
 
-### Backing
+### Spec
 
-backing 값은 `Backing` 인터페이스를 구현해야 한다:
+spec 값은 `Spec` 인터페이스를 구현해야 한다:
 
 ```go
-type Backing interface {
-    BackingName() string
+type Spec interface {
+    SpecName() string
     Validate() error
 }
 ```
 
-같은 함수 + 다른 backing = 다른 규칙. 클로저 팩토리 없이 규칙을 재사용한다:
+같은 함수 + 다른 spec = 다른 규칙. 클로저 팩토리 없이 규칙을 재사용한다:
 
 ```go
 g := toulmin.NewGraph("access")
-admin  := g.Rule(isInRole).Backing(&RoleBacking{Role: "admin"})
-editor := g.Rule(isInRole).Backing(&RoleBacking{Role: "editor"}).Qualifier(0.8)
+admin  := g.Rule(isInRole).With(&RoleSpec{Role: "admin"})
+editor := g.Rule(isInRole).With(&RoleSpec{Role: "editor"}).Qualifier(0.8)
 ```
 
-backing이 `nil`이면 규칙에 판정 기준이 필요 없다는 뜻이다. Backing 구조체에 func 필드는 금지된다 — `Validate()`가 이를 거부한다.
+spec이 `nil`이면 규칙에 판정 기준이 필요 없다는 뜻이다. Spec 구조체에 func 필드는 금지된다 — `Validate()`가 이를 거부한다.
 
 ## Trace
 
@@ -234,83 +234,13 @@ for _, t := range results[0].Trace {
 
 모더레이션 로그, 감사 추적, 디버깅 — 별도 로깅 없이 엔진이 제공한다.
 
-## 동적 로딩
-
-`LoadGraph`는 정의 + 함수 레지스트리로 라이브 그래프를 생성한다. 그래프 구조와 backing은 재배포 없이 변경 가능 — 함수는 컴파일된 채로 유지.
-
-```go
-// 기동 시 컴파일된 함수 등록
-funcs := map[string]any{
-    "isAuthenticated": isAuthenticated,
-    "isIPBlocked":     isIPBlocked,
-    "isRateLimited":   isRateLimited,
-}
-
-// YAML → GraphDef 파싱, 검증, 라이브 그래프 생성
-def, _ := toulmin.ParseYAML("policy.yaml")
-toulmin.ValidateGraphDef(def)
-backings := map[string]toulmin.Backing{"isIPBlocked": fetchBlocklistFromRedis()}
-g, err := toulmin.LoadGraph(def, funcs, backings)
-ctx := toulmin.NewContext()
-ctx.Set("req", req)
-results, _ := g.Evaluate(ctx)
-```
-
-`ParseYAML`은 YAML을 `GraphDef`로 파싱한다. `ValidateGraphDef`는 defeat 엣지 참조와 순환을 검증한다. `LoadGraph`는 `GraphDef`로 라이브 그래프를 생성한다 — YAML, DB, API 어디서든.
-
-컴파일 실행 속도 + 동적 규칙 업데이트. DSL 파서 없음, 인터프리터 없음, VM 없음 — 그래프 재배선만.
-
-### YAML 그래프 스키마
-
-```yaml
-graph: <이름>              # 그래프 이름 (필수)
-rules:                     # 규칙 목록 (필수)
-  - name: <규칙명>          # 규칙 이름, 함수 레지스트리 키와 일치 (필수)
-    role: <역할>            # rule | counter | except (필수)
-    qualifier: <실수>       # 0.0–1.0, 생략 시 기본값 1.0 (선택)
-defeats:                   # defeat 엣지 목록 (선택)
-  - from: <공격자>          # 공격하는 규칙 이름 (rules에 존재해야 함)
-    to: <대상>              # 공격 대상 규칙 이름 (rules에 존재해야 함)
-```
-
-예시 — 위의 접근 제어 그래프를 YAML로:
-
-```yaml
-graph: api:access
-rules:
-  - name: isAuthenticated
-    role: rule
-  - name: isIPBlocked
-    role: counter
-  - name: isInternalIP
-    role: except
-  - name: isRateLimited
-    role: counter
-  - name: isPremiumUser
-    role: except
-  - name: isIncidentMode
-    role: counter
-defeats:
-  - from: isIPBlocked
-    to: isAuthenticated
-  - from: isInternalIP
-    to: isIPBlocked
-  - from: isRateLimited
-    to: isAuthenticated
-  - from: isPremiumUser
-    to: isRateLimited
-  - from: isIncidentMode
-    to: isPremiumUser
-```
-
 ## 프레임워크 패키지
 
 코어 위에 도메인별 프레임워크를 제공한다. 규칙 함수와 래퍼가 미리 구현되어 있다.
 
 | 패키지 | 도메인 | 핵심 API |
 |---|---|---|
-| `pkg/toulmin` | 코어 엔진, YAML 파서, 검증, 코드 생성 | `Graph`, `EvalOption`, `ParseYAML`, `ValidateGraphDef`, `GenerateGraph` |
-| `pkg/analyzer` | Go AST defeat 그래프 추출 | `ExtractDefeats` |
+| `pkg/toulmin` | 코어 엔진 | `Graph`, `EvalOption` |
 | `pkg/policy` | 접근 제어 (인증, 인가, IP, Rate limit) | `Guard` (net/http 미들웨어) |
 | `pkg/state` | 상태 전이 (FSM) | `Machine.Can`, `Mermaid()` |
 | `pkg/approve` | 다단계 결재 | `Flow.Evaluate` |
@@ -375,10 +305,7 @@ func TestAccessPolicy(t *testing.T) {
 ## CLI
 
 ```bash
-toulmin graph voting.yaml                  # YAML → Go 코드 생성
-toulmin graph voting.yaml --check          # 순환 검증만
-toulmin graph voting.yaml --dry-run        # stdout 출력
-toulmin graph voting.go                    # Go 파일 순환 분석
+toulmin evaluate    # 예시 실행
 ```
 
 ## 사용 사례

@@ -4,7 +4,7 @@
 
 소프트웨어 규칙 엔진 — Rego/OPA, Drools, Semgrep, JSON Schema — 은 공통된 설계 전제를 공유한다: 검증 대상 데이터는 "fact(사실)"이다. 본 논문은 검증 대상이 fact가 아니라 **claim(주장)**이며, 툴민의 논증 모델(1958)이 60년 이상 간과되어 온 소프트웨어 규칙 엔진의 올바른 설계 기초임을 논증한다.
 
-본 논문은 `toulmin`을 제시한다. 툴민의 6요소 — Claim, Ground, Warrant, Backing, Qualifier, Rebuttal — 을 구현한 Go 규칙 엔진으로, 규칙 강도에 Nute의 strict/defeasible/defeater 분류를, verdict 연산에 Amgoud의 h-Categoriser를 [-1, 1] 스케일로 적용한다. 규칙은 Go 함수(`func(ctx, backing) → (bool, evidence)`)로 작성되어 defeats 그래프로 조직되며, 엔진은 verdict를 연산하고 완전한 trace 설명 가능성을 제공한다. 별도의 DSL은 불필요하다.
+본 논문은 `toulmin`을 제시한다. 툴민의 6요소 — Claim, Ground, Warrant, Backing, Qualifier, Rebuttal — 을 구현한 Go 규칙 엔진으로, 규칙 강도에 Nute의 strict/defeasible/defeater 분류를, verdict 연산에 Amgoud의 h-Categoriser를 [-1, 1] 스케일로 적용한다. 규칙은 Go 함수(`func(ctx, specs) → (bool, evidence)`)로 작성되어 defeats 그래프로 조직되며, 엔진은 verdict를 연산하고 완전한 trace 설명 가능성을 제공한다. 별도의 DSL은 불필요하다.
 
 filefunc의 22개 코드 구조 규칙을 툴민 warrant로 변환하여 3개 프로젝트에 대한 정량적 효과를 측정함으로써 설계를 검증한다. 나아가 fullend의 컴파일타임/런타임 정책 통합을 통해 시점 선택적 아키텍처를 시연한다.
 
@@ -73,7 +73,7 @@ Acc(a) = w(a) / (1 + Σ Acc(attackers))
 | JSON Schema | JSON 문서 | 없음 | `description` | 컴파일타임 전용 |
 | LegalRuleML | fact | XML 요소 (볼트온) | 없음 | N/A |
 
-입력을 claim으로 취급하면서, 1급 defeasibility, 시맨틱 backing/qualifier, 시점 선택적 평가를 동시에 제공하는 기존 시스템은 존재하지 않는다.
+입력을 claim으로 취급하면서, 1급 defeasibility, 시맨틱 spec/qualifier, 시점 선택적 평가를 동시에 제공하는 기존 시스템은 존재하지 않는다.
 
 ### 2.5 시점 통합
 
@@ -106,7 +106,7 @@ JWT(RFC 7519)는 토큰 필드를 "facts"가 아니라 "claims"라 명명한다.
 | Claim | 판정 대상 명제. rule의 입력 | 1 |
 | Ground | 판정 근거 데이터. Ground Adapter가 공급 | 0..N |
 | Warrant | rule (bool 함수). defeats 그래프에서 공격받는 노드 | 1..N |
-| Backing | warrant의 정당성 근거. 어노테이션(문서) + 런타임 값(판정 기준) | 1..N |
+| Spec | warrant의 정당성 근거. 어노테이션(문서) + 런타임 값(판정 기준) | 1..N |
 | Qualifier | 각 rule의 초기 가중치 w ∈ [0.0, 1.0] **(§3.3 참조)** | 1 (rule당) |
 | Rebuttal | rule (bool 함수). defeats 그래프에서 공격하는 노드 | 0..N |
 
@@ -146,20 +146,20 @@ JWT(RFC 7519)는 토큰 필드를 "facts"가 아니라 "claims"라 명명한다.
 모든 규칙 — warrant, rebuttal, defeater — 은 동일한 시그니처를 공유한다:
 
 ```go
-type Rule func(ctx Context, backing Backing) (bool, any)
+type Rule func(ctx Context, specs Specs) (bool, any)
 ```
 
-규칙은 `(판정, 증거)`를 반환한다. bool은 판정이고, 두 번째 값은 도메인 특화 증거(예: 에러 상세, 위반 맥락)다. 첫 번째 매개변수 `ctx`는 `Get(key string) (any, bool)`과 `Set(key string, value any)` 메서드를 가진 `Context` 인터페이스다. 두 번째 매개변수 `backing`은 규칙의 판정 기준을 런타임 값으로 전달한다.
+규칙은 `(판정, 증거)`를 반환한다. bool은 판정이고, 두 번째 값은 도메인 특화 증거(예: 에러 상세, 위반 맥락)다. 첫 번째 매개변수 `ctx`는 `Get(key string) (any, bool)`과 `Set(key string, value any)` 메서드를 가진 `Context` 인터페이스다. 두 번째 매개변수 `specs`는 규칙의 판정 기준을 런타임 값으로 전달한다.
 
-**context와 backing의 구분:**
+**context와 spec의 구분:**
 
-| | Context | Backing |
-|--|---------|---------|
+| | Context | Spec |
+|--|---------|------|
 | 정의 | 판정 대상의 사실 (Get/Set 접근) | 규칙의 판정 기준 |
 | 시점 | 요청마다 다름 | 선언 시점에 고정 |
 | 예시 | 파일의 함수 개수, 사용자의 역할 | 허용 함수 개수 임계값, 인가 정책 |
 
-이를 통해 엔진은 verdict를 연산할 뿐 아니라 **왜 그런 판정이 나왔는지를 설명**할 수 있다. backing이 1급 런타임 값이므로, 같은 함수를 다른 backing으로 등록하여 서로 다른 판정 기준의 규칙을 생성할 수 있다(§4.2 참조).
+이를 통해 엔진은 verdict를 연산할 뿐 아니라 **왜 그런 판정이 나왔는지를 설명**할 수 있다. spec이 1급 런타임 값이므로, 같은 함수를 다른 spec으로 등록하여 서로 다른 판정 기준의 규칙을 생성할 수 있다(§4.2 참조).
 
 warrant, rebuttal, defeater의 구분은 함수 시그니처가 아니라 **defeats 그래프**에서의 위치에 의해 결정된다:
 
@@ -180,16 +180,16 @@ d := g.Except(TestFileException)
 d.Attacks(w)
 ```
 
-`g.Rule(fn)` — `*Rule` 참조를 반환하며, 빌더 패턴으로 `.Backing(b)`과 `.Qualifier(q)`를 설정한다. `Backing` 인터페이스(`BackingName() string`, `Validate() error`)를 구현해야 한다. 규칙에 고정된 판정 기준이 없을 때는 `.Backing()`을 생략한다. `Rule`, `Counter`, `Except`는 `*Rule` 참조를 반환하며, `Attacks(target)` 메서드로 defeats 관계를 선언한다. backing이 있을 때:
+`g.Rule(fn)` — `*Rule` 참조를 반환하며, 빌더 패턴으로 `.With(spec)`과 `.Qualifier(q)`를 설정한다. `Spec` 인터페이스(`SpecName() string`, `Validate() error`)를 구현해야 한다. 규칙에 고정된 판정 기준이 없을 때는 `.With()`를 생략한다. `Rule`, `Counter`, `Except`는 `*Rule` 참조를 반환하며, `Attacks(target)` 메서드로 defeats 관계를 선언한다. spec이 있을 때:
 
 ```go
 g := toulmin.NewGraph("line-limit")
-strict := g.Rule(CheckLineCount).Backing(&LineLimit{Max: 100}).Qualifier(0.7)
-relaxed := g.Rule(CheckLineCount).Backing(&LineLimit{Max: 200}).Qualifier(0.5)
+strict := g.Rule(CheckLineCount).With(&LineLimit{Max: 100}).Qualifier(0.7)
+relaxed := g.Rule(CheckLineCount).With(&LineLimit{Max: 200}).Qualifier(0.5)
 relaxed.Attacks(strict)
 ```
 
-같은 `CheckLineCount` 함수를 서로 다른 backing(`Max: 100`, `Max: 200`)으로 등록하면 별개의 노드가 된다. `*Rule` 참조가 각 노드를 고유하게 식별하므로, 같은 함수의 서로 다른 backing 노드 간 defeats 관계를 자연스럽게 선언할 수 있다.
+같은 `CheckLineCount` 함수를 서로 다른 spec(`Max: 100`, `Max: 200`)으로 등록하면 별개의 노드가 된다. `*Rule` 참조가 각 노드를 고유하게 식별하므로, 같은 함수의 서로 다른 spec 노드 간 defeats 관계를 자연스럽게 선언할 수 있다.
 
 함수가 식별자다 — 문자열 이름이 필요 없다. 같은 함수를 다른 그래프에서 다른 역할과 defeats 관계로 재사용할 수 있다:
 
@@ -267,12 +267,12 @@ type TraceEntry struct {
     Role      string  `json:"role"`       // "rule", "counter", "except"
     Activated bool    `json:"activated"`
     Qualifier float64 `json:"qualifier"`
-    Backing   any     `json:"backing,omitempty"`
+    Spec      any     `json:"spec,omitempty"`
     Evidence  any     `json:"evidence,omitempty"`
 }
 ```
 
-`Evaluate`에 `EvalOption{Trace: true}`를 전달하면 완전한 설명 가능성을 제공한다: 어떤 규칙이 활성화되었고, 어떤 역할로, 어떤 qualifier로, 어떤 backing(판정 기준)으로, 어떤 증거를 생산했는지. backing이 trace에 포함됨으로써, 동일 함수가 서로 다른 backing으로 등록된 경우에도 각 노드의 판정 기준을 구분할 수 있다. 이것이 심볼릭 추론의 핵심 장점이다 — verdict의 도출 과정이 투명하고 감사 가능하다.
+`Evaluate`에 `EvalOption{Trace: true}`를 전달하면 완전한 설명 가능성을 제공한다: 어떤 규칙이 활성화되었고, 어떤 역할로, 어떤 qualifier로, 어떤 spec(판정 기준)으로, 어떤 증거를 생산했는지. spec이 trace에 포함됨으로써, 동일 함수가 서로 다른 spec으로 등록된 경우에도 각 노드의 판정 기준을 구분할 수 있다. 이것이 심볼릭 추론의 핵심 장점이다 — verdict의 도출 과정이 투명하고 감사 가능하다.
 
 ### 4.6 평가 흐름
 
@@ -280,46 +280,24 @@ type TraceEntry struct {
 0. 순환 감지: 그래프 구성 시점에 defeat edges에 대해 DFS 수행
    → 순환 발견 시 error 반환 (func 실행 전에 차단)
 1. 각 rule 노드에서 시작
-2. rule func(ctx, backing) 실행 → false? 건너뛰기
-   backing은 그래프 선언 시 고정된 값이 전달됨
+2. rule func(ctx, specs) 실행 → false? 건너뛰기
+   spec은 그래프 선언 시 고정된 값이 전달됨
 3. true이면 attackers (counter/except) 재귀적 순회
-4. 각 attacker: func(ctx, backing) 실행 → false? 기여 0 → true? 더 깊이 재귀
+4. 각 attacker: func(ctx, specs) 실행 → false? 기여 0 → true? 더 깊이 재귀
 5. 각 노드에서 h-Categoriser: raw(a) = w(a) / (1 + Σ raw(attackers))
    verdict(a) = 2 * raw(a) - 1
-6. func 결과 캐싱 — 각 (func, backing) 쌍은 평가당 최대 한 번 실행
+6. func 결과 캐싱 — 각 (func, spec) 쌍은 평가당 최대 한 번 실행
 7. warrant의 공격 체인에서 도달 가능한 규칙만 실행
 ```
 
-### 4.7 YAML 그래프 정의와 코드 생성
+### 4.7 Spec: 1급 런타임 값
 
-그래프를 YAML로 정의하고 Go 코드로 컴파일할 수 있다:
+spec은 **1급 런타임 값**이다. `g.Rule(fn).With(spec)` 빌더 패턴으로 설정되며, `Spec` 인터페이스(`SpecName() string`, `Validate() error`)를 구현해야 한다. 엔진이 규칙 함수를 호출할 때 두 번째 매개변수로 주입된다. 이로써 같은 함수를 서로 다른 판정 기준으로 등록할 수 있다.
 
-```yaml
-graph: file-structure
-rules:
-  - name: CheckOneFileOneFunc
-    role: rule
-    qualifier: 1.0
-  - name: TestFileException
-    role: except
-    qualifier: 1.0
-defeats:
-  - from: TestFileException
-    to: CheckOneFileOneFunc
-```
-
-```bash
-toulmin graph file-structure.yaml   # graph_gen.go 생성
-```
-
-### 4.8 Backing: 1급 런타임 값
-
-backing은 **1급 런타임 값**이다. `g.Rule(fn).Backing(b)` 빌더 패턴으로 설정되며, `Backing` 인터페이스(`BackingName() string`, `Validate() error`)를 구현해야 한다. 엔진이 규칙 함수를 호출할 때 두 번째 매개변수로 주입된다. 이로써 같은 함수를 서로 다른 판정 기준으로 등록할 수 있다.
-
-backing이 필요 없는 규칙은 `.Backing()`을 생략한다. backing이 필요한 규칙은 이를 판정 기준으로 사용한다:
+spec이 필요 없는 규칙은 `.With()`를 생략한다. spec이 필요한 규칙은 이를 판정 기준으로 사용한다:
 
 ```go
-func CheckOneFileOneFunc(ctx Context, backing Backing) (bool, any) {
+func CheckOneFileOneFunc(ctx Context, specs Specs) (bool, any) {
     gf, _ := ctx.Get("file")
     f := gf.(*FileGround)
     if len(f.Funcs) > 1 {
@@ -328,10 +306,10 @@ func CheckOneFileOneFunc(ctx Context, backing Backing) (bool, any) {
     return false, nil
 }
 
-func CheckLineCount(ctx Context, backing Backing) (bool, any) {
+func CheckLineCount(ctx Context, specs Specs) (bool, any) {
     gf, _ := ctx.Get("file")
     f := gf.(*FileGround)
-    limit := backing.(*LineLimit)
+    limit := specs[0].(*LineLimit)
     if f.Lines > limit.Max {
         return true, &Evidence{Got: f.Lines, Limit: limit.Max}
     }
@@ -339,7 +317,7 @@ func CheckLineCount(ctx Context, backing Backing) (bool, any) {
 }
 ```
 
-backing이 trace에 포함되므로(`EvalOption{Trace: true}` 사용 시), 동일 함수가 서로 다른 backing으로 등록된 경우에도 각 노드의 판정 기준을 구분할 수 있다.
+spec이 trace에 포함되므로(`EvalOption{Trace: true}` 사용 시), 동일 함수가 서로 다른 spec으로 등록된 경우에도 각 노드의 판정 기준을 구분할 수 있다.
 
 규칙의 존재 이유를 문서화하고 싶을 때는 일반 Go 주석(`//`)을 사용한다. 별도의 어노테이션 문법은 불필요하다.
 
@@ -371,7 +349,7 @@ filefunc은 LLM 네이티브 Go 개발을 위한 코드 구조 컨벤션 및 CLI
 
 ### 5.4 툴민 변환의 이점
 
-1. **Backing의 1급 지위**: 판정 기준(임계값, 정책 등)이 런타임 backing 값으로 함수에 전달된다. 같은 함수를 다른 backing으로 등록하면 별개의 규칙이 된다.
+1. **Spec의 1급 지위**: 판정 기준(임계값, 정책 등)이 런타임 spec 값으로 함수에 전달된다. 같은 함수를 다른 spec으로 등록하면 별개의 규칙이 된다.
 2. **Rebuttal/Defeater의 구조화**: 예외 조건(F5 테스트 파일, F6 그룹 상수)이 명시적 `defeats` 관계로 선언된다. 코드 속 if 분기에 매몰되지 않는다.
 3. **Strength 분류**: "이 규칙은 예외 없음"(strict) vs "이 규칙은 무력화 가능"(defeasible)이 선언적으로 표현된다.
 
@@ -404,7 +382,7 @@ allow if {
 
 ```go
 // OWASP API Security Top 10 A2:2023
-func AuthEndpointRequiresClaims(ctx Context, backing Backing) (bool, any) {
+func AuthEndpointRequiresClaims(ctx Context, specs Specs) (bool, any) {
     ep, _ := ctx.Get("endpoint")
     g := ep.(*EndpointGround)
     if g.Security.Contains("bearerAuth") && !g.PolicyRule.References("claims") {
@@ -414,7 +392,7 @@ func AuthEndpointRequiresClaims(ctx Context, backing Backing) (bool, any) {
 }
 
 // 공개 API endpoint는 설계상 인증이 불필요하다
-func PublicEndpointException(ctx Context, backing Backing) (bool, any) {
+func PublicEndpointException(ctx Context, specs Specs) (bool, any) {
     ep, _ := ctx.Get("endpoint")
     g := ep.(*EndpointGround)
     return g.Annotation.Contains("x-public"), nil
@@ -458,9 +436,9 @@ d.Attacks(w)
 
 60년간 소프트웨어 규칙 엔진은 검증 대상을 "fact"로 취급하고 이 전제 위에 설계를 구축해왔다. 툴민의 논증 모델(1958)이 이미 올바른 구조 — Claim(Fact가 아닌), Ground, Warrant, Backing, Qualifier, Rebuttal — 을 제공했지만, 철학과 소프트웨어 공학 사이의 학문적 장벽이 그 적용을 가로막았다.
 
-우리는 이 간극을 메우는 Go 규칙 엔진 `toulmin`을 구현했다. 규칙은 `func(ctx, backing) → (bool, evidence)` 시그니처의 Go 함수 — 판정과 그 근거다. backing은 규칙의 판정 기준으로서 선언 시점에 고정되어 런타임에 함수로 전달되며, ctx는 요청마다 달라지는 판정 대상의 사실을 Get/Set으로 제공한다. 엔진은 Graph API를 통해 규칙을 defeats 그래프로 조직하고, 평가하고, Amgoud의 h-Categoriser를 통해 [-1, 1] 스케일의 verdict를 연산한다. Nute의 strict/defeasible/defeater 분류가 그래프의 공격 간선을 제어한다. `Evaluate`에 `EvalOption{Trace: true}`를 전달하면 완전한 설명 가능성을 제공한다 — 어떤 규칙이 활성화되었고, 어떤 역할로, 어떤 backing과 증거와 함께.
+우리는 이 간극을 메우는 Go 규칙 엔진 `toulmin`을 구현했다. 규칙은 `func(ctx, specs) → (bool, evidence)` 시그니처의 Go 함수 — 판정과 그 근거다. spec은 규칙의 판정 기준으로서 선언 시점에 고정되어 런타임에 함수로 전달되며, ctx는 요청마다 달라지는 판정 대상의 사실을 Get/Set으로 제공한다. 엔진은 Graph API를 통해 규칙을 defeats 그래프로 조직하고, 평가하고, Amgoud의 h-Categoriser를 통해 [-1, 1] 스케일의 verdict를 연산한다. Nute의 strict/defeasible/defeater 분류가 그래프의 공격 간선을 제어한다. `Evaluate`에 `EvalOption{Trace: true}`를 전달하면 완전한 설명 가능성을 제공한다 — 어떤 규칙이 활성화되었고, 어떤 역할로, 어떤 spec과 증거와 함께.
 
-설계에 별도의 DSL이 필요 없다 — Go의 타입 시스템이 claim-rule 매칭을 처리하고, 엔진 코어는 수백 줄 규모다. 같은 규칙 함수를 다른 그래프에서 다른 defeats 관계로, 또는 다른 backing으로 재사용할 수 있으며, 규칙 로직과 그래프 구조가 분리된다. filefunc의 22개 규칙에 대한 3개 프로젝트 검증은 툴민 모델이 규칙 강도 분류, 구조화된 defeasibility, 명시적 backing을 자연스럽게 수용함을 보여준다. fullend의 시점 통합 사례는 Ground Adapter가 시점 선택적 규칙 재사용을 가능하게 함을 시연한다.
+설계에 별도의 DSL이 필요 없다 — Go의 타입 시스템이 claim-rule 매칭을 처리하고, 엔진 코어는 수백 줄 규모다. 같은 규칙 함수를 다른 그래프에서 다른 defeats 관계로, 또는 다른 spec으로 재사용할 수 있으며, 규칙 로직과 그래프 구조가 분리된다. filefunc의 22개 규칙에 대한 3개 프로젝트 검증은 툴민 모델이 규칙 강도 분류, 구조화된 defeasibility, 명시적 spec을 자연스럽게 수용함을 보여준다. fullend의 시점 통합 사례는 Ground Adapter가 시점 선택적 규칙 재사용을 가능하게 함을 시연한다.
 
 `toulmin` 라이브러리는 MIT 라이센스로 공개된다.
 
