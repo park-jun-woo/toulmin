@@ -8,6 +8,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // spec is *ClassifierSpec. Returns score as evidence.
 func ContainsSpam(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	body, _ := ctx.Get("body")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	cb := specs[0].(*ClassifierSpec)
 	score := cb.Classifier.Predict(body.(string), "spam")
 	return score > 0.7, score

@@ -10,11 +10,10 @@ import (
 func TestPanicRecover(t *testing.T) {
 	panicRule := func(ctx Context, specs Specs) (bool, any) {
 		panic("test panic")
-		return true, nil
 	}
 	g := NewGraph("test")
 	g.Rule(panicRule)
-	results, err := g.Evaluate(nil)
+	results, err := g.Evaluate(NewContext())
 	if err == nil {
 		t.Fatalf("expected error from panicking rule, got results: %+v", results)
 	}

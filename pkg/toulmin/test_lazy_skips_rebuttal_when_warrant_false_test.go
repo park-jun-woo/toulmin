@@ -17,7 +17,7 @@ func TestLazySkipsRebuttalWhenWarrantFalse(t *testing.T) {
 	w := g.Rule(falseWarrant)
 	r := g.Counter(trackedRebuttal)
 	r.Attacks(w)
-	results, err := g.Evaluate(nil)
+	results, err := g.Evaluate(NewContext())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

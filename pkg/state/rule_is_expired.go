@@ -9,6 +9,9 @@ import (
 
 // IsExpired checks if the resource is expired using spec (*ExpirySpec).
 func IsExpired(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
+	if len(specs) == 0 {
+		return false, nil
+	}
 	b := specs[0].(*ExpirySpec)
 	return time.Now().After(b.ExpiresAt), nil
 }

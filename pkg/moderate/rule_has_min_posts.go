@@ -8,6 +8,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // spec is *MinPostsSpec.
 func HasMinPosts(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	author, _ := ctx.Get("author")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	mp := specs[0].(*MinPostsSpec)
 	return author.(*Author).PostCount >= mp.MinPosts, nil
 }

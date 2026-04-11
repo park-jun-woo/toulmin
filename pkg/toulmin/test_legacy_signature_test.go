@@ -10,7 +10,7 @@ func TestLegacySignature(t *testing.T) {
 	fn := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 	g := NewGraph("test")
 	g.Rule(fn)
-	results, err := g.Evaluate(nil)
+	results, err := g.Evaluate(NewContext())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

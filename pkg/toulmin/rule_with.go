@@ -5,6 +5,9 @@ package toulmin
 // With adds a Spec to the rule and returns the rule for chaining.
 // Multiple With() calls compose specs. Updates ruleID.
 func (r *Rule) With(spec Spec) *Rule {
+	if err := validateSpec(spec); err != nil {
+		panic("toulmin: " + err.Error())
+	}
 	meta := &r.graph.rules[r.idx]
 	meta.Specs = append(meta.Specs, spec)
 	oldID := meta.Name

@@ -11,7 +11,7 @@ func TestSpecSameFunc(t *testing.T) {
 	g := NewGraph("test")
 	g.Rule(isInRole).With(&testSpec{Value: "admin"})
 	g.Rule(isInRole).With(&testSpec{Value: "editor"})
-	results, err := g.Evaluate(nil)
+	results, err := g.Evaluate(NewContext())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -8,6 +8,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // spec is *TrustScoreSpec.
 func IsTrustedUser(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	author, _ := ctx.Get("author")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	tb := specs[0].(*TrustScoreSpec)
 	return author.(*Author).TrustScore >= tb.MinScore, nil
 }

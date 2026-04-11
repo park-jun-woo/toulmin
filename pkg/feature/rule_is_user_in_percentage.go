@@ -8,6 +8,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // Uses deterministic hash, not rand.
 func IsUserInPercentage(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	id, _ := ctx.Get("id")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	pb := specs[0].(*PercentageSpec)
 	return hashPercentage(id.(string)) < pb.Percentage, nil
 }

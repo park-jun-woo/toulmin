@@ -14,7 +14,7 @@ func TestGraphCycleError(t *testing.T) {
 	b := g.Counter(cycleB)
 	b.Attacks(a)
 	a.Attacks(b)
-	_, err := g.Evaluate(nil)
+	_, err := g.Evaluate(NewContext())
 	if err == nil {
 		t.Fatal("expected error for circular defeat graph")
 	}

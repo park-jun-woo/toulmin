@@ -7,6 +7,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // IsSmallAmount checks if the requested amount is at or below spec threshold.
 func IsSmallAmount(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	amount, _ := ctx.Get("amount")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	b := specs[0].(*ThresholdSpec)
 	return amount.(float64) <= b.Max, nil
 }

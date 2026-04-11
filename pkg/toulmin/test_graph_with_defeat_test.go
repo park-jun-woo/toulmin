@@ -11,7 +11,7 @@ func TestGraphWithDefeat(t *testing.T) {
 	w := g.Rule(WarrantA)
 	r := g.Counter(RebuttalB)
 	r.Attacks(w)
-	results, err := g.Evaluate(nil, EvalOption{Trace: true})
+	results, err := g.Evaluate(NewContext(), EvalOption{Trace: true})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

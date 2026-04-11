@@ -7,6 +7,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // HasAttribute checks if the user has the attribute key=value specified by spec.
 func HasAttribute(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	attributes, _ := ctx.Get("attributes")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	ab := specs[0].(*AttributeSpec)
 	return attributes.(map[string]any)[ab.Key] == ab.Value, nil
 }

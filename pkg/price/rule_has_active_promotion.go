@@ -7,6 +7,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // HasActivePromotion checks if the promotion named by spec.Name is active.
 func HasActivePromotion(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	promotions, _ := ctx.Get("promotions")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	db := specs[0].(*DiscountSpec)
 	for _, p := range promotions.([]Promotion) {
 		if p.Name == db.Name && p.Active {

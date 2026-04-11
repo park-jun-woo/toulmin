@@ -16,7 +16,7 @@ func TestDefeatWithSpec(t *testing.T) {
 	allowed := g.Except(isIPInList).With(&testSpec{Value: "whitelist"})
 	blocked.Attacks(auth)
 	allowed.Attacks(blocked)
-	results, err := g.Evaluate(nil)
+	results, err := g.Evaluate(NewContext())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

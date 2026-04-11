@@ -10,7 +10,7 @@ func TestSpecInTrace(t *testing.T) {
 	isInRole := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 	g := NewGraph("test")
 	g.Rule(isInRole).With(&testSpec{Value: "admin"})
-	results, err := g.Evaluate(nil, EvalOption{Trace: true})
+	results, err := g.Evaluate(NewContext(), EvalOption{Trace: true})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -7,6 +7,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // IsIPInList checks if the client IP is in the list provided by spec.
 func IsIPInList(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	clientIP, _ := ctx.Get("clientIP")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	b := specs[0].(*IPListSpec)
 	for _, ip := range b.List {
 		if ip == clientIP.(string) {

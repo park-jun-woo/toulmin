@@ -8,6 +8,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // Returns the Discount as evidence if matched.
 func IsMemberLevel(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	membership, _ := ctx.Get("membership")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	mb := specs[0].(*MemberSpec)
 	ms := membership.(string)
 	if ms == "" {

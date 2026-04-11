@@ -15,7 +15,7 @@ func TestPanicRecoverRebuttal(t *testing.T) {
 	w := g.Rule(WarrantA)
 	r := g.Counter(panicRebuttal)
 	r.Attacks(w)
-	results, err := g.Evaluate(nil)
+	results, err := g.Evaluate(NewContext())
 	if err == nil {
 		t.Fatalf("expected error from panicking rebuttal, got results: %+v", results)
 	}

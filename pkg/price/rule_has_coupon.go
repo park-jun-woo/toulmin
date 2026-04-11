@@ -8,6 +8,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 func HasCoupon(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	basePrice, _ := ctx.Get("basePrice")
 	coupons, _ := ctx.Get("coupons")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	db := specs[0].(*DiscountSpec)
 	for _, c := range coupons.([]Coupon) {
 		if basePrice.(float64) >= c.MinPrice {

@@ -17,11 +17,11 @@ func TestGraphFuncReuse(t *testing.T) {
 	d2 := g2.Except(DefeaterC)
 	d2.Attacks(w2)
 
-	res1, err := g1.Evaluate(nil)
+	res1, err := g1.Evaluate(NewContext())
 	if err != nil {
 		t.Fatalf("g1 error: %v", err)
 	}
-	res2, err := g2.Evaluate(nil)
+	res2, err := g2.Evaluate(NewContext())
 	if err != nil {
 		t.Fatalf("g2 error: %v", err)
 	}

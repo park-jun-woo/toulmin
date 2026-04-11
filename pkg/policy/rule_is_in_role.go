@@ -12,6 +12,9 @@ func IsInRole(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	role, _ := ctx.Get("role")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	rb := specs[0].(*RoleSpec)
 	return role == rb.Role, nil
 }

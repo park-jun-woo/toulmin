@@ -7,6 +7,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // HasApprovalRole checks if the approver has the role specified by spec.
 func HasApprovalRole(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	approverRole, _ := ctx.Get("approverRole")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	ab := specs[0].(*ApproverSpec)
 	return approverRole.(string) == ab.Role, nil
 }

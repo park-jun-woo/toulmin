@@ -7,6 +7,9 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // HasHeader checks if the request has a non-empty header specified by spec.
 func HasHeader(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	headers, _ := ctx.Get("headers")
+	if len(specs) == 0 {
+		return false, nil
+	}
 	b := specs[0].(*HeaderSpec)
 	return headers.(map[string]string)[b.Header] != "", nil
 }

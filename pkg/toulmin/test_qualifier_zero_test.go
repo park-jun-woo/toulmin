@@ -9,7 +9,7 @@ import (
 func TestQualifierZero(t *testing.T) {
 	g := NewGraph("test")
 	g.Rule(WarrantA).Qualifier(0.0)
-	results, err := g.Evaluate(nil)
+	results, err := g.Evaluate(NewContext())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
