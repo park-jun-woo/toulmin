@@ -191,12 +191,11 @@ verdict = 2 × raw - 1
 ctx := toulmin.NewContext()
 ctx.Set("req", req)
 results, _ := g.Evaluate(ctx)                                                         // 기본 (행렬곱)
-results, _ = g.Evaluate(ctx, toulmin.EvalOption{Method: toulmin.Recursive})            // 재귀 h-Categoriser
 results, _ = g.Evaluate(ctx, toulmin.EvalOption{Trace: true})                          // trace 포함
 results, _ = g.Evaluate(ctx, toulmin.EvalOption{Duration: true})                       // 소요시간 측정 (trace 자동 활성화)
 ```
 
-`EvalOption`으로 평가 동작을 제어한다: `Method` (Matrix/Recursive), `Trace` (TraceEntry 수집), `Duration` (규칙별 실행 시간 측정).
+`EvalOption`으로 평가 동작을 제어한다: `Method` (Matrix/Recursive (planned)), `Trace` (TraceEntry 수집), `Duration` (규칙별 실행 시간 측정).
 
 ### Spec
 
@@ -287,10 +286,10 @@ for _, t := range results[0].Trace {
 func TestAccessPolicy(t *testing.T) {
     g := buildAccessGraph()
     toulmin.RunCases(t, g, []toulmin.TestCase{
-        {Name: "admin 허용",      Ground: &Ctx{Role: "admin"},  Expect: toulmin.VerdictAbove(0)},
-        {Name: "차단 IP 거부",     Ground: &Ctx{IP: "blocked"},  Expect: toulmin.VerdictAtMost(0)},
-        {Name: "미인증 거부",      Ground: &Ctx{User: nil},      Expect: toulmin.NoResult},
-        {Name: "부분 재정의",      Ground: &Ctx{Role: "editor"}, Expect: toulmin.VerdictBetween(0, 0.5)},
+        {Name: "admin 허용",      Context: &Ctx{Role: "admin"},  Expect: toulmin.VerdictAbove(0)},
+        {Name: "차단 IP 거부",     Context: &Ctx{IP: "blocked"},  Expect: toulmin.VerdictAtMost(0)},
+        {Name: "미인증 거부",      Context: &Ctx{User: nil},      Expect: toulmin.NoResult},
+        {Name: "부분 재정의",      Context: &Ctx{Role: "editor"}, Expect: toulmin.VerdictBetween(0, 0.5)},
     })
 }
 ```

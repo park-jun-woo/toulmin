@@ -7,6 +7,9 @@ package toulmin
 func (g *Graph) Counter(fn any) *Rule {
 	wrapped := toRuleFunc(fn)
 	id := ruleID(fn, nil)
+	if _, exists := g.roles[id]; exists {
+		panic("toulmin: duplicate rule registration: " + id)
+	}
 	idx := len(g.rules)
 	g.rules = append(g.rules, RuleMeta{
 		Name:      id,

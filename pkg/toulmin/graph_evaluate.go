@@ -5,7 +5,7 @@ package toulmin
 import "fmt"
 
 // Evaluate traverses the defeats graph from each rule node and returns verdicts.
-// Default method is Matrix. Use EvalOption to enable Trace, Duration, or Recursive method.
+// Verdict is computed using lazy recursive h-Categoriser. Use EvalOption to enable Trace, Duration, or Recursive (planned) method.
 // Returns an error if the defeat graph contains a cycle or a rule panics.
 func (g *Graph) Evaluate(ctx Context, opts ...EvalOption) ([]EvalResult, error) {
 	if ctx == nil {

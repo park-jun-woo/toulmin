@@ -18,5 +18,13 @@ func (r *Rule) With(spec Spec) *Rule {
 		delete(r.graph.roles, oldID)
 		r.graph.roles[newID] = role
 	}
+	for i := range r.graph.defeats {
+		if r.graph.defeats[i].from == oldID {
+			r.graph.defeats[i].from = newID
+		}
+		if r.graph.defeats[i].to == oldID {
+			r.graph.defeats[i].to = newID
+		}
+	}
 	return r
 }

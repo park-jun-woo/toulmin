@@ -190,12 +190,11 @@ Not binary. **The framework interprets**:
 ctx := toulmin.NewContext()
 ctx.Set("req", req)
 results, _ := g.Evaluate(ctx)                                                         // default (matrix)
-results, _ = g.Evaluate(ctx, toulmin.EvalOption{Method: toulmin.Recursive})            // recursive h-Categoriser
 results, _ = g.Evaluate(ctx, toulmin.EvalOption{Trace: true})                          // with trace
 results, _ = g.Evaluate(ctx, toulmin.EvalOption{Duration: true})                       // with duration (trace auto-enabled)
 ```
 
-`EvalOption` controls evaluation behavior: `Method` (Matrix/Recursive), `Trace` (collect TraceEntry), `Duration` (measure per-rule execution time).
+`EvalOption` controls evaluation behavior: `Method` (Matrix/Recursive (planned)), `Trace` (collect TraceEntry), `Duration` (measure per-rule execution time).
 
 ### Spec
 
@@ -286,10 +285,10 @@ You can use the core without any framework. Writing your own rule functions — 
 func TestAccessPolicy(t *testing.T) {
     g := buildAccessGraph()
     toulmin.RunCases(t, g, []toulmin.TestCase{
-        {Name: "admin allowed",    Ground: &Ctx{Role: "admin"},  Expect: toulmin.VerdictAbove(0)},
-        {Name: "blocked IP",       Ground: &Ctx{IP: "blocked"},  Expect: toulmin.VerdictAtMost(0)},
-        {Name: "unauthenticated",  Ground: &Ctx{User: nil},      Expect: toulmin.NoResult},
-        {Name: "partial override", Ground: &Ctx{Role: "editor"}, Expect: toulmin.VerdictBetween(0, 0.5)},
+        {Name: "admin allowed",    Context: &Ctx{Role: "admin"},  Expect: toulmin.VerdictAbove(0)},
+        {Name: "blocked IP",       Context: &Ctx{IP: "blocked"},  Expect: toulmin.VerdictAtMost(0)},
+        {Name: "unauthenticated",  Context: &Ctx{User: nil},      Expect: toulmin.NoResult},
+        {Name: "partial override", Context: &Ctx{Role: "editor"}, Expect: toulmin.VerdictBetween(0, 0.5)},
     })
 }
 ```

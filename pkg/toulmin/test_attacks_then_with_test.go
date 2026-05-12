@@ -1,0 +1,60 @@
+//ff:func feature=engine type=engine control=sequence
+//ff:what TestAttacksThenWith — tests defeat edge update after Attacks then With
+package toulmin
+
+import "testing"
+
+func TestAttacksThenWith(t *testing.T) {
+	g := NewGraph("test")
+	w := g.Rule(WarrantA)
+	r := g.Counter(RebuttalB)
+	r.Attacks(w)
+	r.With(&testSpec{Value: "x"})
+	results, err := g.Evaluate(NewContext(), EvalOption{Trace: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Verdict != 0.0 {
+		t.Errorf("expected 0.0, got %f", results[0].Verdict)
+	}
+}
+
+func TestWithThenAttacks(t *testing.T) {
+	g := NewGraph("test")
+	w := g.Rule(WarrantA)
+	r := g.Counter(RebuttalB)
+	r.With(&testSpec{Value: "y"})
+	r.Attacks(w)
+	results, err := g.Evaluate(NewContext(), EvalOption{Trace: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Verdict != 0.0 {
+		t.Errorf("expected 0.0, got %f", results[0].Verdict)
+	}
+}
+
+func TestBothWithThenAttacks(t *testing.T) {
+	g := NewGraph("test")
+	w := g.Rule(WarrantA)
+	w.With(&testSpec{Value: "a"})
+	r := g.Counter(RebuttalB)
+	r.With(&testSpec{Value: "b"})
+	r.Attacks(w)
+	results, err := g.Evaluate(NewContext(), EvalOption{Trace: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Verdict != 0.0 {
+		t.Errorf("expected 0.0, got %f", results[0].Verdict)
+	}
+}

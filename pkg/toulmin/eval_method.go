@@ -6,8 +6,8 @@ package toulmin
 type EvalMethod int
 
 const (
-	// Matrix uses matrix multiplication for verdict computation (default).
+	// Matrix uses lazy recursive h-Categoriser for verdict computation (default).
 	Matrix EvalMethod = iota
-	// Recursive uses recursive h-Categoriser traversal for verdict computation.
+	// Recursive is not yet implemented.
 	Recursive
 )
