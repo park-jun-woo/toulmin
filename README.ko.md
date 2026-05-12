@@ -2,32 +2,52 @@
 
 **if-else를 그만 중첩하라. 규칙을 선언하고, 관계를 선언하라.**
 
-Go 룰 엔진. 규칙은 Go 함수다. 예외는 그래프 엣지다. DSL 없음. 사이드카 없음. 새 언어 없음.
+TypeScript, Python, Go 룰 엔진. 규칙은 함수다. 예외는 그래프 엣지다. DSL 없음. 사이드카 없음. 새 언어 없음.
 
-규칙은 Go 함수다. 각 함수는 1-2 depth:
+### TypeScript
 
-```go
-func isAuthenticated(ctx Context, specs Specs) (bool, any) {
-    req, _ := ctx.Get("req")
-    return req.(*Req).User != nil, nil
-}
-func isIPBlocked(ctx Context, specs Specs) (bool, any) {
-    req, _ := ctx.Get("req")
-    return blockedIPs[req.(*Req).IP], nil
-}
-func isInternalIP(ctx Context, specs Specs) (bool, any) {
-    req, _ := ctx.Get("req")
-    return strings.HasPrefix(req.(*Req).IP, "10."), nil
-}
-func isRateLimited(ctx Context, specs Specs) (bool, any) { /* ... */ }
-func isPremiumUser(ctx Context, specs Specs) (bool, any) { /* ... */ }
-func isIncidentMode(ctx Context, specs Specs) (bool, any) { /* ... */ }
+```typescript
+const isAuthenticated = (ctx, specs) => [ctx.get("user") != null, null]
+const isIPBlocked     = (ctx, specs) => [blockedIPs.has(ctx.get("ip")), null]
+const isInternalIP    = (ctx, specs) => [ctx.get("ip")?.startsWith("10."), null]
+const isRateLimited   = (ctx, specs) => [/* ... */]
+const isPremiumUser   = (ctx, specs) => [/* ... */]
+const isIncidentMode  = (ctx, specs) => [/* ... */]
+
+const g = new Graph("api:access")
+const auth    = g.rule(isAuthenticated)
+const blocked = g.counter(isIPBlocked)
+const exempt  = g.except(isInternalIP)
+blocked.attacks(auth)
+exempt.attacks(blocked)
+
+const limited  = g.counter(isRateLimited)    // 화요일: Rate limiting
+limited.attacks(auth)
+const premium  = g.except(isPremiumUser)     // 수요일: 프리미엄 면제
+premium.attacks(limited)
+const incident = g.counter(isIncidentMode)   // 목요일: 장애 대응 제한
+incident.attacks(premium)
+
+const results = g.evaluate(newContext())
+// results[0].verdict > 0: 허용
 ```
 
-요구사항은 진화한다. 양쪽이 어떻게 대응하는지 보라:
+### Python (planned)
+
+```python
+g = Graph("api:access")
+auth    = g.rule(is_authenticated)
+blocked = g.counter(is_ip_blocked)
+exempt  = g.except_(is_internal_ip)
+blocked.attacks(auth)
+exempt.attacks(blocked)
+
+results = g.evaluate(MapContext())
+```
+
+### Go
 
 ```go
-// 월요일: "인증된 사용자만 접근, IP 차단 적용, 내부망은 차단 면제"
 g := toulmin.NewGraph("api:access")
 auth    := g.Rule(isAuthenticated)
 blocked := g.Counter(isIPBlocked)
@@ -35,109 +55,65 @@ exempt  := g.Except(isInternalIP)
 blocked.Attacks(auth)
 exempt.Attacks(blocked)
 
-// 화요일: "Rate limiting 추가"
-limited := g.Counter(isRateLimited)
-limited.Attacks(auth)
-
-// 수요일: "프리미엄 사용자는 Rate limit 면제"
-premium := g.Except(isPremiumUser)
-premium.Attacks(limited)
-
-// 목요일: "장애 대응 중에는 프리미엄도 제한"
-incident := g.Counter(isIncidentMode)
-incident.Attacks(premium)
-
-ctx := toulmin.NewContext()
-ctx.Set("req", req)
 results, _ := g.Evaluate(ctx)
-// results[0].Verdict > 0: 허용
 ```
 
-매일 2줄 추가, 기존 코드 변경 없음. 같은 진화를 if-else로:
+요구사항은 진화한다. 매일 2줄 추가, 기존 코드 변경 없음. 같은 진화를 if-else로:
 
 ```go
 // 월요일
-if user != nil {
-    if blockedIPs[ip] {
-        if strings.HasPrefix(ip, "10.") {
-            allow = true
-        }
-    } else {
-        allow = true
-    }
+func isAuthenticated(ctx Context, specs Specs) (bool, any) {
+    req, _ := ctx.Get("req")
+    return req.(*Req).User != nil, nil
 }
 
-// 화요일: "Rate limiting 추가" — 어디에 끼워넣지?
+// 목요일 — 4단계 중첩
 if user != nil {
     if blockedIPs[ip] {
-        if strings.HasPrefix(ip, "10.") {
-            allow = true
-        }
-    } else if isRateLimited(ip) {
-        allow = false
-    } else {
-        allow = true
-    }
-}
-
-// 수요일: "프리미엄 사용자는 Rate limit 면제"
-if user != nil {
-    if blockedIPs[ip] {
-        if strings.HasPrefix(ip, "10.") {
-            allow = true
-        }
-    } else if isRateLimited(ip) {
-        if isPremium(user) {       // 3중 중첩
-            allow = true
-        }
-    } else {
-        allow = true
-    }
-}
-
-// 목요일: "장애 대응 중에는 프리미엄도 제한"
-if user != nil {
-    if blockedIPs[ip] {
-        if strings.HasPrefix(ip, "10.") {
-            allow = true
-        }
+        if strings.HasPrefix(ip, "10.") { allow = true }
     } else if isRateLimited(ip) {
         if isPremium(user) {
-            if !incidentMode {     // 4중 중첩, 구조 파악 불가
-                allow = true
-            }
+            if !incidentMode { allow = true }  // 추적 불가
         }
-    } else {
-        allow = true
-    }
+    } else { allow = true }
 }
 ```
 
-toulmin: **요구사항당 2줄, 구조 불변.** if-else: **매번 전체 구조를 뜯어고친다.**
+toulmin: **요구사항마다 2줄, 기존 코드 변경 없음.** if-else: **매번 전체 구조 재작성.**
 
 ## 설치
 
 ```bash
-go get github.com/park-jun-woo/toulmin/pkg/toulmin
+npm install rulecat          # TypeScript
+pip install rulecat          # Python (planned)
+go get github.com/park-jun-woo/toulmin/pkg/toulmin  # Go
 ```
 
 ## 핵심 개념
 
-### 규칙은 Go 함수다
+### 규칙은 함수다
 
-```go
-func(ctx Context, specs Specs) (bool, any)
+```typescript
+// TypeScript
+const fn: RuleFunc = (ctx, specs) => [boolean, unknown]
+
+// Python
+def fn(ctx: Context, specs: list[Spec]) -> tuple[bool, Any]: ...
+
+// Go
+func fn(ctx Context, specs Specs) (bool, any)
 ```
 
-- `ctx` = Get/Set 기반의 요청별 컨텍스트 (사용자, IP, 컨텍스트)
-- `specs` = 그래프 선언 시 `.With()`로 설정되는 판정 기준 (임계값, 역할명, 설정)
+- `ctx` = get/set 기반의 요청별 컨텍스트 (사용자, IP, 컨텍스트)
+- `specs` = 그래프 선언 시 `.with()` / `.with_spec()` / `.With()`로 설정되는 판정 기준
 - 반환 = `(판정 결과, 증거)`. 증거는 도메인별 자유 타입.
 
-```go
-func isInRole(ctx Context, specs Specs) (bool, any) {
-    user, _ := ctx.Get("user")
-    s := specs[0].(*RoleSpec)
-    return user.(*User).Role == s.Role, user.(*User).Role
+```typescript
+const isInRole: RuleFunc = (ctx, specs) => {
+    const user = ctx.get("user")
+    if (!user) return [false, null]
+    const role = (specs[0] as RoleSpec).role
+    return [user.role === role, user.role]
 }
 ```
 
@@ -263,13 +239,13 @@ for _, t := range results[0].Trace {
 
 | | toulmin | OPA | Casbin | Cedar |
 |---|---|---|---|---|
-| 규칙 언어 | **Go 함수** | Rego (DSL) | PERM 모델 (설정) | Cedar (DSL) |
+| 규칙 언어 | **TS/Python/Go 함수** | Rego (DSL) | PERM 모델 (설정) | Cedar (DSL) |
 | 예외 처리 | **defeats graph** | 규칙 우선순위 | 정책 우선순위 | forbid/permit |
 | 예외의 예외 | **Except** | 없음 | 없음 | 없음 |
 | 판정 | **연속값 [-1,1]** | allow/deny | allow/deny | allow/deny |
 | 판정 근거 | **Trace 내장** | Decision log | 없음 | 없음 |
-| 의존성 | Go 표준 라이브러리 | Go + Rego 런타임 | Go | Rust + FFI |
-| 학습 곡선 | Go만 알면 됨 | Rego 학습 필요 | PERM 모델 학습 | Cedar 문법 학습 |
+| 의존성 | **없음** | Go + Rego 런타임 | Go | Rust + FFI |
+| 학습 곡선 | 쓰는 언어만 알면 됨 | Rego 학습 필요 | PERM 모델 학습 | Cedar 문법 학습 |
 
 ### 학술적 기반
 

@@ -7,3 +7,8 @@ bugs/
 plans/
 ts/node_modules/
 ts/dist/
+py/venv/
+py/*.egg-info/
+py/__pycache__/
+py/src/*.egg-info/
+**/__pycache__/

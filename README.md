@@ -2,33 +2,52 @@
 
 **Stop nesting if-else. Declare rules, declare relationships.**
 
-A rule engine for Go. Rules are Go functions. Exceptions are graph edges. No DSL. No sidecar. No new language.
+A rule engine for TypeScript, Python, and Go. Rules are functions. Exceptions are graph edges. No DSL. No sidecar. No new language.
 
-Rules are Go functions. Each stays at 1-2 depth:
+### TypeScript
 
-```go
-func isAuthenticated(ctx Context, specs Specs) (bool, any) {
-    req, _ := ctx.Get("req")
-    return req.(*Req).User != nil, nil
-}
-func isIPBlocked(ctx Context, specs Specs) (bool, any) {
-    req, _ := ctx.Get("req")
-    return blockedIPs[req.(*Req).IP], nil
-}
-func isInternalIP(ctx Context, specs Specs) (bool, any) {
-    req, _ := ctx.Get("req")
-    return strings.HasPrefix(req.(*Req).IP, "10."), nil
-}
-func isRateLimited(ctx Context, specs Specs) (bool, any) { /* ... */ }
-func isPremiumUser(ctx Context, specs Specs) (bool, any) { /* ... */ }
-func isIncidentMode(ctx Context, specs Specs) (bool, any) { /* ... */ }
+```typescript
+const isAuthenticated = (ctx, specs) => [ctx.get("user") != null, null]
+const isIPBlocked     = (ctx, specs) => [blockedIPs.has(ctx.get("ip")), null]
+const isInternalIP    = (ctx, specs) => [ctx.get("ip")?.startsWith("10."), null]
+const isRateLimited   = (ctx, specs) => [/* ... */]
+const isPremiumUser   = (ctx, specs) => [/* ... */]
+const isIncidentMode  = (ctx, specs) => [/* ... */]
+
+const g = new Graph("api:access")
+const auth    = g.rule(isAuthenticated)
+const blocked = g.counter(isIPBlocked)
+const exempt  = g.except(isInternalIP)
+blocked.attacks(auth)
+exempt.attacks(blocked)
+
+const limited  = g.counter(isRateLimited)    // Tuesday: rate limiting
+limited.attacks(auth)
+const premium  = g.except(isPremiumUser)     // Wednesday: premium bypass
+premium.attacks(limited)
+const incident = g.counter(isIncidentMode)   // Thursday: incident override
+incident.attacks(premium)
+
+const results = g.evaluate(newContext())
+// results[0].verdict > 0: allow
 ```
 
-Requirements evolve. Watch how each side handles it:
+### Python (planned)
+
+```python
+g = Graph("api:access")
+auth    = g.rule(is_authenticated)
+blocked = g.counter(is_ip_blocked)
+exempt  = g.except_(is_internal_ip)
+blocked.attacks(auth)
+exempt.attacks(blocked)
+
+results = g.evaluate(MapContext())
+```
+
+### Go
 
 ```go
-// Monday: "authenticated users can access, but block banned IPs,
-//          except internal network is exempt from IP blocking"
 g := toulmin.NewGraph("api:access")
 auth    := g.Rule(isAuthenticated)
 blocked := g.Counter(isIPBlocked)
@@ -36,22 +55,28 @@ exempt  := g.Except(isInternalIP)
 blocked.Attacks(auth)
 exempt.Attacks(blocked)
 
-// Tuesday: "add rate limiting"
-limited := g.Counter(isRateLimited)
-limited.Attacks(auth)
-
-// Wednesday: "premium users bypass rate limit"
-premium := g.Except(isPremiumUser)
-premium.Attacks(limited)
-
-// Thursday: "but not during incident response"
-incident := g.Counter(isIncidentMode)
-incident.Attacks(premium)
-
-ctx := toulmin.NewContext()
-ctx.Set("req", req)
 results, _ := g.Evaluate(ctx)
-// results[0].Verdict > 0: allow
+```
+
+Requirements evolve. Each day: 2 lines added, nothing else changes. Now the same evolution with if-else:
+
+```go
+// Monday
+func isAuthenticated(ctx Context, specs Specs) (bool, any) {
+    req, _ := ctx.Get("req")
+    return req.(*Req).User != nil, nil
+}
+
+// Thursday — 4 levels deep
+if user != nil {
+    if blockedIPs[ip] {
+        if strings.HasPrefix(ip, "10.") { allow = true }
+    } else if isRateLimited(ip) {
+        if isPremium(user) {
+            if !incidentMode { allow = true }  // losing track
+        }
+    } else { allow = true }
+}
 ```
 
 Each day: 2 lines added, nothing else changes. Now the same evolution with if-else:
@@ -119,26 +144,36 @@ toulmin: **2 lines per requirement, structure never changes.** if-else: **restru
 ## Install
 
 ```bash
-go get github.com/park-jun-woo/toulmin/pkg/toulmin
+npm install rulecat          # TypeScript
+pip install rulecat          # Python (planned)
+go get github.com/park-jun-woo/toulmin/pkg/toulmin  # Go
 ```
 
 ## Core Concepts
 
-### Rules are Go functions
+### Rules are functions
 
-```go
-func(ctx Context, specs Specs) (bool, any)
+```typescript
+// TypeScript
+const fn: RuleFunc = (ctx, specs) => [boolean, unknown]
+
+// Python
+def fn(ctx: Context, specs: list[Spec]) -> tuple[bool, Any]: ...
+
+// Go
+func fn(ctx Context, specs Specs) (bool, any)
 ```
 
-- `ctx` = context with Get/Set for per-request facts (user, IP, context)
-- `specs` = fixed criteria at graph declaration via `.With()` (threshold, role name, config)
+- `ctx` = context with get/set for per-request facts (user, IP, context)
+- `specs` = fixed criteria at graph declaration via `.with()` / `.with_spec()` / `.With()` (threshold, role name, config)
 - Returns `(judgment, evidence)`. Evidence is any domain-specific type.
 
-```go
-func isInRole(ctx Context, specs Specs) (bool, any) {
-    user, _ := ctx.Get("user")
-    s := specs[0].(*RoleSpec)
-    return user.(*User).Role == s.Role, user.(*User).Role
+```typescript
+const isInRole: RuleFunc = (ctx, specs) => {
+    const user = ctx.get("user")
+    if (!user) return [false, null]
+    const role = (specs[0] as RoleSpec).role
+    return [user.role === role, user.role]
 }
 ```
 
@@ -262,13 +297,13 @@ You can use the core without any framework. Writing your own rule functions — 
 
 | | toulmin | OPA | Casbin | Cedar |
 |---|---|---|---|---|
-| Rule language | **Go functions** | Rego (DSL) | PERM model (config) | Cedar (DSL) |
+| Rule language | **TS/Python/Go functions** | Rego (DSL) | PERM model (config) | Cedar (DSL) |
 | Exception handling | **defeats graph** | rule priority | policy priority | forbid/permit |
 | Exception of exception | **Except** | none | none | none |
 | Judgment | **continuous [-1,1]** | allow/deny | allow/deny | allow/deny |
 | Audit trail | **Trace built-in** | Decision log | none | none |
-| Dependencies | Go stdlib only | Go + Rego runtime | Go | Rust + FFI |
-| Learning curve | Just know Go | Learn Rego | Learn PERM model | Learn Cedar syntax |
+| Dependencies | **Zero** | Go + Rego runtime | Go | Rust + FFI |
+| Learning curve | Know your language | Learn Rego | Learn PERM model | Learn Cedar syntax |
 
 ### Academic Foundation
 
