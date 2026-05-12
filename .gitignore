@@ -5,3 +5,5 @@ CLAUDE.md
 files/
 bugs/
 plans/
+ts/node_modules/
+ts/dist/
