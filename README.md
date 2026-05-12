@@ -245,6 +245,7 @@ Domain-specific frameworks built on the core. Pre-built rule functions and wrapp
 | `pkg/price` | Price judgment (coupons, membership) | `Pricer.Evaluate` |
 | `pkg/feature` | Feature flags (rollout, toggle) | `Flags.IsEnabled` |
 | `pkg/moderate` | Content moderation (hate speech, spam) | `Moderator.Review` |
+| `pkg/tangl` | Markdown-based policy language | `parser.Parse`, `validate.Validate` |
 
 You can use the core without any framework. Writing your own rule functions — like the killer example above — is the most flexible approach.
 

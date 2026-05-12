@@ -146,10 +146,10 @@ Therefore, this model takes a pragmatic position: **warrants are treated as fact
 All rules — warrants, rebuttals, defeaters — share the same signature:
 
 ```go
-type Rule func(ctx Context, specs Specs) (bool, any)
+func(ctx Context, specs Specs) (bool, any)
 ```
 
-A rule returns `(judgment, evidence)`. The bool is the judgment; the second value is domain-specific evidence (e.g., error details, evidence context). This enables the engine to not only compute verdicts but also **explain why**.
+All rule functions share this signature. A rule returns `(judgment, evidence)`. The bool is the judgment; the second value is domain-specific evidence (e.g., error details, evidence context). This enables the engine to not only compute verdicts but also **explain why**.
 
 The first parameter, `ctx`, is a `Context` interface providing `Get(key string) (any, bool)` and `Set(key string, value any)` for accessing per-request facts. The second parameter, `specs`, carries the judgment criteria for the rule. Context and spec serve distinct epistemic roles:
 
@@ -238,14 +238,12 @@ The engine provides a single evaluation method with options for trace and durati
 // Evaluate — verdict + evidence (default: matrix)
 ctx := toulmin.NewContext()
 results, err := g.Evaluate(ctx)
-results, err  = g.Evaluate(ctx, toulmin.EvalOption{Method: toulmin.Recursive}) // recursive h-Categoriser
-
 // With trace — verdict + evidence + full trace (explainability)
 results, err = g.Evaluate(ctx, toulmin.EvalOption{Trace: true})
-results, err = g.Evaluate(ctx, toulmin.EvalOption{Trace: true, Method: toulmin.Recursive})
+results, err = g.Evaluate(ctx, toulmin.EvalOption{Trace: true, Duration: true})
 ```
 
-`Matrix` (default) uses matrix multiplication for verdict computation. `Recursive` uses the proven recursive h-Categoriser traversal.
+`Matrix` (default) uses lazy recursive h-Categoriser for verdict computation. `Recursive` is planned but not yet implemented.
 
 EvalResult:
 
@@ -258,12 +256,13 @@ type EvalResult struct {
 }
 
 type TraceEntry struct {
-    Name      string  `json:"name"`
-    Role      string  `json:"role"`       // "rule", "counter", "except"
-    Activated bool    `json:"activated"`
-    Qualifier float64 `json:"qualifier"`
-    Spec      any     `json:"spec,omitempty"`
-    Evidence  any     `json:"evidence,omitempty"`
+    Name      string        `json:"name"`
+    Role      string        `json:"role"`       // "rule", "counter", "except"
+    Activated bool          `json:"activated"`
+    Qualifier float64       `json:"qualifier"`
+    Evidence  any           `json:"evidence,omitempty"`
+    Specs     Specs         `json:"specs,omitempty"`
+    Duration  time.Duration `json:"duration,omitempty"`
 }
 ```
 
@@ -272,7 +271,7 @@ type TraceEntry struct {
 ### 4.6 Evaluation Flow
 
 ```
-0. Cycle detection: DFS on defeat edges at graph construction time
+0. Cycle detection: DFS on defeat edges at evaluation time (inside Evaluate)
    → error returned if cycle found (before any func execution)
 1. Start from each rule node
 2. Run rule func(ctx, specs) → false? skip

@@ -146,10 +146,10 @@ JWT(RFC 7519)는 토큰 필드를 "facts"가 아니라 "claims"라 명명한다.
 모든 규칙 — warrant, rebuttal, defeater — 은 동일한 시그니처를 공유한다:
 
 ```go
-type Rule func(ctx Context, specs Specs) (bool, any)
+func(ctx Context, specs Specs) (bool, any)
 ```
 
-규칙은 `(판정, 증거)`를 반환한다. bool은 판정이고, 두 번째 값은 도메인 특화 증거(예: 에러 상세, 위반 맥락)다. 첫 번째 매개변수 `ctx`는 `Get(key string) (any, bool)`과 `Set(key string, value any)` 메서드를 가진 `Context` 인터페이스다. 두 번째 매개변수 `specs`는 규칙의 판정 기준을 런타임 값으로 전달한다.
+모든 규칙 함수는 이 시그니처를 공유한다. 규칙은 `(판정, 증거)`를 반환한다. bool은 판정이고, 두 번째 값은 도메인 특화 증거(예: 에러 상세, 위반 맥락)다. 첫 번째 매개변수 `ctx`는 `Get(key string) (any, bool)`과 `Set(key string, value any)` 메서드를 가진 `Context` 인터페이스다. 두 번째 매개변수 `specs`는 규칙의 판정 기준을 런타임 값으로 전달한다.
 
 **context와 spec의 구분:**
 
@@ -185,7 +185,7 @@ d.Attacks(w)
 ```go
 g := toulmin.NewGraph("line-limit")
 strict := g.Rule(CheckLineCount).With(&LineLimit{Max: 100}).Qualifier(0.7)
-relaxed := g.Rule(CheckLineCount).With(&LineLimit{Max: 200}).Qualifier(0.5)
+relaxed := g.Except(CheckLineCount).With(&LineLimit{Max: 200}).Qualifier(0.5)
 relaxed.Attacks(strict)
 ```
 
@@ -243,14 +243,12 @@ verdict는 **주장의 성립 정도**다. +쪽이 긍정(주장이 지지됨), 
 // Evaluate — verdict + 증거 (기본: 행렬곱)
 ctx := toulmin.NewContext()
 results, err := g.Evaluate(ctx)
-results, err  = g.Evaluate(ctx, toulmin.EvalOption{Method: toulmin.Recursive}) // 재귀 h-Categoriser
-
 // trace 포함 — verdict + 증거 + 완전한 trace (설명 가능성)
 results, err = g.Evaluate(ctx, toulmin.EvalOption{Trace: true})
-results, err = g.Evaluate(ctx, toulmin.EvalOption{Trace: true, Method: toulmin.Recursive})
+results, err = g.Evaluate(ctx, toulmin.EvalOption{Trace: true, Duration: true})
 ```
 
-`Matrix`(기본값)는 행렬곱으로 verdict를 연산한다. `Recursive`는 수학적으로 증명된 재귀 h-Categoriser 탐색을 사용한다.
+`Matrix`(기본값)는 lazy recursive h-Categoriser로 verdict를 연산한다. `Recursive`는 계획 중이며 아직 구현되지 않았다.
 
 EvalResult:
 
@@ -263,12 +261,13 @@ type EvalResult struct {
 }
 
 type TraceEntry struct {
-    Name      string  `json:"name"`
-    Role      string  `json:"role"`       // "rule", "counter", "except"
-    Activated bool    `json:"activated"`
-    Qualifier float64 `json:"qualifier"`
-    Spec      any     `json:"spec,omitempty"`
-    Evidence  any     `json:"evidence,omitempty"`
+    Name      string        `json:"name"`
+    Role      string        `json:"role"`       // "rule", "counter", "except"
+    Activated bool          `json:"activated"`
+    Qualifier float64       `json:"qualifier"`
+    Evidence  any           `json:"evidence,omitempty"`
+    Specs     Specs         `json:"specs,omitempty"`
+    Duration  time.Duration `json:"duration,omitempty"`
 }
 ```
 
@@ -277,7 +276,7 @@ type TraceEntry struct {
 ### 4.6 평가 흐름
 
 ```
-0. 순환 감지: 그래프 구성 시점에 defeat edges에 대해 DFS 수행
+0. 순환 감지: 평가 시점(Evaluate 내부)에 defeat edges에 대해 DFS 수행
    → 순환 발견 시 error 반환 (func 실행 전에 차단)
 1. 각 rule 노드에서 시작
 2. rule func(ctx, specs) 실행 → false? 건너뛰기

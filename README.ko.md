@@ -190,7 +190,7 @@ verdict = 2 × raw - 1
 ```go
 ctx := toulmin.NewContext()
 ctx.Set("req", req)
-results, _ := g.Evaluate(ctx)                                                         // 기본 (행렬곱)
+results, _ := g.Evaluate(ctx)                                                         // 기본 (h-Categoriser)
 results, _ = g.Evaluate(ctx, toulmin.EvalOption{Trace: true})                          // trace 포함
 results, _ = g.Evaluate(ctx, toulmin.EvalOption{Duration: true})                       // 소요시간 측정 (trace 자동 활성화)
 ```
@@ -246,6 +246,7 @@ for _, t := range results[0].Trace {
 | `pkg/price` | 할인 판정 (쿠폰, 멤버십) | `Pricer.Evaluate` |
 | `pkg/feature` | 피처 플래그 (롤아웃, 토글) | `Flags.IsEnabled` |
 | `pkg/moderate` | 콘텐츠 모더레이션 (혐오, 스팸) | `Moderator.Review` |
+| `pkg/tangl` | 마크다운 기반 정책 언어 | `parser.Parse`, `validate.Validate` |
 
 프레임워크 없이 코어만 써도 된다. 위 킬러 예제처럼 직접 규칙 함수를 작성하는 게 가장 유연하다.
 

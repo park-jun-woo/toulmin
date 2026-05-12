@@ -40,7 +40,7 @@ type Spec interface {
 }
 ```
 
-Spec structs must implement `SpecName()` (returns identifier for ruleID) and `Validate()` (validates fields at registration time). `nil` specs is allowed for rules that don't need criteria. Func fields in Spec structs are forbidden — `Validate()` rejects them.
+Spec structs must implement `SpecName()` (returns identifier for ruleID) and `Validate()` (validates fields at registration time). `nil` specs is allowed for rules that don't need criteria. Func fields in Spec structs are forbidden — `With()` rejects them via internal validation.
 
 ### Ground vs Spec
 
@@ -113,7 +113,7 @@ r.Attacks(w)
 
 ctx := toulmin.NewContext()
 results, err := g.Evaluate(ctx)                                                          // default (matrix)
-results, err = g.Evaluate(ctx, toulmin.EvalOption{Method: toulmin.Recursive})             // recursive h-Categoriser
+results, err = g.Evaluate(ctx, toulmin.EvalOption{Method: toulmin.Recursive})             // not yet implemented — returns error
 results, err = g.Evaluate(ctx, toulmin.EvalOption{Trace: true})                           // with trace
 results, err = g.Evaluate(ctx, toulmin.EvalOption{Duration: true})                        // with duration (trace auto-enabled)
 ```
@@ -131,7 +131,7 @@ type EvalOption struct {
 | Method | Description |
 |---|---|
 | `Matrix` (default) | lazy recursive h-Categoriser (default) |
-| `Recursive` | Proven recursive h-Categoriser traversal |
+| `Recursive` | Not yet implemented — returns error |
 
 ### EvalResult / TraceEntry
 
@@ -241,7 +241,7 @@ toulmin evaluate                              # run example
 | Verdict 0.0 as allow/deny | 0.0 = undecided — threshold is framework's decision |
 | Confusing context and spec | ctx = per-request facts via Get/Set, spec = fixed criteria at declaration |
 | Forgetting spec | Use `nil` when no spec needed |
-| Func field in Spec struct | `Validate()` rejects func fields — use plain data fields only |
+| Func field in Spec struct | `With()` rejects func fields via internal validation — use plain data fields only |
 
 ### Spec Replaces Closures
 
