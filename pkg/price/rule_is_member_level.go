@@ -12,7 +12,10 @@ func IsMemberLevel(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	mb := specs[0].(*MemberSpec)
-	ms := membership.(string)
+	ms, ok := membership.(string)
+	if !ok {
+		return false, nil
+	}
 	if ms == "" {
 		return false, nil
 	}

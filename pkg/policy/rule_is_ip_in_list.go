@@ -11,8 +11,12 @@ func IsIPInList(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	b := specs[0].(*IPListSpec)
+	cip, ok := clientIP.(string)
+	if !ok {
+		return false, nil
+	}
 	for _, ip := range b.List {
-		if ip == clientIP.(string) {
+		if ip == cip {
 			return true, nil
 		}
 	}

@@ -15,8 +15,8 @@ import "github.com/park-jun-woo/toulmin/pkg/state"
 ```go
 g := toulmin.NewGraph("proposal:accept")
 current := g.Rule(state.IsCurrentState)
-owner := g.Rule(state.IsOwner).Backing(ownerBacking)
-expired := g.Counter(state.IsExpired).Backing(expiryFunc)
+owner := g.Rule(state.IsOwner)
+expired := g.Counter(state.IsExpired).With(&state.ExpirySpec{ExpiresAt: deadline})
 override := g.Except(isAdminOverride)
 expired.Attacks(current)
 override.Attacks(expired)
@@ -31,18 +31,19 @@ verdict, _ := m.Can(req, ctx)
 
 ## Rules
 
-| Rule | Backing | Description |
+| Rule | Spec | Description |
 |---|---|---|
 | `IsCurrentState` | nil | ground.CurrentState == claim.From |
-| `IsOwner` | *OwnerBacking | User ID matches resource owner ID |
-| `IsExpired` | func(any) time.Time | Resource expiry has passed |
+| `IsOwner` | *OwnerSpec | User ID matches resource owner ID |
+| `IsExpired` | *ExpirySpec | Resource expiry has passed |
 
-### OwnerBacking
+### Spec Types
 
 ```go
-type OwnerBacking struct {
-    OwnerIDFunc func(any) string
-    UserIDFunc  func(any) string
+type OwnerSpec struct{}
+
+type ExpirySpec struct {
+    ExpiresAt time.Time
 }
 ```
 

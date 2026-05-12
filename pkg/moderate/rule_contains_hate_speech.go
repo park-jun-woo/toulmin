@@ -12,6 +12,10 @@ func ContainsHateSpeech(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	cb := specs[0].(*ClassifierSpec)
-	score := cb.Classifier.Predict(body.(string), "hate_speech")
+	s, ok := body.(string)
+	if !ok {
+		return false, nil
+	}
+	score := cb.Classifier.Predict(s, "hate_speech")
 	return score > 0.8, score
 }

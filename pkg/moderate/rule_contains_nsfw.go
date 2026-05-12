@@ -12,6 +12,10 @@ func ContainsNSFW(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	cb := specs[0].(*ClassifierSpec)
-	score := cb.Classifier.Predict(body.(string), "nsfw")
+	s, ok := body.(string)
+	if !ok {
+		return false, nil
+	}
+	score := cb.Classifier.Predict(s, "nsfw")
 	return score > 0.8, score
 }

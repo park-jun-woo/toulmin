@@ -12,5 +12,9 @@ func IsUserInPercentage(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	pb := specs[0].(*PercentageSpec)
-	return hashPercentage(id.(string)) < pb.Percentage, nil
+	s, ok := id.(string)
+	if !ok {
+		return false, nil
+	}
+	return hashPercentage(s) < pb.Percentage, nil
 }

@@ -11,5 +11,9 @@ func IsBulkOrder(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	bb := specs[0].(*BulkOrderSpec)
-	return quantity.(int) >= bb.MinQuantity, nil
+	q, ok := quantity.(int)
+	if !ok {
+		return false, nil
+	}
+	return q >= bb.MinQuantity, nil
 }

@@ -13,11 +13,11 @@ func parseArgValue(s string) any {
 		(strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'")) {
 		return s[1 : len(s)-1]
 	}
-	if f, err := strconv.ParseFloat(s, 64); err == nil {
-		return f
-	}
 	if i, err := strconv.Atoi(s); err == nil {
 		return i
+	}
+	if f, err := strconv.ParseFloat(s, 64); err == nil {
+		return f
 	}
 	if s == "true" {
 		return true

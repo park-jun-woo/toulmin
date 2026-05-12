@@ -23,28 +23,45 @@ internal.Attacks(legacy)
 flags := feature.NewFlags()
 flags.Register("dark-mode", g)
 
-enabled, _ := flags.IsEnabled("dark-mode", ctx)
-result, _ := flags.Evaluate("dark-mode", ctx, toulmin.EvalOption{Trace: true})
-active, _ := flags.List(ctx)
+enabled, _ := flags.IsEnabled("dark-mode", uctx)
+result, _ := flags.EvaluateTrace("dark-mode", uctx)
+active, _ := flags.List(uctx)
 ```
 
 ## Rules
 
-| Rule | Backing | Description |
+| Rule | Spec | Description |
 |---|---|---|
 | `IsBetaUser` | nil | Attributes["beta"] is true |
-| `IsInternalStaff` | nil or func(any)string | Internal staff check |
-| `IsRegion` | string | User region matches backing |
-| `HasAttribute` | [2]any | Attributes[key] == value |
+| `IsInternalStaff` | nil | Attributes["internal"] is true |
+| `IsRegion` | *RegionSpec | User region matches spec.Region |
+| `HasAttribute` | *AttributeSpec | Attributes[spec.Key] == spec.Value |
 | `IsLegacyBrowser` | nil | Attributes["legacy_browser"] is true |
-| `IsUserInPercentage` | float64 | Deterministic hash rollout (0.3 = 30%) |
+| `IsUserInPercentage` | *PercentageSpec | Deterministic hash rollout (spec.Percentage, e.g. 0.3 = 30%) |
+
+### Spec Types
+
+```go
+type RegionSpec struct {
+    Region string // target region code ("KR", "US", etc.)
+}
+
+type AttributeSpec struct {
+    Key   string // attribute key
+    Value any    // attribute value to match
+}
+
+type PercentageSpec struct {
+    Percentage float64 // rollout percentage (0.0 ~ 1.0)
+}
+```
 
 ## Flags
 
 ```go
-flags.IsEnabled(name, ctx)                                    // bool
-flags.Evaluate(name, ctx, toulmin.EvalOption{Trace: true})    // FeatureResult with trace
-flags.List(ctx)                                               // all enabled feature names
+flags.IsEnabled(name, uctx)           // bool
+flags.EvaluateTrace(name, uctx)       // FeatureResult with trace
+flags.List(uctx)                       // all enabled feature names
 ```
 
 ## Middleware (net/http)
@@ -65,8 +82,8 @@ active := feature.ActiveFeatures(r)
 ```go
 // Gin
 r.GET("/v2/checkout", func(c *gin.Context) {
-    ctx := buildCtxFromGin(c)
-    enabled, _ := flags.IsEnabled("new-checkout", ctx)
+    uctx := buildCtxFromGin(c)
+    enabled, _ := flags.IsEnabled("new-checkout", uctx)
     if !enabled {
         c.AbortWithStatus(404)
         return

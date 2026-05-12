@@ -12,5 +12,9 @@ func HasMinPosts(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	mp := specs[0].(*MinPostsSpec)
-	return author.(*Author).PostCount >= mp.MinPosts, nil
+	a, ok := author.(*Author)
+	if !ok {
+		return false, nil
+	}
+	return a.PostCount >= mp.MinPosts, nil
 }

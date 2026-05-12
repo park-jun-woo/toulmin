@@ -11,5 +11,9 @@ func HasHeader(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	b := specs[0].(*HeaderSpec)
-	return headers.(map[string]string)[b.Header] != "", nil
+	h, ok := headers.(map[string]string)
+	if !ok {
+		return false, nil
+	}
+	return h[b.Header] != "", nil
 }

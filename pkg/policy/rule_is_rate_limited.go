@@ -8,5 +8,13 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 func IsRateLimited(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	rateLimiter, _ := ctx.Get("rateLimiter")
 	clientIP, _ := ctx.Get("clientIP")
-	return rateLimiter.(RateLimiter).IsLimited(clientIP.(string)), nil
+	rl, ok := rateLimiter.(RateLimiter)
+	if !ok {
+		return false, nil
+	}
+	cip, ok := clientIP.(string)
+	if !ok {
+		return false, nil
+	}
+	return rl.IsLimited(cip), nil
 }

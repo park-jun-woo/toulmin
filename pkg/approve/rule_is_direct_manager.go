@@ -9,5 +9,17 @@ func IsDirectManager(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	orgTree, _ := ctx.Get("orgTree")
 	approverID, _ := ctx.Get("approverID")
 	requesterID, _ := ctx.Get("requesterID")
-	return orgTree.(OrgTree).IsDirectManager(approverID.(string), requesterID.(string)), nil
+	ot, ok := orgTree.(OrgTree)
+	if !ok {
+		return false, nil
+	}
+	aid, ok := approverID.(string)
+	if !ok {
+		return false, nil
+	}
+	rid, ok := requesterID.(string)
+	if !ok {
+		return false, nil
+	}
+	return ot.IsDirectManager(aid, rid), nil
 }

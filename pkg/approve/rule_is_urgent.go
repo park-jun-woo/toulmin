@@ -7,6 +7,10 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // IsUrgent checks if the request is marked as urgent.
 func IsUrgent(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	reqMeta, _ := ctx.Get("requestMetadata")
-	urgent, _ := reqMeta.(map[string]any)["urgent"].(bool)
+	m, ok := reqMeta.(map[string]any)
+	if !ok {
+		return false, nil
+	}
+	urgent, _ := m["urgent"].(bool)
 	return urgent, nil
 }

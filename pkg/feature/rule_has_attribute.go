@@ -11,5 +11,9 @@ func HasAttribute(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	ab := specs[0].(*AttributeSpec)
-	return attributes.(map[string]any)[ab.Key] == ab.Value, nil
+	attrs, ok := attributes.(map[string]any)
+	if !ok {
+		return false, nil
+	}
+	return attrs[ab.Key] == ab.Value, nil
 }

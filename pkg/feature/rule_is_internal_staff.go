@@ -8,6 +8,10 @@ import "github.com/park-jun-woo/toulmin/pkg/toulmin"
 // Checks Attributes["internal"].
 func IsInternalStaff(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 	attributes, _ := ctx.Get("attributes")
-	internal, _ := attributes.(map[string]any)["internal"].(bool)
+	attrs, ok := attributes.(map[string]any)
+	if !ok {
+		return false, nil
+	}
+	internal, _ := attrs["internal"].(bool)
 	return internal, nil
 }

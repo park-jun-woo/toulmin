@@ -12,5 +12,9 @@ func IsTrustedUser(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	tb := specs[0].(*TrustScoreSpec)
-	return author.(*Author).TrustScore >= tb.MinScore, nil
+	a, ok := author.(*Author)
+	if !ok {
+		return false, nil
+	}
+	return a.TrustScore >= tb.MinScore, nil
 }

@@ -12,8 +12,16 @@ func HasCoupon(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	db := specs[0].(*DiscountSpec)
-	for _, c := range coupons.([]Coupon) {
-		if basePrice.(float64) >= c.MinPrice {
+	bp, ok := basePrice.(float64)
+	if !ok {
+		return false, nil
+	}
+	cs, ok := coupons.([]Coupon)
+	if !ok {
+		return false, nil
+	}
+	for _, c := range cs {
+		if bp >= c.MinPrice {
 			return true, db
 		}
 	}

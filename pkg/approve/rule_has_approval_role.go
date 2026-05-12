@@ -11,5 +11,9 @@ func HasApprovalRole(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	ab := specs[0].(*ApproverSpec)
-	return approverRole.(string) == ab.Role, nil
+	s, ok := approverRole.(string)
+	if !ok {
+		return false, nil
+	}
+	return s == ab.Role, nil
 }

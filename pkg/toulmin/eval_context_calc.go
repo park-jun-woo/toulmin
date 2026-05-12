@@ -12,6 +12,9 @@ func (ec *evalContext) calc(id string, ctx Context) float64 {
 	if ec.err != nil {
 		return -1.0
 	}
+	if v, ok := ec.verdictCache[id]; ok {
+		return v
+	}
 	fn, ok := ec.fnMap[id]
 	if !ok || fn == nil {
 		return -1.0
@@ -37,5 +40,7 @@ func (ec *evalContext) calc(id string, ctx Context) float64 {
 		}
 	}
 	raw := ec.qualMap[id] / (1.0 + sum)
-	return 2*raw - 1
+	v := 2*raw - 1
+	ec.verdictCache[id] = v
+	return v
 }

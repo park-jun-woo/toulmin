@@ -4,7 +4,7 @@
 
 Multi-step approval workflow built on toulmin defeats graph. Each step is a graph, exceptions are defeat edges, audit trail is built-in.
 
-Approver is `any` — the framework does not impose a concrete Approver type. Field access is done via backing (ApproverBacking extraction functions).
+Approver is `any` — the framework does not impose a concrete Approver type. Field access is done via `ApprovalContext` fields set in `ctx`.
 
 ## Install
 
@@ -15,14 +15,9 @@ import "github.com/park-jun-woo/toulmin/pkg/approve"
 ## Quick Start
 
 ```go
-ab := &approve.ApproverBacking{
-    IDFunc:    func(a any) string { return a.(*MyApprover).ID },
-    RoleFunc:  func(a any) string { return a.(*MyApprover).Role },
-    LevelFunc: func(a any) int { return a.(*MyApprover).Level },
-}
-
 g := toulmin.NewGraph("expense:manager")
 budget := g.Rule(approve.IsUnderBudget)
+role := g.Rule(approve.HasApprovalRole).With(&approve.ApproverSpec{Role: "manager"})
 frozen := g.Counter(approve.IsBudgetFrozen)
 urgent := g.Except(approve.IsUrgent)
 frozen.Attacks(budget)
@@ -41,26 +36,27 @@ result, _ := f.Evaluate(req, func(step string) *approve.ApprovalContext {
 
 ## Rules
 
-| Rule | Backing | Description |
+| Rule | Spec | Description |
 |---|---|---|
-| `IsDirectManager` | *ApproverBacking | Approver is requester's direct manager (via IDFunc) |
+| `IsDirectManager` | nil | Approver is requester's direct manager (via ctx "orgTree", "approverID", "requesterID") |
 | `IsUnderBudget` | nil | Amount <= remaining budget |
 | `IsBudgetFrozen` | nil | Budget is frozen (Rebuttal) |
-| `HasApprovalRole` | *ApproverBacking | Approver role matches backing.Role (via RoleFunc) |
-| `IsAboveLevel` | *ApproverBacking | Approver level >= backing.Level (via LevelFunc) |
-| `IsSmallAmount` | float64 | Amount <= backing threshold |
+| `HasApprovalRole` | *ApproverSpec | Approver role matches spec.Role (via ctx "approverRole") |
+| `IsAboveLevel` | *ApproverSpec | Approver level >= spec.Level (via ctx "approverLevel") |
+| `IsSmallAmount` | *ThresholdSpec | Amount <= spec.Max |
 | `IsUrgent` | nil | Request metadata has urgent=true |
-| `IsCEOOverride` | *ApproverBacking | Approver role is "ceo" (via RoleFunc) |
+| `IsCEOOverride` | nil | Approver role is "ceo" (via ctx "approverRole") |
 
-### ApproverBacking
+### Spec Types
 
 ```go
-type ApproverBacking struct {
-    Role      string
-    Level     int
-    IDFunc    func(any) string
-    RoleFunc  func(any) string
-    LevelFunc func(any) int
+type ApproverSpec struct {
+    Role  string // role to match (for HasApprovalRole)
+    Level int    // minimum level (for IsAboveLevel)
+}
+
+type ThresholdSpec struct {
+    Max float64 // amount threshold
 }
 ```
 

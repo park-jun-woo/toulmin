@@ -11,7 +11,11 @@ func HasActivePromotion(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	db := specs[0].(*DiscountSpec)
-	for _, p := range promotions.([]Promotion) {
+	ps, ok := promotions.([]Promotion)
+	if !ok {
+		return false, nil
+	}
+	for _, p := range ps {
 		if p.Name == db.Name && p.Active {
 			return true, db
 		}

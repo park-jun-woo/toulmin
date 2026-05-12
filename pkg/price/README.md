@@ -2,9 +2,9 @@
 
 **Stop nesting if-else for discount logic. Declare rules, exceptions, and caps.**
 
-Price judgment framework built on toulmin defeats graph. Discount conditions are warrants, stacking conflicts are defeat edges, audit trail is built-in. Qualifier stays at 1.0 — discount info lives in backing where it belongs.
+Price judgment framework built on toulmin defeats graph. Discount conditions are warrants, stacking conflicts are defeat edges, audit trail is built-in. Qualifier stays at 1.0 — discount info lives in spec where it belongs.
 
-User is `any` — the framework does not impose a concrete User type. Membership extraction is done via MemberBacking.
+User is `any` — the framework does not impose a concrete User type. Membership extraction is done via ctx fields.
 
 ## Install
 
@@ -15,15 +15,13 @@ import "github.com/park-jun-woo/toulmin/pkg/price"
 ## Quick Start
 
 ```go
-memberFunc := func(u any) string { return u.(*MyUser).Membership }
-
 g := toulmin.NewGraph("product:discount")
-coupon := g.Rule(price.HasCoupon).Backing(&price.DiscountBacking{
+coupon := g.Rule(price.HasCoupon).With(&price.DiscountSpec{
     Name: "SAVE30", Rate: 0.3, Max: 50000,
 })
-basic := g.Rule(price.IsMemberLevel).Backing(&price.MemberBacking{
-    Level: "basic", MembershipFunc: memberFunc,
-    Discount: &price.DiscountBacking{Name: "basic", Rate: 0.1},
+basic := g.Rule(price.IsMemberLevel).With(&price.MemberSpec{
+    Level: "basic",
+    Discount: &price.DiscountSpec{Name: "basic", Rate: 0.1},
 })
 noStack := g.Counter(price.IsAlreadyDiscounted)
 noStack.Attacks(coupon)
@@ -34,10 +32,10 @@ result, _ := pricer.Evaluate(req, ctx)
 // result.FinalPrice, result.TotalDiscount, result.AppliedDiscounts
 ```
 
-## DiscountBacking
+## DiscountSpec
 
 ```go
-type DiscountBacking struct {
+type DiscountSpec struct {
     Name  string  // "SAVE30", "basic", "blackfriday"
     Rate  float64 // percentage (0.3 = 30%). 0 = not applied
     Fixed float64 // fixed amount (5000). 0 = not applied
@@ -48,25 +46,32 @@ type DiscountBacking struct {
 
 Discount = BasePrice * Rate + Fixed, then clamped by Min/Max.
 
-## MemberBacking
+## MemberSpec
 
 ```go
-type MemberBacking struct {
-    Level          string              // "basic", "gold", "vip"
-    MembershipFunc func(any) string   // extracts membership from domain User
-    Discount       *DiscountBacking
+type MemberSpec struct {
+    Level    string        // "basic", "gold", "vip"
+    Discount *DiscountSpec // discount to apply if matched
+}
+```
+
+## BulkOrderSpec
+
+```go
+type BulkOrderSpec struct {
+    MinQuantity int // minimum quantity for bulk order
 }
 ```
 
 ## Rules
 
-| Rule | Backing | Description |
+| Rule | Spec | Description |
 |---|---|---|
-| `HasCoupon` | *DiscountBacking | Coupon applies (meets min price) |
-| `IsMemberLevel` | *MemberBacking | User membership matches Level (via MembershipFunc) |
-| `HasActivePromotion` | *DiscountBacking | Named promotion is active |
+| `HasCoupon` | *DiscountSpec | Coupon applies (meets min price) |
+| `IsMemberLevel` | *MemberSpec | User membership matches Level (via ctx) |
+| `HasActivePromotion` | *DiscountSpec | Named promotion is active |
 | `IsAlreadyDiscounted` | nil | Purchase already discounted (Rebuttal) |
-| `IsBulkOrder` | int | Order quantity >= backing |
+| `IsBulkOrder` | *BulkOrderSpec | Order quantity >= spec.MinQuantity |
 
 ## Pricer
 

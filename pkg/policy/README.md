@@ -17,9 +17,9 @@ import "github.com/park-jun-woo/toulmin/pkg/policy"
 ```go
 g := toulmin.NewGraph("admin:users")
 auth := g.Rule(policy.IsAuthenticated)
-admin := g.Rule(policy.IsInRole).Backing(&policy.RoleBacking{Role: "admin"})
-blocked := g.Counter(policy.IsIPInList).Backing(&policy.IPListBacking{Purpose: "blocklist"})
-allowed := g.Except(policy.IsIPInList).Backing(&policy.IPListBacking{Purpose: "whitelist"})
+admin := g.Rule(policy.IsInRole).With(&policy.RoleSpec{Role: "admin"})
+blocked := g.Counter(policy.IsIPInList).With(&policy.IPListSpec{Purpose: "blocklist"})
+allowed := g.Except(policy.IsIPInList).With(&policy.IPListSpec{Purpose: "whitelist"})
 blocked.Attacks(auth)
 allowed.Attacks(blocked)
 
@@ -29,32 +29,35 @@ mux.Handle("/admin/users", policy.Guard(g, buildCtx)(adminHandler))
 
 ## Rules
 
-`func(ctx toulmin.Context, backing toulmin.Backing) (bool, any)` — ctx provides per-request facts via Get/Set, backing is fixed criteria.
+`func(ctx toulmin.Context, specs toulmin.Specs) (bool, any)` — ctx provides per-request facts via Get/Set, specs is fixed criteria.
 
-| Rule | Backing | Description |
+| Rule | Spec | Description |
 |---|---|---|
 | `IsAuthenticated` | nil | User is not nil |
-| `IsInRole` | *RoleBacking | User role matches backing.Role (via RequestContext.Role) |
-| `IsOwner` | *OwnerBacking | User ID matches resource owner (via RequestContext.UserID/ResourceOwner) |
-| `IsIPInList` | *IPListBacking | Client IP in list (via RequestContext.IPBlocked) |
+| `IsInRole` | *RoleSpec | User role matches spec.Role (via RequestContext.Role) |
+| `IsOwner` | *OwnerSpec | User ID matches resource owner (via RequestContext.UserID/ResourceOwner) |
+| `IsIPInList` | *IPListSpec | Client IP in list (via RequestContext.IPBlocked) |
 | `IsRateLimited` | nil | Client IP is rate limited |
-| `HasHeader` | string | Named header exists and is non-empty |
+| `HasHeader` | *HeaderSpec | Named header exists and is non-empty |
 
-### Backing Types
+### Spec Types
 
-All backing types implement `BackingName() string` and `Validate() error`. Func fields are forbidden.
+All spec types implement `SpecName() string` and `Validate() error`. Func fields are forbidden.
 
 ```go
-type RoleBacking struct {
+type RoleSpec struct {
     Role string
 }
 
-type OwnerBacking struct {
-    OwnerField string  // field name to match against UserID
+type OwnerSpec struct{}
+
+type IPListSpec struct {
+    Purpose string  // "blocklist", "whitelist"
+    List    []string
 }
 
-type IPListBacking struct {
-    Purpose string  // "blocklist", "whitelist"
+type HeaderSpec struct {
+    Header string
 }
 ```
 

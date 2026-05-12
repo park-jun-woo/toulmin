@@ -9,4 +9,5 @@ func (ctx *evalContext) reset() {
 	ctx.evidence = make(map[string]any)
 	ctx.trace = nil
 	ctx.err = nil
+	ctx.verdictCache = make(map[string]float64)
 }

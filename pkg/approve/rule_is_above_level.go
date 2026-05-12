@@ -11,5 +11,9 @@ func IsAboveLevel(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	ab := specs[0].(*ApproverSpec)
-	return approverLevel.(int) >= ab.Level, nil
+	lv, ok := approverLevel.(int)
+	if !ok {
+		return false, nil
+	}
+	return lv >= ab.Level, nil
 }

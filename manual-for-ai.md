@@ -10,7 +10,7 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 | `pkg/policy` | Policy judgment (auth, IP, rate limit, net/http Guard) | `pkg/policy/README.md` |
 | `pkg/state` | State transition (Machine, Mermaid diagram) | `pkg/state/README.md` |
 | `pkg/approve` | Approval workflow (multi-step Flow) | `pkg/approve/README.md` |
-| `pkg/price` | Price judgment (DiscountBacking, Pricer) | `pkg/price/README.md` |
+| `pkg/price` | Price judgment (DiscountSpec, Pricer) | `pkg/price/README.md` |
 | `pkg/feature` | Feature flags (Flags, rollout, net/http Require/Inject) | `pkg/feature/README.md` |
 | `pkg/moderate` | Content moderation (Classifier, 3-level action) | `pkg/moderate/README.md` |
 
@@ -130,7 +130,7 @@ type EvalOption struct {
 
 | Method | Description |
 |---|---|
-| `Matrix` (default) | Matrix multiplication verdict computation |
+| `Matrix` (default) | lazy recursive h-Categoriser (default) |
 | `Recursive` | Proven recursive h-Categoriser traversal |
 
 ### EvalResult / TraceEntry
@@ -149,7 +149,7 @@ type TraceEntry struct {
     Activated bool          `json:"activated"`
     Qualifier float64       `json:"qualifier"`
     Evidence  any           `json:"evidence,omitempty"`
-    Specs     any           `json:"specs,omitempty"`
+    Specs     Specs         `json:"specs,omitempty"`
     Duration  time.Duration `json:"duration,omitempty"`
 }
 ```
@@ -174,9 +174,9 @@ r.Attacks(w1)
 func TestAccessPolicy(t *testing.T) {
     g := buildAccessGraph()
     toulmin.RunCases(t, g, []toulmin.TestCase{
-        {Name: "admin allowed",  Ctx: &Ctx{Role: "admin"},  Expect: toulmin.VerdictAbove(0)},
-        {Name: "blocked IP",     Ctx: &Ctx{IP: "blocked"},  Expect: toulmin.VerdictAtMost(0)},
-        {Name: "unauthenticated", Ctx: &Ctx{User: nil},     Expect: toulmin.NoResult},
+        {Name: "admin allowed",  Context: adminCtx,  Expect: toulmin.VerdictAbove(0)},
+        {Name: "blocked IP",     Context: blockedCtx,  Expect: toulmin.VerdictAtMost(0)},
+        {Name: "unauthenticated", Context: unauthCtx,     Expect: toulmin.NoResult},
     })
 }
 ```
@@ -185,10 +185,10 @@ func TestAccessPolicy(t *testing.T) {
 
 ```go
 type TestCase struct {
-    Name   string      // sub-test name
-    Ctx    Context     // passed to Evaluate (use NewContext())
-    Option EvalOption  // zero value for defaults
-    Expect Expectation // verdict assertion
+    Name    string      // sub-test name
+    Context Context     // passed to Evaluate (use NewContext())
+    Option  EvalOption  // zero value for defaults
+    Expect  Expectation // verdict assertion
 }
 ```
 

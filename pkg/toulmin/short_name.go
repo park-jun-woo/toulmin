@@ -7,8 +7,12 @@ import "strings"
 // shortName returns the short name from a full path.
 // e.g. "github.com/example/pkg.IsAdult" → "IsAdult"
 func shortName(full string) string {
-	if idx := strings.LastIndex(full, "."); idx >= 0 {
-		return full[idx+1:]
+	base, spec, hasSpec := strings.Cut(full, "#")
+	if idx := strings.LastIndex(base, "."); idx >= 0 {
+		base = base[idx+1:]
 	}
-	return full
+	if hasSpec {
+		return base + "#" + spec
+	}
+	return base
 }

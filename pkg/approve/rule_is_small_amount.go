@@ -11,5 +11,9 @@ func IsSmallAmount(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	b := specs[0].(*ThresholdSpec)
-	return amount.(float64) <= b.Max, nil
+	a, ok := amount.(float64)
+	if !ok {
+		return false, nil
+	}
+	return a <= b.Max, nil
 }

@@ -2,7 +2,7 @@
 
 **Stop nesting if-else for content moderation. Declare rules, exceptions, and context.**
 
-Content moderation framework built on toulmin defeats graph. Hate speech, spam, NSFW detection as rebuttals. News context, education, trusted users as defeaters. AI classifiers plug in via backing. Audit trail is built-in. Framework independent (net/http).
+Content moderation framework built on toulmin defeats graph. Hate speech, spam, NSFW detection as rebuttals. News context, education, trusted users as defeaters. AI classifiers plug in via spec. Audit trail is built-in. Framework independent (net/http).
 
 ## Install
 
@@ -17,7 +17,7 @@ classifier := myClassifier{}
 
 g := toulmin.NewGraph("post:publish")
 verified := g.Rule(moderate.IsVerifiedUser)
-hate := g.Counter(moderate.ContainsHateSpeech).Backing(classifier)
+hate := g.Counter(moderate.ContainsHateSpeech).With(&moderate.ClassifierSpec{Classifier: classifier})
 news := g.Except(moderate.IsNewsContext)
 hate.Attacks(verified)
 news.Attacks(hate)
@@ -38,17 +38,33 @@ result, _ := mod.Review(content, ctx)
 
 ## Rules
 
-| Rule | Backing | Description |
+| Rule | Spec | Description |
 |---|---|---|
 | `IsVerifiedUser` | nil | Author is verified |
-| `IsTrustedUser` | float64 | Author trust score >= backing |
-| `ContainsHateSpeech` | Classifier | AI score > 0.8 |
-| `ContainsSpam` | Classifier | AI score > 0.7 |
-| `ContainsNSFW` | Classifier | AI score > 0.8 |
+| `IsTrustedUser` | *TrustScoreSpec | Author trust score >= spec.MinScore |
+| `ContainsHateSpeech` | *ClassifierSpec | AI score > 0.8 |
+| `ContainsSpam` | *ClassifierSpec | AI score > 0.7 |
+| `ContainsNSFW` | *ClassifierSpec | AI score > 0.8 |
 | `IsNewsContext` | nil | Channel type is "news" |
 | `IsEducational` | nil | Channel type is "education" |
 | `IsAdultChannel` | nil | Channel is age-gated |
-| `HasMinPosts` | int | Author post count >= backing |
+| `HasMinPosts` | *MinPostsSpec | Author post count >= spec.MinPosts |
+
+### Spec Types
+
+```go
+type ClassifierSpec struct {
+    Classifier Classifier // AI classifier implementation
+}
+
+type TrustScoreSpec struct {
+    MinScore float64 // minimum trust score threshold
+}
+
+type MinPostsSpec struct {
+    MinPosts int // minimum number of posts required
+}
+```
 
 ## Classifier Interface
 

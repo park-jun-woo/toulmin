@@ -12,6 +12,10 @@ func ContainsSpam(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	cb := specs[0].(*ClassifierSpec)
-	score := cb.Classifier.Predict(body.(string), "spam")
+	s, ok := body.(string)
+	if !ok {
+		return false, nil
+	}
+	score := cb.Classifier.Predict(s, "spam")
 	return score > 0.7, score
 }

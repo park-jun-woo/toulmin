@@ -11,5 +11,9 @@ func IsRegion(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
 		return false, nil
 	}
 	rb := specs[0].(*RegionSpec)
-	return region.(string) == rb.Region, nil
+	r, ok := region.(string)
+	if !ok {
+		return false, nil
+	}
+	return r == rb.Region, nil
 }
