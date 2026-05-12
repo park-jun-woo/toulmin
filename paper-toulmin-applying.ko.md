@@ -240,7 +240,7 @@ verdict는 **주장의 성립 정도**다. +쪽이 긍정(주장이 지지됨), 
 엔진은 단일 평가 메서드에 옵션으로 trace와 duration을 제어한다:
 
 ```go
-// Evaluate — verdict + 증거 (기본: 행렬곱)
+// Evaluate — verdict + 증거 (기본: h-Categoriser)
 ctx := toulmin.NewContext()
 results, err := g.Evaluate(ctx)
 // trace 포함 — verdict + 증거 + 완전한 trace (설명 가능성)

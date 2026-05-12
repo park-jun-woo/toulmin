@@ -266,7 +266,7 @@ type TraceEntry struct {
 }
 ```
 
-`Evaluate` with `EvalOption{Trace: true}` provides full explainability: which rules activated, in what role, with what qualifier, under what spec, producing what evidence. The `Spec` field in TraceEntry records the judgment criteria that were in effect for each rule execution, enabling auditors to understand not only what the rule decided but on what authority. This is a key advantage of symbolic reasoning — the verdict's derivation is transparent and auditable.
+`Evaluate` with `EvalOption{Trace: true}` provides full explainability: which rules activated, in what role, with what qualifier, under what spec, producing what evidence. The `Specs` field in TraceEntry records the judgment criteria that were in effect for each rule execution, enabling auditors to understand not only what the rule decided but on what authority. This is a key advantage of symbolic reasoning — the verdict's derivation is transparent and auditable.
 
 ### 4.6 Evaluation Flow
 

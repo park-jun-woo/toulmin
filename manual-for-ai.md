@@ -13,6 +13,7 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 | `pkg/price` | Price judgment (DiscountSpec, Pricer) | `pkg/price/README.md` |
 | `pkg/feature` | Feature flags (Flags, rollout, net/http Require/Inject) | `pkg/feature/README.md` |
 | `pkg/moderate` | Content moderation (Classifier, 3-level action) | `pkg/moderate/README.md` |
+| `pkg/tangl` | Markdown-based policy language (parser, validate) | — |
 
 ## How to Navigate
 
