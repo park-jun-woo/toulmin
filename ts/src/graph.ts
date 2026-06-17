@@ -1,11 +1,12 @@
-import type { Context, RuleFunc, EvalOption, EvalResult, Specs, TraceEntry } from "./types.js";
-import { Strength, EvalMethod } from "./types.js";
+import type { Context, RuleFunc, EvalOption, EvalResult, Specs, TraceEntry, NodeEvent, NodeHandler, RunResult } from "./types.js";
+import { Strength, EvalMethod, NodeEventType } from "./types.js";
 import type { DefeatEdge } from "./defeat-edge.js";
 import type { RuleMeta } from "./rule-meta.js";
 import { Rule } from "./rule.js";
 import { ruleID } from "./rule-id.js";
 import { shortName } from "./short-name.js";
 import { detectCycle } from "./detect-cycle.js";
+import { createRunView, buildAttackerEvents } from "./run-view.js";
 
 export class Graph {
   readonly name: string;
@@ -30,8 +31,54 @@ export class Graph {
 
   evaluate(ctx: Context, option?: EvalOption): EvalResult[] {
     if (ctx == null) throw new Error("ctx must not be null");
-    const opt = resolveOption(option);
+    return this._evaluate(ctx, resolveOption(option), false).results;
+  }
 
+  run(ctx: Context, option?: EvalOption): RunResult {
+    if (ctx == null) throw new Error("ctx must not be null");
+    const opt = resolveOption(option);
+    opt.trace = false;      // 강제 off — full pass는 공유·비초기화 상태에서만 정확
+    opt.duration = false;
+    const st = this._evaluate(ctx, opt, true);   // full pass
+
+    // 디스패치 전 1회 — 불변 스냅샷
+    const order: NodeEvent[] = [];
+    const byName = new Map<string, NodeEvent>();
+    for (const r of this.rules) {
+      const type = classifyEvent(st.active.get(r.name) ?? false, st.verdictCache.get(r.name) ?? 0);
+      const ne: NodeEvent = {
+        name: shortName(r.name),
+        role: this.roles.get(r.name) ?? "rule",
+        type,
+        verdict: st.verdictCache.get(r.name) ?? 0,
+        evidence: st.evidence.get(r.name),
+      };
+      order.push(ne);
+      byName.set(ne.name, ne);
+    }
+    const attackers = buildAttackerEvents(this.defeats, byName);
+    const view = createRunView(order, byName, attackers);
+
+    for (let i = 0; i < order.length; i++) {
+      const ne = order[i];
+      const meta = this.rules[i];          // 인덱스 대응 — shortName 매핑 불필요
+      const h = selectHandler(meta, ne.type);
+      if (!h) continue;
+      try {
+        h(ctx, ne, view);
+      } catch (e) {
+        throw new Error(`handler "${shortName(meta.name)}" (${NodeEventType[ne.type]}): ${e}`);
+      }
+    }
+    return { results: st.results, view };
+  }
+
+  private _evaluate(ctx: Context, opt: { method: EvalMethod; trace: boolean; duration: boolean }, full: boolean): {
+    results: EvalResult[];
+    active: Map<string, boolean>;
+    verdictCache: Map<string, number>;
+    evidence: Map<string, unknown>;
+  } {
     // Build eval context
     const fnMap = new Map<string, RuleFunc>();
     const qualMap = new Map<string, number>();
@@ -185,7 +232,28 @@ export class Graph {
       }
       results.push(result);
     }
-    return results;
+
+    if (full) {                                // run은 trace를 강제 off하므로 calc(non-trace)만 탐
+      for (const r of this.rules) {
+        if (!ran.has(r.name)) calc(r.name);    // 미도달 노드까지 평가
+      }
+      if (err) throw err;
+    }
+
+    return { results, active, verdictCache, evidence };
+  }
+}
+
+function classifyEvent(active: boolean, verdict: number): NodeEventType {
+  if (!active) return NodeEventType.Inactive;
+  return verdict > 0 ? NodeEventType.Active : NodeEventType.Defeated;
+}
+
+function selectHandler(r: RuleMeta, t: NodeEventType): NodeHandler | undefined {
+  switch (t) {
+    case NodeEventType.Active: return r.onActive;
+    case NodeEventType.Defeated: return r.onDefeated;
+    default: return r.onInactive;
   }
 }
 

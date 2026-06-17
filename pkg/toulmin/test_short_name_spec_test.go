@@ -1,4 +1,4 @@
-//ff:func feature=engine type=test control=iteration
+//ff:func feature=engine type=engine control=iteration dimension=1
 //ff:what TestShortNameSpec — verifies shortName handles # spec suffix correctly
 package toulmin
 

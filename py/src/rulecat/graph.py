@@ -4,6 +4,7 @@ from typing import Any
 
 from rulecat.types import (
     Context, EvalMethod, EvalOption, EvalResult, Strength, TraceEntry,
+    NodeEvent, NodeEventType, RunResult,
 )
 from rulecat.defeat_edge import DefeatEdge
 from rulecat.rule_meta import RuleMeta
@@ -11,6 +12,7 @@ from rulecat.rule import Rule
 from rulecat.rule_id import rule_id
 from rulecat.short_name import short_name
 from rulecat.detect_cycle import detect_cycle
+from rulecat.run_view import _RunView, _build_attacker_events
 
 
 class Graph:
@@ -44,8 +46,51 @@ class Graph:
     def evaluate(self, ctx: Context, option: EvalOption | None = None) -> list[EvalResult]:
         if ctx is None:
             raise ValueError("ctx must not be None")
-        opt = _resolve_option(option)
+        results, *_ = self._evaluate(ctx, _resolve_option(option), full=False)
+        return results
 
+    def run(self, ctx: Context, option: EvalOption | None = None) -> RunResult:
+        if ctx is None:
+            raise ValueError("ctx must not be None")
+        opt = _resolve_option(option)
+        opt = EvalOption(method=opt.method, trace=False, duration=False)  # 강제 off
+        results, active, verdict_cache, evidence = self._evaluate(ctx, opt, full=True)
+
+        # 디스패치 전 1회 — 불변 스냅샷
+        order: list[NodeEvent] = []
+        by_name: dict[str, NodeEvent] = {}
+        for r in self.rules:
+            etype = _classify_event(
+                active.get(r.name, False), verdict_cache.get(r.name, 0.0)
+            )
+            ne = NodeEvent(
+                name=short_name(r.name),
+                role=self.roles.get(r.name, "rule"),
+                type=etype,
+                verdict=verdict_cache.get(r.name, 0.0),
+                evidence=evidence.get(r.name),
+            )
+            order.append(ne)
+            by_name[ne.name] = ne
+        attackers = _build_attacker_events(self.defeats, by_name)
+        view = _RunView(order, by_name, attackers)
+
+        for i, ne in enumerate(order):
+            meta = self.rules[i]            # 인덱스 대응 — short_name 매핑 불필요
+            h = _select_handler(meta, ne.type)
+            if h is None:
+                continue
+            try:
+                h(ctx, ne, view)
+            except Exception as e:
+                raise RuntimeError(
+                    f'handler "{ne.name}" ({ne.type.name}): {e}'
+                ) from e
+        return RunResult(results=results, view=view)
+
+    def _evaluate(
+        self, ctx: Context, opt: EvalOption, full: bool
+    ) -> tuple[list[EvalResult], dict[str, bool], dict[str, float], dict[str, Any]]:
         # Build eval maps
         fn_map: dict[str, Any] = {}
         qual_map: dict[str, float] = {}
@@ -207,7 +252,15 @@ class Graph:
                     for t in trace_entries
                 ]
             results.append(result)
-        return results
+
+        if full:  # run이 trace를 강제 off하므로 calc(non-trace)만 탐
+            for r in self.rules:
+                if r.name not in ran:
+                    calc(r.name)  # 미도달 노드까지 평가
+            if err[0]:
+                raise err[0]
+
+        return results, active, verdict_cache, evidence
 
 
 def _resolve_option(opt: EvalOption | None) -> EvalOption:
@@ -216,3 +269,17 @@ def _resolve_option(opt: EvalOption | None) -> EvalOption:
     if opt.duration:
         opt = EvalOption(method=opt.method, trace=True, duration=True)
     return opt
+
+
+def _classify_event(active: bool, verdict: float) -> NodeEventType:
+    if not active:
+        return NodeEventType.INACTIVE
+    return NodeEventType.ACTIVE if verdict > 0 else NodeEventType.DEFEATED
+
+
+def _select_handler(r: RuleMeta, t: NodeEventType) -> Any:
+    if t == NodeEventType.ACTIVE:
+        return r.on_active
+    if t == NodeEventType.DEFEATED:
+        return r.on_defeated
+    return r.on_inactive

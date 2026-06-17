@@ -1,4 +1,4 @@
-//ff:func feature=engine type=engine control=sequence
+//ff:func feature=engine type=engine control=iteration dimension=1
 //ff:what TestEvaluateIdempotent — tests that two Evaluate calls on same graph produce identical results
 package toulmin
 

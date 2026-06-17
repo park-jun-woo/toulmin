@@ -1,4 +1,4 @@
-//ff:func feature=engine type=engine control=iteration dimension=1
+//ff:func feature=engine type=engine control=sequence
 //ff:what Evaluate — evaluates rules by graph traversal and returns verdicts
 package toulmin
 
@@ -17,30 +17,6 @@ func (g *Graph) Evaluate(ctx Context, opts ...EvalOption) ([]EvalResult, error) 
 	if err != nil {
 		return nil, err
 	}
-	ec, err := newEvalContext(g.rules, g.defeats, g.roles)
-	if err != nil {
-		return nil, err
-	}
-	var results []EvalResult
-	for _, r := range g.rules {
-		if !isWarrant(ec.attackerSet, r.Strength, r.Name) {
-			continue
-		}
-		if opt.Trace {
-			ec.reset()
-		}
-		verdict := ec.evalRule(r.Name, ctx, opt)
-		if ec.err != nil {
-			return nil, ec.err
-		}
-		if !ec.active[r.Name] {
-			continue
-		}
-		result := EvalResult{Name: shortName(r.Name), Verdict: verdict, Evidence: ec.evidence[r.Name]}
-		if opt.Trace {
-			result.Trace = collectTrace(ec.trace)
-		}
-		results = append(results, result)
-	}
-	return results, nil
+	results, _, err := g.evaluate(ctx, opt, false)
+	return results, err
 }

@@ -10,4 +10,8 @@ type RuleMeta struct {
 	Defeats   []string
 	Specs     Specs
 	Fn        func(ctx Context, specs Specs) (bool, any)
+
+	OnActive   NodeHandler // active event handler (nil allowed)
+	OnDefeated NodeHandler // defeated event handler (nil allowed)
+	OnInactive NodeHandler // inactive event handler (nil allowed)
 }

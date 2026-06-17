@@ -155,6 +155,48 @@ type TraceEntry struct {
 }
 ```
 
+### Node Events (Run)
+
+`Run` is a pre-judge → post-act variant of `Evaluate`. It evaluates the whole graph
+(full pass, Trace/Duration forced off) and then fires each node's event handler. Every
+node fires exactly one event:
+
+| Event | Condition | Meaning |
+|---|---|---|
+| `Inactive` | func `false` | rule did not apply |
+| `Active` | func `true` && `verdict > 0` | applied and prevailed |
+| `Defeated` | func `true` && `verdict <= 0` | applied but defeated (verdict == 0 counts as Defeated) |
+
+```go
+g.Rule(Authenticate).
+    OnActive(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error { return audit(ev) }).
+    OnDefeated(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error { return deny(ev) })
+
+results, view, err := g.Run(ctx) // []EvalResult, RunView, error
+
+type NodeEvent struct {
+    Name     string        // node short name
+    Role     string        // "rule" | "counter" | "except"
+    Type     NodeEventType // Inactive | Active | Defeated
+    Verdict  float64       // 0.0 when Inactive
+    Evidence any           // evidence from the rule function
+}
+
+type RunView interface {           // read-only snapshot of every node's final event
+    All() []NodeEvent              // all nodes, registration order (Inactive included)
+    Get(name string) (NodeEvent, bool) // lookup by short name
+    Attackers(name string) []NodeEvent // final events of nodes that attacked name
+}
+```
+
+Handlers fire in rule registration order (deterministic). Before any handler fires, `Run`
+builds one immutable `RunView` snapshot of every node's final event and shares it with all
+handlers, so a handler can read the whole graph's final state (audit, explanation, gradient
+thresholds via `view.Get(...).Verdict`) — mutating `ctx` never changes the `view`. A handler
+error or panic stops `Run` immediately and is returned together with that pre-dispatch
+`RunView`. Nodes without a matching handler pass through silently. `Evaluate` is unchanged
+and fires no handlers (stays idempotent).
+
 ### Same Function, Different Spec
 
 ```go

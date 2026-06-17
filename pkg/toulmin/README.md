@@ -24,7 +24,24 @@ func(ctx Context, specs Specs) (bool, any)
 | `rule.Attacks(target)` | rule_attacks.go | Declare defeat edge (method on `*Rule`) |
 | `rule.With(spec)` | rule_with.go | Attach a Spec to the rule (additive, supports chaining) |
 | `g.Evaluate(ctx, opt ...EvalOption)` | graph_evaluate.go | Run evaluation, return verdicts (ctx is Context, opt controls Trace/Duration) |
+| `g.Run(ctx, opt ...EvalOption)` | graph_run.go | Pre-evaluate (full pass) then fire each node's event handler with a shared `RunView`; returns `([]EvalResult, RunView, error)` |
+| `rule.OnActive(h)` | rule_on_active.go | Register handler fired when node is Active (func true && verdict > 0) |
+| `rule.OnDefeated(h)` | rule_on_defeated.go | Register handler fired when node is Defeated (func true && verdict <= 0) |
+| `rule.OnInactive(h)` | rule_on_inactive.go | Register handler fired when node is Inactive (func false) |
 | `NewContext()` | new_context.go | Create `*MapContext` implementing Context interface |
+
+`Run` forces Trace/Duration off and does a full pass so every node fires exactly one of
+Inactive / Active / Defeated (verdict == 0 counts as Defeated). Handlers fire in rule
+registration order; a handler error or panic stops `Run` immediately and is returned with
+the `RunView` snapshot built before dispatch. `Evaluate` is unchanged and fires no handlers
+(stays idempotent).
+
+Before any handler fires, `Run` builds one immutable `RunView` snapshot of every node's
+final event and shares it with all handlers. A handler reads its own `ev` plus the whole
+graph's final state via `view.All()` / `view.Get(name)` / `view.Attackers(name)` — useful
+for audit logging, explanations, and gradient thresholds (`view.Get(...).Verdict`). The
+snapshot is immutable: mutating `ctx` in one handler never changes the `view` another sees
+(`Type`/`Verdict` are copied; `Evidence` shares a reference and must be treated read-only).
 
 ### Testing Helper
 
@@ -53,7 +70,11 @@ func(ctx Context, specs Specs) (bool, any)
 | `EvalMethod` | eval_method.go | Verdict computation method (Matrix) |
 | `Graph` | graph.go | Graph builder |
 | `Rule` | rule.go | Opaque rule reference |
-| `RuleMeta` | rule_meta.go | Rule metadata (Name, Qualifier, Strength, Defeats, Specs, Fn) |
+| `RuleMeta` | rule_meta.go | Rule metadata (Name, Qualifier, Strength, Defeats, Specs, Fn, OnActive/OnDefeated/OnInactive) |
+| `NodeEventType` | node_event_type.go | Node event classification (Inactive / Active / Defeated) |
+| `NodeEvent` | node_event.go | Handler payload (Name, Role, Type, Verdict, Evidence) |
+| `NodeHandler` | node_handler.go | Handler signature `func(ctx Context, ev NodeEvent, view RunView) error` |
+| `RunView` | run_view.go | Read-only snapshot of every node's final event: `All()`, `Get(name)`, `Attackers(name)` |
 | `EvalResult` | eval_result.go | Verdict + trace |
 | `TraceEntry` | trace_entry.go | Single rule evaluation record |
 | `Strength` | strength.go | Defeasible / Strict / Defeater |
@@ -97,4 +118,10 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 | is_warrant.go | Check if node is a warrant |
 | to_rule_func.go | Convert any to rule function |
 | safe_call.go | Panic-safe rule function invocation |
+| safe_call_handler.go | Panic-safe node handler invocation |
+| graph_evaluate_internal.go | Shared evaluation for Evaluate (lazy) and Run (full pass) |
+| eval_context_fill_all.go | Calc every not-yet-run node to fill inactive state (full pass) |
+| classify_event.go | Classify a node event from active flag and verdict |
+| select_handler.go | Pick the handler matching a node event type |
+| node_event_type_string.go | NodeEventType.String() for logs and errors |
 | specs_find.go | Find a Spec by type from Specs collection |

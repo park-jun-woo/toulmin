@@ -1,4 +1,4 @@
-import type { Spec } from "./types.js";
+import type { Spec, NodeHandler } from "./types.js";
 import type { Graph } from "./graph.js";
 import type { RuleFunc } from "./types.js";
 import { ruleID } from "./rule-id.js";
@@ -40,6 +40,21 @@ export class Rule {
   qualifier(q: number): Rule {
     if (q < 0.0 || q > 1.0) throw new Error("qualifier must be between 0.0 and 1.0");
     this.graph.rules[this.idx].qualifier = q;
+    return this;
+  }
+
+  onActive(h: NodeHandler): Rule {
+    this.graph.rules[this.idx].onActive = h;
+    return this;
+  }
+
+  onDefeated(h: NodeHandler): Rule {
+    this.graph.rules[this.idx].onDefeated = h;
+    return this;
+  }
+
+  onInactive(h: NodeHandler): Rule {
+    this.graph.rules[this.idx].onInactive = h;
     return this;
   }
 }

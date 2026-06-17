@@ -42,3 +42,15 @@ class Rule:
             raise ValueError("qualifier must be between 0.0 and 1.0")
         self._graph.rules[self._idx].qualifier = q
         return self
+
+    def on_active(self, h: Any) -> Rule:
+        self._graph.rules[self._idx].on_active = h
+        return self
+
+    def on_defeated(self, h: Any) -> Rule:
+        self._graph.rules[self._idx].on_defeated = h
+        return self
+
+    def on_inactive(self, h: Any) -> Rule:
+        self._graph.rules[self._idx].on_inactive = h
+        return self
