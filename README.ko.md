@@ -209,6 +209,50 @@ for _, t := range results[0].Trace {
 
 모더레이션 로그, 감사 추적, 디버깅 — 별도 로깅 없이 엔진이 제공한다.
 
+## Run
+
+`Evaluate`는 판정하고 반환만 한다 — 순수하고 멱등하다. `Run`은 먼저 판정한 뒤 **행동한다**:
+전체 패스를 수행하고, 각 노드의 결과에 따라 정확히 하나의 핸들러를 발화한다.
+
+| 이벤트 | 조건 | 의미 |
+|---|---|---|
+| `Active` | func true && verdict > 0 | 적용되어 우세 |
+| `Defeated` | func true && verdict <= 0 | 적용됐으나 패배 |
+| `Inactive` | func false | 규칙 미적용 |
+
+```go
+g.Rule(isAuthenticated).
+    OnActive(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error {
+        return audit(ev)          // 적용되어 우세
+    }).
+    OnDefeated(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error {
+        return deny(ev)           // 적용됐으나 패배
+    })
+
+results, view, err := g.Run(ctx)  // []EvalResult, RunView, error
+```
+
+핸들러는 등록 순서로 발화하며, 첫 핸들러 에러에서 `Run`이 멈춘다. 어떤 핸들러가 발화하기
+전에 `Run`은 모든 노드의 최종 이벤트를 담은 불변 스냅샷 **RunView**를 한 번 빌드해 모든
+핸들러에 전달하고(반환값으로도 돌려준다), 핸들러는 자신의 이벤트와 함께 `view.All()`,
+`view.Get(name)`, `view.Attackers(name)`로 그래프 전체의 최종 상태를 읽는다. `ctx`는 가변
+(부수효과)이고, `view`는 불변 판정 스냅샷이다.
+
+### 실행 합성 (execution composition)
+
+`rule.Run(g)`는 노드가 **Active**일 때 같은 ctx로 하위 그래프 `g`를 Run하도록 선언한다 —
+그래프의 그래프. 판정은 `Attacks`를 따라 *위로* 합성되고(verdict가 위로 흐른다), 실행은
+`Run`을 따라 *아래로* 합성된다(하위 그래프의 verdict는 격리되고 에러만 전파된다). 실행 합성은
+DAG여야 한다 — 사이클은 사전에 거부되고, 깊이는 64로 제한된다.
+
+```go
+order := g.Rule(orderPlaced)
+order.OnActive(logOrder).Run(notifyGraph)   // Active order → notify 그래프 Run
+```
+
+Run 핸들러 + RunView 계열은 Go, TypeScript, Python 포트 모두에서 제공된다. 실행
+합성(`rule.Run(g)`)은 현재 Go 전용이다.
+
 ## 프레임워크 패키지
 
 코어 위에 도메인별 프레임워크를 제공한다. 규칙 함수와 래퍼가 미리 구현되어 있다.

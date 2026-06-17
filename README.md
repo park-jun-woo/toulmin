@@ -267,6 +267,51 @@ for _, t := range results[0].Trace {
 
 Moderation logs, audit trails, debugging — built into the engine, no extra logging.
 
+## Run
+
+`Evaluate` judges and returns — pure and idempotent. `Run` judges first, **then acts**: it
+does a full pass, then fires exactly one handler per node based on its outcome.
+
+| Event | Condition | Meaning |
+|---|---|---|
+| `Active` | func true && verdict > 0 | applied and prevailed |
+| `Defeated` | func true && verdict <= 0 | applied but defeated |
+| `Inactive` | func false | rule did not apply |
+
+```go
+g.Rule(isAuthenticated).
+    OnActive(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error {
+        return audit(ev)          // ran and prevailed
+    }).
+    OnDefeated(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error {
+        return deny(ev)           // ran but was defeated
+    })
+
+results, view, err := g.Run(ctx)  // []EvalResult, RunView, error
+```
+
+Handlers fire in registration order; the first handler error stops `Run`. Before any handler
+fires, `Run` builds one immutable **RunView** — a read-only snapshot of every node's final
+event — and passes it to every handler (and returns it). A handler reads its own event plus
+the whole graph's final state via `view.All()`, `view.Get(name)`, `view.Attackers(name)`.
+`ctx` is mutable (side effects); `view` is the immutable judgment snapshot.
+
+### Execution composition
+
+`rule.Run(g)` declares that when a node is **Active**, its sub-graph `g` is Run with the same
+ctx — a graph of graphs. Judgment composes *upward* through `Attacks` (verdict flows up);
+execution composes *downward* through `Run` (the sub-graph's verdict stays isolated, only
+errors propagate). Execution composition must be a DAG — cycles are rejected up front, depth
+is capped at 64.
+
+```go
+order := g.Rule(orderPlaced)
+order.OnActive(logOrder).Run(notifyGraph)   // Active order → Run the notify graph
+```
+
+The Run handler + RunView family is available across the Go, TypeScript, and Python ports;
+execution composition (`rule.Run(g)`) is currently Go-only.
+
 ## Framework Packages
 
 Domain-specific frameworks built on the core. Pre-built rule functions and wrappers.

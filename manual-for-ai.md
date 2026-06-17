@@ -158,8 +158,9 @@ type TraceEntry struct {
 ### Node Events (Run)
 
 `Run` is a pre-judge → post-act variant of `Evaluate`. It evaluates the whole graph
-(full pass, Trace/Duration forced off) and then fires each node's event handler. Every
-node fires exactly one event:
+(full pass, Trace/Duration forced off), fires each node's event handler, and Runs any
+sub-graph declared on an Active node (execution composition, below). Every node fires
+exactly one event:
 
 | Event | Condition | Meaning |
 |---|---|---|
@@ -196,6 +197,31 @@ thresholds via `view.Get(...).Verdict`) — mutating `ctx` never changes the `vi
 error or panic stops `Run` immediately and is returned together with that pre-dispatch
 `RunView`. Nodes without a matching handler pass through silently. `Evaluate` is unchanged
 and fires no handlers (stays idempotent).
+
+### Execution Composition (graph-of-graphs)
+
+`(r *Rule) Run(g *Graph) *Rule` declares an **execution edge**: when this node is `Active`,
+the sub-graph `g` is Run with the *same* `ctx`. It is the execution counterpart of `Attacks`
+(a defeat edge). `Attacks` composes **judgment** — an attacker's verdict flows *up* into its
+target; `Run` composes **execution** — an Active node drives a child graph *down*, with its
+verdict isolated.
+
+```go
+notify := buildNotifyGraph()
+g.Rule(OrderPlaced).
+    OnActive(func(ctx toulmin.Context, ev toulmin.NodeEvent, v toulmin.RunView) error { return log(ev) }).
+    Run(notify)   // when OrderPlaced is Active, Run notify
+```
+
+- **Active-only.** A sub-graph Runs only for `Active` nodes; `Inactive`/`Defeated` never trigger one.
+- **Handler first, then sub-graph.** For an Active node, its `OnActive` handler fires before its sub-graph is Run. `OnActive` and `Run(g)` coexist.
+- **ctx flows down, verdict isolated.** The same mutable `ctx` is shared with the sub-graph (side effects propagate); the sub-graph's verdicts are *not* merged into the parent — only errors propagate, wrapped as `run "node" → "subgraph": ...`.
+- **Each level gets its own view.** The `RunView` passed to a sub-graph's handlers snapshots that sub-graph, not the parent.
+- **DAG, enforced.** Execution composition must be acyclic. `Run` rejects a static cycle once at the top-level entry via `detectRunCycle` — a 3-color DFS over `RunGraph` edges keyed by `*Graph` identity; a shared sub-graph reached by two paths (diamond) is legal. A runtime depth guard (`runMaxDepth = 64`) backstops runaway composition (`run depth exceeded 64`).
+- `Run(nil)` is a registration error and panics.
+
+Execution composition (`rule.Run(g)`, `RunGraph`) is currently Go-only; the Run handler +
+`RunView` family above is available in the Go, TypeScript, and Python ports.
 
 ### Same Function, Different Spec
 

@@ -12,3 +12,10 @@ py/*.egg-info/
 py/__pycache__/
 py/src/*.egg-info/
 **/__pycache__/
+
+# 로컬 도구/환경 상태 (커밋 안 함)
+**/.tsma/
+.whyso/
+py/.venv/
+py/.coverage
+ts/coverage/

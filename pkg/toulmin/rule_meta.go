@@ -14,4 +14,6 @@ type RuleMeta struct {
 	OnActive   NodeHandler // active event handler (nil allowed)
 	OnDefeated NodeHandler // defeated event handler (nil allowed)
 	OnInactive NodeHandler // inactive event handler (nil allowed)
+
+	RunGraph *Graph // sub-graph to Run when this node is Active (nil allowed)
 }
