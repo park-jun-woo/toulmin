@@ -7,7 +7,7 @@ import "time"
 // TraceEntry records one rule's evaluation result for explainability.
 // Name is the Claim, Ground is the ctx the rule saw, Specs is the Backing.
 type TraceEntry struct {
-	Name      string        `json:"name"`             // = Claim
+	Name      string        `json:"name"` // = Claim
 	Role      string        `json:"role"`
 	Activated bool          `json:"activated"`
 	Qualifier float64       `json:"qualifier"`

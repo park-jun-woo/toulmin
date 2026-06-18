@@ -20,7 +20,7 @@ func TestDetectRunCycle(t *testing.T) {
 	child := NewGraph("child")
 	child.Rule(f1)
 	acyclic := NewGraph("acyclic")
-	acyclic.Rule(f1)            // no RunGraph -> continue branch
+	acyclic.Rule(f1) // no RunGraph -> continue branch
 	acyclic.Rule(f2).Run(child)
 
 	// self-loop: root → root.
