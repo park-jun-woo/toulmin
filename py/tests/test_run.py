@@ -44,7 +44,7 @@ def test_active_only_external_blocked_ip():
     fired = []
 
     def on(name):
-        def h(t):
+        def h(node, t):
             fired.append(name)
         return h
 
@@ -68,7 +68,7 @@ def test_active_only_internal_network():
     fired = []
 
     def on(name):
-        def h(t):
+        def h(node, t):
             fired.append(name)
         return h
 
@@ -96,7 +96,7 @@ def test_full_pass_includes_unreached_node():
     c.attacks(w)
 
     fired = []
-    c.run_on(lambda t: fired.append("c"))
+    c.run_on(lambda node, t: fired.append("c"))
 
     # evaluate does not reach C and never fires handlers.
     g.evaluate(MapContext())
@@ -113,7 +113,7 @@ def test_evaluate_pure_and_idempotent():
     g, auth, block, exempt = _build_access_control()
     fired = []
     for r in (auth, block, exempt):
-        r.run_on(lambda t: fired.append(t))
+        r.run_on(lambda node, t: fired.append(t))
 
     ctx = MapContext()
     ctx.set("blocked", True)
@@ -132,7 +132,7 @@ def test_handler_raise_stops_and_propagates_with_context():
 
     cause = RuntimeError("boom")
 
-    def bad(t):
+    def bad(node, t):
         raise cause
 
     w.run_on(bad)
@@ -152,7 +152,7 @@ def test_handlers_fire_in_registration_order():
     order = []
 
     def make(name):
-        def h(t):
+        def h(node, t):
             order.append(name)
         return h
 
@@ -176,7 +176,7 @@ def test_verdict_zero_node_does_not_fire():
     c.attacks(w)
 
     seen = []
-    w.run_on(lambda t: seen.append(t.get(short_of(w)).verdict))
+    w.run_on(lambda node, t: seen.append(node.verdict))
 
     result = g.run(MapContext())
     assert seen == []  # defeated (verdict 0.0) -> no fire
@@ -192,7 +192,7 @@ def test_trace_sees_all_three_nodes():
     g, auth, block, exempt = _build_access_control()
     seen = []
 
-    def h(t):
+    def h(node, t):
         seen.append(sorted(e.name for e in t.all()))
 
     # block is the active node here.
@@ -211,7 +211,7 @@ def test_trace_self_is_firing_node():
     g, auth, block, exempt = _build_access_control()
     captured = []
 
-    block.run_on(lambda t: captured.append(t.get(short_of(block)).name))
+    block.run_on(lambda node, t: captured.append(node.name))
 
     ctx = MapContext()
     ctx.set("blocked", True)
@@ -225,7 +225,7 @@ def test_trace_ground_is_ctx():
     g, auth, block, exempt = _build_access_control()
     grounds = []
 
-    block.run_on(lambda t: grounds.append(t.get(short_of(block)).ground))
+    block.run_on(lambda node, t: grounds.append(node.ground))
 
     ctx = MapContext()
     ctx.set("blocked", True)
@@ -256,9 +256,9 @@ def test_gradient_branch_via_verdict():
     branch = []
     auth_name = short_of(auth)
 
-    def h(t):
-        node = _entry(t.all(), auth_name)
-        branch.append("hard" if (node and node.verdict >= 0.5) else "soft")
+    def h(node, t):
+        other = _entry(t.all(), auth_name)
+        branch.append("hard" if (other and other.verdict >= 0.5) else "soft")
 
     auth.run_on(h)
 
@@ -275,9 +275,9 @@ def test_gradient_branch_soft_when_defeated():
     branch = []
     auth_name = short_of(auth)
 
-    def h(t):
-        node = _entry(t.all(), auth_name)
-        branch.append("hard" if (node and node.verdict >= 0.5) else "soft")
+    def h(node, t):
+        other = _entry(t.all(), auth_name)
+        branch.append("hard" if (other and other.verdict >= 0.5) else "soft")
 
     exempt.run_on(h)
 

@@ -280,20 +280,19 @@ defeated, `activated == false` did not apply.
 
 ```go
 g.Rule(isAuthenticated).
-    RunOn(func(t toulmin.Trace) error {
-        me, _ := t.Get("isAuthenticated")   // self = this handler's own node
-        return audit(me)                    // ran and prevailed
+    RunOn(func(self toulmin.TraceEntry, t toulmin.Trace) error {
+        return audit(self)                  // self = this handler's own node (ran and prevailed)
     })
 
 results, trace, err := g.Run(ctx)  // []EvalResult, Trace, error
 ```
 
-Handlers fire in registration order; the first handler error stops `Run`. The handler gets a
-single read-only `Trace` — the same value `Run` returns — with exactly three methods:
-`t.All()` (every node's `TraceEntry`, registration order), `t.Get(name)` (one node by short
-name), and `t.Ctx()` (this Run's context). `self` is not an argument: a handler attached with
-`g.Rule(X).RunOn(h)` already knows its own node is `X`, so it finds its own row via
-`t.Get("X")`. Each `TraceEntry` exposes **Claim** (`Name`), **Ground** (`Ground` = the `ctx`
+Handlers fire in registration order; the first handler error stops `Run`. The handler gets its
+own node's entry as `self` plus a read-only `Trace` `t` — the same value `Run` returns — with
+exactly three methods: `t.All()` (every node's `TraceEntry`, registration order), `t.Get(name)`
+(one node by short name), and `t.Ctx()` (this Run's context). `self` is the first argument,
+handed in by the engine, so a handler never has to look up its own row by name (which was
+fragile when an entry's name carried a dynamic suffix). Each `TraceEntry` exposes **Claim** (`Name`), **Ground** (`Ground` = the `ctx`
 as-is), **Backing** (`Specs`), and **Verdict** — enough to audit, explain, or apply gradient
 thresholds without any separate view. There is no direct attacker lookup; reason from
 `t.All()[i].Verdict`. `ctx` is mutable (side effects propagate); the trace is the judgment

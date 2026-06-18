@@ -6,7 +6,7 @@ import "testing"
 
 func TestRunEvaluatePure(t *testing.T) {
 	fired := false
-	mark := func(t Trace) error {
+	mark := func(self TraceEntry, t Trace) error {
 		fired = true
 		return nil
 	}

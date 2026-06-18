@@ -5,7 +5,6 @@ import {
   detectRunCycle,
   type RuleFunc,
 } from "../src/index.js";
-import { shortName } from "../src/short-name.js";
 
 const always: RuleFunc = () => [true, null];
 
@@ -15,7 +14,7 @@ describe("Run composition — rule.run(subGraph)", () => {
     const subRule: RuleFunc = () => [true, null];
 
     const sub = new Graph("sub");
-    sub.rule(subRule).runOn((t) => { t.ctx().set("subRan", true); });
+    sub.rule(subRule).runOn((_self, t) => { t.ctx().set("subRan", true); });
 
     const parent = new Graph("parent");
     parent.rule(parentRule).run(sub);
@@ -32,7 +31,7 @@ describe("Run composition — rule.run(subGraph)", () => {
     const subRule: RuleFunc = () => [true, null];
 
     const sub = new Graph("sub-defeated");
-    sub.rule(subRule).runOn((t) => { t.ctx().set("subRan", true); });
+    sub.rule(subRule).runOn((_self, t) => { t.ctx().set("subRan", true); });
 
     const parent = new Graph("parent-defeated");
     const w = parent.rule(warrant);
@@ -51,7 +50,7 @@ describe("Run composition — rule.run(subGraph)", () => {
     const subRule: RuleFunc = () => [true, null];
 
     const sub = new Graph("sub-inactive");
-    sub.rule(subRule).runOn((t) => { t.ctx().set("subRan", true); });
+    sub.rule(subRule).runOn((_self, t) => { t.ctx().set("subRan", true); });
 
     const parent = new Graph("parent-inactive");
     parent.rule(inactive).run(sub);
@@ -85,11 +84,10 @@ describe("Run composition — rule.run(subGraph)", () => {
 
     const sub = new Graph("sub-ctx");
     const subR = sub.rule(subRule);
-    const subName = shortName(subR.id);
-    subR.runOn((t) => { seen = t.get(subName)?.evidence; });
+    subR.runOn((self) => { seen = self.evidence; });
 
     const parent = new Graph("parent-ctx");
-    parent.rule(parentRule).runOn((t) => { t.ctx().set("token", "from-parent"); }).run(sub);
+    parent.rule(parentRule).runOn((_self, t) => { t.ctx().set("token", "from-parent"); }).run(sub);
 
     parent.run(newContext());
 

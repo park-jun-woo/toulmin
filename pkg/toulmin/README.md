@@ -35,8 +35,9 @@ only event; there are no Defeated/Inactive handlers. Handlers fire in rule regis
 a handler error or panic stops `Run` immediately and is returned with the trace built before
 dispatch. `Evaluate` is unchanged and fires no handlers (stays idempotent).
 
-Each handler has signature `func(t Trace) error`. The single `Trace` argument is the same
-read-only value `Run` returns, with exactly three methods:
+Each handler has signature `func(self TraceEntry, t Trace) error`. `self` is the handler's own
+node entry; the `Trace` argument `t` is the same read-only value `Run` returns, with exactly
+three methods:
 
 | Method | File | Returns |
 |---|---|---|
@@ -44,8 +45,8 @@ read-only value `Run` returns, with exactly three methods:
 | `t.Get(name)` | trace_get.go | `(TraceEntry, bool)` — one node's entry by short name |
 | `t.Ctx()` | trace_ctx.go | `Context` — this Run's context |
 
-`self` is not a separate argument: a handler attached with `g.Rule(X).RunOn(h)` already knows
-its own node is `X`, so it finds its own `TraceEntry` via `t.Get("X")`. `t.All()` is the whole
+`self` is the first argument, handed in by the engine, so a handler never looks up its own row
+by name (which was fragile when an entry's name carried a dynamic suffix). `t.All()` is the whole
 graph's final state, useful for audit logging, explanations, and gradient thresholds via
 `t.All()[i].Verdict`; `t.Ctx()` exposes this Run's `Context` typed (each `TraceEntry.Ground`
 also holds it, but as `any`). To inspect another node's outcome, filter `t.All()`:
@@ -96,7 +97,7 @@ two paths is legal), and a runtime depth guard (`runMaxDepth = 64`) backstops ru
 | `Graph` | graph.go | Graph builder |
 | `Rule` | rule.go | Opaque rule reference |
 | `RuleMeta` | rule_meta.go | Rule metadata (Name, Qualifier, Strength, Defeats, Specs, Fn, RunOn, RunGraph) |
-| `NodeHandler` | node_handler.go | Handler signature `func(t Trace) error` |
+| `NodeHandler` | node_handler.go | Handler signature `func(self TraceEntry, t Trace) error` |
 | `Trace` | trace.go | Read-only view of one Run: all node entries + ctx (`All()`, `Get(name)`, `Ctx()`) |
 | `EvalResult` | eval_result.go | Verdict + trace |
 | `TraceEntry` | trace_entry.go | Single rule evaluation record (Name=Claim, Ground=ctx, Specs=Backing, Verdict) |

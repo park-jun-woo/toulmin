@@ -222,19 +222,18 @@ for _, t := range results[0].Trace {
 
 ```go
 g.Rule(isAuthenticated).
-    RunOn(func(t toulmin.Trace) error {
-        me, _ := t.Get("isAuthenticated")   // self = 이 핸들러가 달린 자기 노드
-        return audit(me)                    // 적용되어 우세
+    RunOn(func(self toulmin.TraceEntry, t toulmin.Trace) error {
+        return audit(self)                  // self = 이 핸들러가 달린 자기 노드 (적용되어 우세)
     })
 
 results, trace, err := g.Run(ctx)  // []EvalResult, Trace, error
 ```
 
-핸들러는 등록 순서로 발화하며, 첫 핸들러 에러에서 `Run`이 멈춘다. 핸들러는 읽기 전용 `Trace`
-하나를 받는다 — `Run`이 반환하는 값과 동일하다 — 메서드는 정확히 셋이다: `t.All()`(전 노드의
-`TraceEntry`, 등록 순서), `t.Get(name)`(짧은 이름으로 한 노드 조회), `t.Ctx()`(이 Run의 컨텍스트).
-`self`는 인자가 아니다: `g.Rule(X).RunOn(h)`로 단 핸들러는 자기 노드가 `X`임을 이미 알므로
-`t.Get("X")`로 자기 줄을 찾는다. 각 `TraceEntry`는 **Claim**(`Name`), **Ground**(`Ground` = ctx
+핸들러는 등록 순서로 발화하며, 첫 핸들러 에러에서 `Run`이 멈춘다. 핸들러는 자기 노드의 entry인
+`self`와 읽기 전용 `Trace` `t`를 받는다 — `t`는 `Run`이 반환하는 값과 동일하다 — `Trace` 메서드는
+정확히 셋이다: `t.All()`(전 노드의 `TraceEntry`, 등록 순서), `t.Get(name)`(짧은 이름으로 한 노드
+조회), `t.Ctx()`(이 Run의 컨텍스트). `self`는 첫 인자로 엔진이 직접 건넨다 — 자기 줄을 이름으로
+다시 찾을 필요가 없다(entry 이름에 동적 접미사가 붙으면 `t.Get("X")` 자기-조회가 취약했다). 각 `TraceEntry`는 **Claim**(`Name`), **Ground**(`Ground` = ctx
 그대로), **Backing**(`Specs`), **Verdict**를 노출하므로 별도 뷰 없이 감사·설명·gradient 임계값
 판정이 가능하다. 공격자 직접 조회 API는 없다 — `t.All()[i].Verdict`로 추론한다. `ctx`는
 가변(부수효과 전파)이고, trace가 판정 기록이다. trace를 JSON으로 내보낸다면 `ctx`(= `Ground`)에

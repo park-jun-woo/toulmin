@@ -7,9 +7,8 @@ import "testing"
 func TestRunOrder(t *testing.T) {
 	var order []string
 	rec := func(name string) NodeHandler {
-		return func(t Trace) error {
-			// self = this handler's own node, looked up by its known name.
-			self, _ := t.Get(name)
+		return func(self TraceEntry, t Trace) error {
+			// self = this handler's own node, passed directly by the engine.
 			order = append(order, self.Name)
 			return nil
 		}

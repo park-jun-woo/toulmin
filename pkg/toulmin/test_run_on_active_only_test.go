@@ -7,7 +7,7 @@ import "testing"
 func TestRunOnActiveOnly(t *testing.T) {
 	fired := map[string]bool{}
 	mark := func(name string) NodeHandler {
-		return func(t Trace) error {
+		return func(self TraceEntry, t Trace) error {
 			fired[name] = true
 			return nil
 		}

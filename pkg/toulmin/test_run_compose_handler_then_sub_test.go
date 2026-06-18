@@ -8,14 +8,14 @@ func TestRunComposeHandlerThenSub(t *testing.T) {
 	var order []string
 	subRule := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 	sub := NewGraph("sub")
-	sub.Rule(subRule).RunOn(func(t Trace) error {
+	sub.Rule(subRule).RunOn(func(self TraceEntry, t Trace) error {
 		order = append(order, "sub")
 		return nil
 	})
 
 	active := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 	parent := NewGraph("parent")
-	parent.Rule(active).RunOn(func(t Trace) error {
+	parent.Rule(active).RunOn(func(self TraceEntry, t Trace) error {
 		order = append(order, "handler")
 		return nil
 	}).Run(sub)

@@ -6,7 +6,7 @@ import "testing"
 
 func TestRunVerdictZero(t *testing.T) {
 	fired := false
-	rec := func(t Trace) error {
+	rec := func(self TraceEntry, t Trace) error {
 		fired = true
 		return nil
 	}

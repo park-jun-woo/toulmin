@@ -49,7 +49,7 @@ func TestGraphRunDepth(t *testing.T) {
 	// (3) handler error: a node's handler returns an error; Run stops and wraps it.
 	t.Run("handlerError", func(t *testing.T) {
 		g := NewGraph("handler")
-		g.Rule(active).RunOn(func(t Trace) error {
+		g.Rule(active).RunOn(func(self TraceEntry, t Trace) error {
 			return fmt.Errorf("boom")
 		})
 		results, trace, err := g.runDepth(NewContext(), EvalOption{}, 0)
@@ -64,7 +64,7 @@ func TestGraphRunDepth(t *testing.T) {
 	// (4) sub-Run error: an Active node Runs a sub-graph whose handler errors.
 	t.Run("subRunError", func(t *testing.T) {
 		sub := NewGraph("sub")
-		sub.Rule(active).RunOn(func(t Trace) error {
+		sub.Rule(active).RunOn(func(self TraceEntry, t Trace) error {
 			return fmt.Errorf("sub boom")
 		})
 		parent := NewGraph("parent")
@@ -83,7 +83,7 @@ func TestGraphRunDepth(t *testing.T) {
 	t.Run("recurseAndLeaf", func(t *testing.T) {
 		subRuns := 0
 		sub := NewGraph("sub")
-		sub.Rule(active).RunOn(func(t Trace) error {
+		sub.Rule(active).RunOn(func(self TraceEntry, t Trace) error {
 			subRuns++
 			return nil
 		})

@@ -6,7 +6,6 @@ import {
   type Trace,
   type TraceEntry,
 } from "../src/index.js";
-import { shortName } from "../src/short-name.js";
 
 // Access-control graph:
 //   authenticate (rule)  — user present
@@ -24,10 +23,10 @@ function buildAccessControl(fired: TraceEntry[]) {
   block.attacks(auth);
   exempt.attacks(block);
 
-  const record = (name: string) => (t: Trace) => { const self = t.get(name); if (self) fired.push(self); };
-  auth.runOn(record(shortName(auth.id)));
-  block.runOn(record(shortName(block.id)));
-  exempt.runOn(record(shortName(exempt.id)));
+  const record = (self: TraceEntry) => { fired.push(self); };
+  auth.runOn(record);
+  block.runOn(record);
+  exempt.runOn(record);
 
   return g;
 }
@@ -166,8 +165,7 @@ describe("Run — node handlers (Active only)", () => {
     const w = g.rule(warrant);
     const c = g.counter(counter);
     c.attacks(w);
-    const wName = shortName(w.id);
-    w.runOn((t) => { const self = t.get(wName); if (self) fired.push(self); });
+    w.runOn((self) => { fired.push(self); });
 
     const { trace } = g.run(newContext());
 
@@ -207,7 +205,7 @@ describe("Run — trace argument (node inspection)", () => {
     const exempt = g2.except(exemptInternalIP);
     block.attacks(auth);
     exempt.attacks(block);
-    const inspect = (t: Trace) => {
+    const inspect = (_self: TraceEntry, t: Trace) => {
       seen.push(t.all().map(e => e.name.replace(/_\d+$/, "")));
     };
     auth.runOn(inspect);
@@ -232,8 +230,8 @@ describe("Run — trace argument (node inspection)", () => {
     const b = g.rule(ruleB);
 
     const verdictsSeenForA: (number | undefined)[] = [];
-    a.runOn((t) => { t.ctx().set("mutated", true); });
-    b.runOn((t) => {
+    a.runOn((_self, t) => { t.ctx().set("mutated", true); });
+    b.runOn((_self, t) => {
       verdictsSeenForA.push(t.all().find(e => e.name.startsWith("ruleA"))?.verdict);
     });
 
@@ -254,12 +252,10 @@ describe("Run — trace argument (node inspection)", () => {
     const block = g.counter(blockIP);
     block.attacks(auth);
 
-    const blockName = shortName(block.id);
-    block.runOn((t) => {
+    block.runOn((self, t) => {
       const target = t.all().find(e => e.name.startsWith("authenticate"));
       const v = target?.verdict ?? 0;
-      const self = t.get(blockName);
-      if ((self?.verdict ?? 0) >= 0.5 && v <= 0) branch.push("hardBlock");
+      if (self.verdict >= 0.5 && v <= 0) branch.push("hardBlock");
       else branch.push("softFlag");
     });
 

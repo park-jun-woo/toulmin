@@ -78,7 +78,7 @@ export class Graph {
       // (a) runOn 핸들러
       if (meta.runOn) {
         try {
-          meta.runOn(tr);
+          meta.runOn(entries[i], tr);
         } catch (e) {
           throw new Error(`runOn "${entries[i].name}": ${e}`);
         }

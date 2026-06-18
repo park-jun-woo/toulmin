@@ -1,8 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Graph } from "../graph.js";
 import { newContext } from "../map-context.js";
-import { type RuleFunc, type Context, type Trace, type TraceEntry } from "../types.js";
-import { shortName } from "../short-name.js";
+import { type RuleFunc, type Context, type TraceEntry } from "../types.js";
 
 // Access-control graph used across several run() cases:
 //   authenticate (rule)               — user present
@@ -20,10 +19,10 @@ function buildAccessControl(fired: TraceEntry[]) {
   block.attacks(auth);
   exempt.attacks(block);
 
-  const record = (name: string) => (t: Trace) => { const self = t.get(name); if (self) fired.push(self); };
-  auth.runOn(record(shortName(auth.id)));
-  block.runOn(record(shortName(block.id)));
-  exempt.runOn(record(shortName(exempt.id)));
+  const record = (self: TraceEntry) => { fired.push(self); };
+  auth.runOn(record);
+  block.runOn(record);
+  exempt.runOn(record);
 
   return g;
 }
@@ -94,8 +93,7 @@ describe("Graph.run", () => {
     const w = g.rule(warrant);
     const c = g.counter(counter);
     c.attacks(w);
-    const wName = shortName(w.id);
-    w.runOn((t) => { const self = t.get(wName); if (self) fired.push(self); }); // w is Defeated (verdict 0) → must NOT fire
+    w.runOn((self) => { fired.push(self); }); // w is Defeated (verdict 0) → must NOT fire
 
     expect(() => g.run(newContext())).not.toThrow();
     expect(fired).toHaveLength(0);
@@ -106,8 +104,7 @@ describe("Graph.run", () => {
     const inactive: RuleFunc = () => [false, null];
     const g = new Graph("inactive-skip");
     const r = g.rule(inactive);
-    const rName = shortName(r.id);
-    r.runOn((t) => { const self = t.get(rName); if (self) fired.push(self); });
+    r.runOn((self) => { fired.push(self); });
 
     expect(() => g.run(newContext())).not.toThrow();
     expect(fired).toHaveLength(0);
@@ -148,14 +145,11 @@ describe("Graph.run", () => {
     const seen: string[][] = [];
     const fired: TraceEntry[] = [];
     const g = new Graph("trace-all");
-    const r1 = g.rule(() => [true, null]);
-    const r1Name = shortName(r1.id);
-    r1.runOn((t) => {
+    g.rule(() => [true, null]).runOn((self, t) => {
       seen.push(t.all().map(e => e.name.replace(/_\d+$/, "")));
-      const self = t.get(r1Name);
-      if (self) fired.push(self);
+      fired.push(self);
     });
-    g.rule(() => [true, null]).runOn((t) => {
+    g.rule(() => [true, null]).runOn((_self, t) => {
       seen.push(t.all().map(e => e.name.replace(/_\d+$/, "")));
     });
 
@@ -167,10 +161,8 @@ describe("Graph.run", () => {
     let branch = "";
     const g = new Graph("gradient");
     const r = g.rule(() => [true, null]).qualifier(0.75);
-    const rName = shortName(r.id);
-    r.runOn((t) => {
-      const self = t.get(rName);
-      branch = (self?.verdict ?? 0) >= 0.5 ? "strong" : "weak";
+    r.runOn((self) => {
+      branch = self.verdict >= 0.5 ? "strong" : "weak";
     });
     g.run(newContext());
     // qualifier 0.75, unattacked → verdict 2*0.75-1 = 0.5 → strong
@@ -181,8 +173,7 @@ describe("Graph.run", () => {
     let captured = 1;
     const g = new Graph("gradient-weak");
     const r = g.rule(() => [true, null]).qualifier(0.6);
-    const rName = shortName(r.id);
-    r.runOn((t) => { captured = t.get(rName)?.verdict ?? 0; });
+    r.runOn((self) => { captured = self.verdict; });
     g.run(newContext());
     // qualifier 0.6, unattacked → verdict 2*0.6-1 = 0.2 (< 0.5)
     expect(captured).toBeLessThan(0.5);
@@ -246,7 +237,7 @@ describe("Graph.run — composition (_runDepth recursion)", () => {
 
   it("Active node recurses into its runGraph (ctx flows down, depth+1)", () => {
     const sub = new Graph("sub");
-    sub.rule(always).runOn((t) => { t.ctx().set("subRan", true); });
+    sub.rule(always).runOn((_self, t) => { t.ctx().set("subRan", true); });
 
     const parent = new Graph("parent");
     parent.rule(always).run(sub); // Active → recurse
@@ -258,7 +249,7 @@ describe("Graph.run — composition (_runDepth recursion)", () => {
 
   it("non-Active node does NOT recurse into its runGraph", () => {
     const sub = new Graph("sub-skip");
-    sub.rule(always).runOn((t) => { t.ctx().set("subRan", true); });
+    sub.rule(always).runOn((_self, t) => { t.ctx().set("subRan", true); });
 
     const parent = new Graph("parent-skip");
     parent.rule(() => [false, null]).run(sub); // Inactive → no recurse

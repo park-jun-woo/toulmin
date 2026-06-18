@@ -29,7 +29,7 @@ func (g *Graph) runDepth(ctx Context, opt EvalOption, depth int) ([]EvalResult, 
 		if !(self.Activated && self.Verdict > 0) {
 			continue
 		}
-		if rerr := runNode(&g.rules[i], self.Name, tr, ctx, opt, depth); rerr != nil {
+		if rerr := runNode(&g.rules[i], self, tr, ctx, opt, depth); rerr != nil {
 			return results, tr, rerr
 		}
 	}

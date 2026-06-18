@@ -76,8 +76,8 @@ def find_spec(specs: list[Spec], name: str) -> Spec | None:
     return next((s for s in specs if s.spec_name() == name), None)
 
 
-# 핸들러는 Run의 Trace 하나를 받는다. 자기 노드는 t.get("X"), 컨텍스트는 t.ctx().
-NodeHandler = Callable[["Trace"], None]
+# self = 발화 노드의 TraceEntry(엔진이 직접 전달), t = 전체 Trace
+NodeHandler = Callable[["TraceEntry", "Trace"], None]
 
 
 @dataclass

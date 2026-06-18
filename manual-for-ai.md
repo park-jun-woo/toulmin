@@ -183,18 +183,18 @@ no Defeated/Inactive events — to inspect any other node's outcome, filter the 
 
 ```go
 g.Rule(Authenticate).
-    RunOn(func(t toulmin.Trace) error {
-        me, _ := t.Get("Authenticate")   // self = this handler's own node
-        return audit(me)
+    RunOn(func(self toulmin.TraceEntry, t toulmin.Trace) error {
+        return audit(self)               // self = this handler's own node, handed in directly
     })
 
 results, trace, err := g.Run(ctx) // []EvalResult, Trace, error
 
-type NodeHandler func(t Trace) error
+type NodeHandler func(self TraceEntry, t Trace) error
 ```
 
-The handler receives a single read-only **`Trace`** — the same value `Run` returns, so the
-handler's view and the caller's view are symmetric. `Trace` has exactly three methods:
+The handler receives its own node's entry as **`self`** plus a read-only **`Trace`** `t` — the
+same value `Run` returns, so the handler's view and the caller's view are symmetric. `Trace`
+has exactly three methods:
 
 | Method | Returns | Meaning |
 |---|---|---|
@@ -202,9 +202,10 @@ handler's view and the caller's view are symmetric. `Trace` has exactly three me
 | `t.Get(name)` | `(TraceEntry, bool)` | one node's entry by short name |
 | `t.Ctx()` | `Context` | this Run's context |
 
-- **`self` is not an argument.** A handler is attached via `g.Rule(X).RunOn(h)`, so it already
-  knows its own node is `X`; it finds its own `TraceEntry` with `t.Get("X")`. (Think class
-  ranking: `t.All()` is the whole class's report card, `self` is the one row that is you.)
+- **`self` is the first argument**, handed in by the engine — no name lookup needed. (A node's
+  trace-entry name can carry a dynamic suffix, so `t.Get("X")` for one's own row was fragile;
+  `self` removes that.) Think class ranking: `t.All()` is the whole class's report card, `self`
+  is the one row that is you; `t.Get(other)` reads a classmate's row.
 - `t.Ctx()` exposes this Run's `Context` for side effects or reading sub-graph state. Each
   `TraceEntry.Ground` also carries the ctx, but as `any`; `t.Ctx()` exposes it typed.
 
@@ -229,7 +230,7 @@ verdict isolated.
 ```go
 notify := buildNotifyGraph()
 g.Rule(OrderPlaced).
-    RunOn(func(t toulmin.Trace) error { me, _ := t.Get("OrderPlaced"); return log(me) }).
+    RunOn(func(self toulmin.TraceEntry, t toulmin.Trace) error { return log(self) }).
     Run(notify)   // when OrderPlaced is Active, Run notify
 ```
 

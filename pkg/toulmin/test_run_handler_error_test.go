@@ -11,10 +11,10 @@ import (
 func TestRunHandlerError(t *testing.T) {
 	secondFired := false
 	g := NewGraph("err")
-	g.Rule(WarrantA).RunOn(func(t Trace) error {
+	g.Rule(WarrantA).RunOn(func(self TraceEntry, t Trace) error {
 		return fmt.Errorf("boom")
 	})
-	g.Rule(RebuttalB).RunOn(func(t Trace) error {
+	g.Rule(RebuttalB).RunOn(func(self TraceEntry, t Trace) error {
 		secondFired = true
 		return nil
 	})
@@ -33,7 +33,7 @@ func TestRunHandlerError(t *testing.T) {
 	}
 
 	g2 := NewGraph("panic")
-	g2.Rule(WarrantA).RunOn(func(t Trace) error {
+	g2.Rule(WarrantA).RunOn(func(self TraceEntry, t Trace) error {
 		panic("kaboom")
 	})
 	_, trace2, err2 := g2.Run(NewContext())

@@ -57,7 +57,7 @@ export interface Trace {
   ctx(): Context;                            // 이 Run의 컨텍스트
 }
 
-export type NodeHandler = (t: Trace) => void;
+export type NodeHandler = (self: TraceEntry, t: Trace) => void;
 
 export interface RunResult {
   results: EvalResult[];

@@ -96,7 +96,7 @@ class Graph:
             # (a) run_on 핸들러 — 먼저
             if meta.run_on is not None:
                 try:
-                    meta.run_on(tr)
+                    meta.run_on(e, tr)
                 except Exception as exc:
                     raise RuntimeError(
                         f'run_on "{e.name}": {exc}'
