@@ -7,8 +7,6 @@ export interface RuleMeta {
   defeats: string[];
   specs: Specs;
   fn: RuleFunc;
-  onActive?: NodeHandler;   // 활성실행
-  onDefeated?: NodeHandler; // 무력화실행
-  onInactive?: NodeHandler; // 비활성실행
+  runOn?: NodeHandler;      // Active(activated && verdict>0) 시 발화하는 핸들러
   runGraph?: Graph;         // 이 노드가 Active면 Run할 하위 그래프
 }

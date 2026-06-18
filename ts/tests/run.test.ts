@@ -2,18 +2,16 @@ import { describe, it, expect } from "vitest";
 import {
   Graph,
   newContext,
-  NodeEventType,
   type RuleFunc,
   type Context,
-  type NodeEvent,
-  type RunView,
+  type TraceEntry,
 } from "../src/index.js";
 
 // Access-control graph:
 //   authenticate (rule)  — user present
 //   blockIP      (counter, attacks authenticate) — request blocked
 //   exemptInternalIP (except, attacks blockIP)    — internal network
-function buildAccessControl(fired: NodeEvent[]) {
+function buildAccessControl(fired: TraceEntry[]) {
   const authenticate: RuleFunc = (ctx) => [ctx.get("user") != null, null];
   const blockIP: RuleFunc = (ctx) => [ctx.get("blocked") === true, null];
   const exemptInternalIP: RuleFunc = (ctx) => [ctx.get("internal") === true, null];
@@ -25,75 +23,69 @@ function buildAccessControl(fired: NodeEvent[]) {
   block.attacks(auth);
   exempt.attacks(block);
 
-  const record = (_ctx: Context, ev: NodeEvent, _view: RunView) => { fired.push(ev); };
-  auth.onActive(record).onDefeated(record).onInactive(record);
-  block.onActive(record).onDefeated(record).onInactive(record);
-  exempt.onActive(record).onDefeated(record).onInactive(record);
+  const record = (_ctx: Context, self: TraceEntry, _trace: TraceEntry[]) => { fired.push(self); };
+  auth.runOn(record);
+  block.runOn(record);
+  exempt.runOn(record);
 
   return g;
 }
 
-function byPrefix(fired: NodeEvent[], prefix: string): NodeEvent {
-  const ev = fired.find(e => e.name.startsWith(prefix));
-  if (!ev) throw new Error(`no event for ${prefix}`);
-  return ev;
+function byPrefix(entries: TraceEntry[], prefix: string): TraceEntry {
+  const e = entries.find(t => t.name.startsWith(prefix));
+  if (!e) throw new Error(`no entry for ${prefix}`);
+  return e;
 }
 
-function viewByPrefix(view: RunView, prefix: string): NodeEvent {
-  const ev = view.all().find(e => e.name.startsWith(prefix));
-  if (!ev) throw new Error(`no event for ${prefix}`);
-  return ev;
-}
-
-describe("Run — node event handlers", () => {
-  it("3-events: external blocked IP → block Active, auth Defeated", () => {
-    const fired: NodeEvent[] = [];
+describe("Run — node handlers (Active only)", () => {
+  it("external blocked IP → only block fires (Active); auth Defeated, exempt Inactive in trace", () => {
+    const fired: TraceEntry[] = [];
     const g = buildAccessControl(fired);
     const ctx = newContext();
     ctx.set("user", "alice");
     ctx.set("blocked", true);
     ctx.set("internal", false);
 
-    g.run(ctx);
+    const { trace } = g.run(ctx);
 
-    expect(byPrefix(fired, "blockIP").type).toBe(NodeEventType.Active);
-    expect(byPrefix(fired, "authenticate").type).toBe(NodeEventType.Defeated);
-    expect(byPrefix(fired, "exemptInternalIP").type).toBe(NodeEventType.Inactive);
+    expect(fired.map(e => e.name.replace(/_\d+$/, ""))).toEqual(["blockIP"]);
+    expect(byPrefix(trace, "blockIP").verdict).toBeGreaterThan(0);
+    expect(byPrefix(trace, "authenticate").verdict).toBe(0);
+    expect(byPrefix(trace, "exemptInternalIP").activated).toBe(false);
   });
 
-  it("3-events: internal network → exempt Active, block Defeated, auth Active", () => {
-    const fired: NodeEvent[] = [];
+  it("internal network → exempt + auth fire (Active); block Defeated does not", () => {
+    const fired: TraceEntry[] = [];
     const g = buildAccessControl(fired);
     const ctx = newContext();
     ctx.set("user", "alice");
     ctx.set("blocked", true);
     ctx.set("internal", true);
 
-    g.run(ctx);
+    const { trace } = g.run(ctx);
 
-    expect(byPrefix(fired, "exemptInternalIP").type).toBe(NodeEventType.Active);
-    expect(byPrefix(fired, "blockIP").type).toBe(NodeEventType.Defeated);
-    expect(byPrefix(fired, "authenticate").type).toBe(NodeEventType.Active);
-    expect(byPrefix(fired, "authenticate").verdict).toBeCloseTo(1 / 3, 5);
+    expect(fired.map(e => e.name.replace(/_\d+$/, "")).sort()).toEqual(["authenticate", "exemptInternalIP"]);
+    expect(byPrefix(trace, "exemptInternalIP").verdict).toBeGreaterThan(0);
+    expect(byPrefix(trace, "blockIP").verdict).toBe(0);
+    expect(byPrefix(trace, "authenticate").verdict).toBeCloseTo(1 / 3, 5);
   });
 
-  it("roles are carried on events", () => {
-    const fired: NodeEvent[] = [];
+  it("roles are carried on trace entries", () => {
+    const fired: TraceEntry[] = [];
     const g = buildAccessControl(fired);
     const ctx = newContext();
     ctx.set("user", "alice");
     ctx.set("blocked", true);
     ctx.set("internal", true);
 
-    g.run(ctx);
+    const { trace } = g.run(ctx);
 
-    expect(byPrefix(fired, "authenticate").role).toBe("rule");
-    expect(byPrefix(fired, "blockIP").role).toBe("counter");
-    expect(byPrefix(fired, "exemptInternalIP").role).toBe("except");
+    expect(byPrefix(trace, "authenticate").role).toBe("rule");
+    expect(byPrefix(trace, "blockIP").role).toBe("counter");
+    expect(byPrefix(trace, "exemptInternalIP").role).toBe("except");
   });
 
-  it("full pass — unreached nodes still fire Inactive", () => {
-    const fired: NodeEvent[] = [];
+  it("full pass — unreached nodes still appear in the trace as inactive", () => {
     const inactiveW: RuleFunc = () => [false, null];
     const unreachedC: RuleFunc = () => [false, null];
 
@@ -101,18 +93,15 @@ describe("Run — node event handlers", () => {
     const w = g.rule(inactiveW);
     const c = g.counter(unreachedC);
     c.attacks(w);
-    w.onInactive((_ctx, ev) => fired.push(ev));
-    c.onInactive((_ctx, ev) => fired.push(ev));
 
-    // lazy evaluate never reaches c (w is inactive → attackers not calc'd)
-    g.run(newContext());
+    const { trace } = g.run(newContext());
 
-    expect(fired.map(e => e.type)).toEqual([NodeEventType.Inactive, NodeEventType.Inactive]);
-    expect(byPrefix(fired, "unreachedC").type).toBe(NodeEventType.Inactive);
+    expect(trace.map(e => e.activated)).toEqual([false, false]);
+    expect(byPrefix(trace, "unreachedC").activated).toBe(false);
   });
 
   it("evaluate stays pure — handlers never fire", () => {
-    const fired: NodeEvent[] = [];
+    const fired: TraceEntry[] = [];
     const g = buildAccessControl(fired);
     const ctx = newContext();
     ctx.set("user", "alice");
@@ -127,7 +116,7 @@ describe("Run — node event handlers", () => {
   });
 
   it("run results match evaluate results", () => {
-    const fired: NodeEvent[] = [];
+    const fired: TraceEntry[] = [];
     const g = buildAccessControl(fired);
     const ctx = newContext();
     ctx.set("user", "alice");
@@ -140,39 +129,35 @@ describe("Run — node event handlers", () => {
     expect(runResult.results.map(r => r.verdict)).toEqual(evalResults.map(r => r.verdict));
   });
 
-  it("handler throw stops & propagates with node + event context", () => {
+  it("handler throw stops & propagates with node + runOn context", () => {
     const authenticate: RuleFunc = (ctx) => [ctx.get("user") != null, null];
     const g = new Graph("throw");
-    g.rule(authenticate).onActive(() => { throw new Error("boom"); });
+    g.rule(authenticate).runOn(() => { throw new Error("boom"); });
     const ctx = newContext();
     ctx.set("user", "alice");
 
     expect(() => g.run(ctx)).toThrow("authenticate");
-    expect(() => g.run(ctx)).toThrow("Active");
+    expect(() => g.run(ctx)).toThrow("runOn");
     expect(() => g.run(ctx)).toThrow("boom");
   });
 
-  it("events order = registration order", () => {
-    const fired: NodeEvent[] = [];
+  it("trace order = registration order", () => {
     const ruleA: RuleFunc = () => [true, null];
     const ruleB: RuleFunc = () => [true, null];
     const ruleC: RuleFunc = () => [true, null];
 
     const g = new Graph("order");
-    const rec = (_ctx: Context, ev: NodeEvent) => fired.push(ev);
-    g.rule(ruleA).onActive(rec);
-    g.rule(ruleB).onActive(rec);
-    g.rule(ruleC).onActive(rec);
+    g.rule(ruleA);
+    g.rule(ruleB);
+    g.rule(ruleC);
 
-    const result = g.run(newContext());
-
-    const order = result.view.all().map(e => e.name.replace(/_\d+$/, ""));
+    const { trace } = g.run(newContext());
+    const order = trace.map(e => e.name.replace(/_\d+$/, ""));
     expect(order).toEqual(["ruleA", "ruleB", "ruleC"]);
-    expect(fired.map(e => e.name.replace(/_\d+$/, ""))).toEqual(["ruleA", "ruleB", "ruleC"]);
   });
 
-  it("verdict === 0 → Defeated", () => {
-    const fired: NodeEvent[] = [];
+  it("verdict === 0 → Defeated → handler skipped", () => {
+    const fired: TraceEntry[] = [];
     const warrant: RuleFunc = () => [true, null];
     const counter: RuleFunc = () => [true, null];
 
@@ -180,41 +165,37 @@ describe("Run — node event handlers", () => {
     const w = g.rule(warrant);
     const c = g.counter(counter);
     c.attacks(w);
-    w.onActive((_c, ev) => fired.push(ev)).onDefeated((_c, ev) => fired.push(ev));
+    w.runOn((_c, self) => fired.push(self));
 
-    g.run(newContext());
+    const { trace } = g.run(newContext());
 
-    const ev = byPrefix(fired, "warrant");
-    expect(ev.verdict).toBe(0);
-    expect(ev.type).toBe(NodeEventType.Defeated);
+    expect(fired).toHaveLength(0);
+    expect(byPrefix(trace, "warrant").verdict).toBe(0);
   });
 
-  it("run forces trace/duration off (handlers fire once per node)", () => {
-    const fired: NodeEvent[] = [];
+  it("run forces trace/duration off (Active nodes fire once)", () => {
+    const fired: TraceEntry[] = [];
     const g = buildAccessControl(fired);
     const ctx = newContext();
     ctx.set("user", "alice");
     ctx.set("blocked", true);
     ctx.set("internal", true);
 
-    // even when caller asks for trace, run ignores it; each node fires exactly once
     g.run(ctx, { trace: true, duration: true });
 
-    expect(fired).toHaveLength(3);
     const names = fired.map(e => e.name.replace(/_\d+$/, "")).sort();
-    expect(names).toEqual(["authenticate", "blockIP", "exemptInternalIP"]);
+    expect(names).toEqual(["authenticate", "exemptInternalIP"]);
   });
 });
 
-describe("Run — RunView", () => {
-  it("handler sees all 3 nodes via view.all()", () => {
+describe("Run — trace argument (node inspection)", () => {
+  it("handler sees all nodes via the trace argument, in registration order", () => {
     const seen: string[][] = [];
     const ctx = newContext();
     ctx.set("user", "alice");
     ctx.set("blocked", true);
     ctx.set("internal", true);
 
-    // build a graph whose handlers inspect the full view
     const authenticate: RuleFunc = (c) => [c.get("user") != null, null];
     const blockIP: RuleFunc = (c) => [c.get("blocked") === true, null];
     const exemptInternalIP: RuleFunc = (c) => [c.get("internal") === true, null];
@@ -224,90 +205,44 @@ describe("Run — RunView", () => {
     const exempt = g2.except(exemptInternalIP);
     block.attacks(auth);
     exempt.attacks(block);
-    const inspect = (_c: Context, _ev: NodeEvent, view: RunView) => {
-      seen.push(view.all().map(e => e.name.replace(/_\d+$/, "")));
+    const inspect = (_c: Context, _self: TraceEntry, trace: TraceEntry[]) => {
+      seen.push(trace.map(e => e.name.replace(/_\d+$/, "")));
     };
-    auth.onActive(inspect);
-    block.onDefeated(inspect);
-    exempt.onActive(inspect);
+    auth.runOn(inspect);
+    block.runOn(inspect);
+    exempt.runOn(inspect);
 
     g2.run(ctx);
 
-    // every handler invocation saw all three registered nodes, in registration order
-    expect(seen.length).toBe(3);
+    // exempt + auth Active fire (block Defeated). Each invocation saw all three nodes.
+    expect(seen.length).toBe(2);
     for (const names of seen) {
       expect(names).toEqual(["authenticate", "blockIP", "exemptInternalIP"]);
     }
   });
 
-  it("view is immutable — one handler mutating ctx does not change another handler's view", () => {
+  it("trace verdict is the full-pass snapshot — visible to every handler", () => {
     const ruleA: RuleFunc = () => [true, null];
     const ruleB: RuleFunc = () => [true, null];
 
-    const g = new Graph("view-immutable");
+    const g = new Graph("trace-snapshot");
     const a = g.rule(ruleA);
     const b = g.rule(ruleB);
 
     const verdictsSeenForA: (number | undefined)[] = [];
-    // first handler mutates ctx
-    a.onActive((c) => { c.set("mutated", true); });
-    // second handler reads the view's record for ruleA — must reflect the full-pass snapshot
-    b.onActive((_c, _ev, view) => {
-      verdictsSeenForA.push(view.all().find(e => e.name.startsWith("ruleA"))?.verdict);
+    a.runOn((c) => { c.set("mutated", true); });
+    b.runOn((_c, _self, trace) => {
+      verdictsSeenForA.push(trace.find(e => e.name.startsWith("ruleA"))?.verdict);
     });
 
-    const result = g.run(newContext());
+    const { trace } = g.run(newContext());
 
-    const aVerdict = result.view.all().find(e => e.name.startsWith("ruleA"))?.verdict;
+    const aVerdict = trace.find(e => e.name.startsWith("ruleA"))?.verdict;
     expect(verdictsSeenForA).toHaveLength(1);
     expect(verdictsSeenForA[0]).toBe(aVerdict);
-
-    // all() returns a copy — mutating it does not affect later reads
-    const copy = result.view.all();
-    copy.pop();
-    expect(result.view.all()).toHaveLength(2);
   });
 
-  it("view.attackers('authenticate') returns the blockIP event", () => {
-    let attackers: NodeEvent[] = [];
-    const authenticate: RuleFunc = (c) => [c.get("user") != null, null];
-    const blockIP: RuleFunc = (c) => [c.get("blocked") === true, null];
-    const exemptInternalIP: RuleFunc = (c) => [c.get("internal") === true, null];
-
-    const g = new Graph("view-attackers");
-    const auth = g.rule(authenticate);
-    const block = g.counter(blockIP);
-    const exempt = g.except(exemptInternalIP);
-    block.attacks(auth);
-    exempt.attacks(block);
-
-    const ctx = newContext();
-    ctx.set("user", "alice");
-    ctx.set("blocked", true);
-    ctx.set("internal", false);
-
-    auth.onDefeated((_c, ev, view) => { attackers = view.attackers(ev.name); });
-
-    const result = g.run(ctx);
-
-    expect(attackers).toHaveLength(1);
-    expect(attackers[0].name.startsWith("blockIP")).toBe(true);
-
-    // also queryable from the returned view (using the snapshot's actual name)
-    const authEv = viewByPrefix(result.view, "authenticate");
-    const post = result.view.attackers(authEv.name);
-    expect(post.map(e => e.name.startsWith("blockIP"))).toEqual([true]);
-  });
-
-  it("view.get('nope') → undefined", () => {
-    const ruleA: RuleFunc = () => [true, null];
-    const g = new Graph("view-get-miss");
-    g.rule(ruleA);
-    const result = g.run(newContext());
-    expect(result.view.get("nope")).toBeUndefined();
-  });
-
-  it("gradient branch via view.get(...)?.verdict", () => {
+  it("self carries the firing node's continuous verdict (gradient branch)", () => {
     const branch: string[] = [];
     const authenticate: RuleFunc = (c) => [c.get("user") != null, null];
     const blockIP: RuleFunc = (c) => [c.get("blocked") === true, null];
@@ -317,11 +252,10 @@ describe("Run — RunView", () => {
     const block = g.counter(blockIP);
     block.attacks(auth);
 
-    block.onActive((_c, ev, view) => {
-      // consult the attacked node's gradient verdict via the view
-      const target = view.all().find(e => e.name.startsWith("authenticate"));
+    block.runOn((_c, self, trace) => {
+      const target = trace.find(e => e.name.startsWith("authenticate"));
       const v = target?.verdict ?? 0;
-      if (ev.verdict >= 0.5 && v <= 0) branch.push("hardBlock");
+      if (self.verdict >= 0.5 && v <= 0) branch.push("hardBlock");
       else branch.push("softFlag");
     });
 
@@ -334,21 +268,19 @@ describe("Run — RunView", () => {
     expect(branch).toEqual(["hardBlock"]);
   });
 
-  it("run().view is queryable post-hoc", () => {
-    const fired: NodeEvent[] = [];
+  it("run().trace is queryable post-hoc", () => {
+    const fired: TraceEntry[] = [];
     const g = buildAccessControl(fired);
     const ctx = newContext();
     ctx.set("user", "alice");
     ctx.set("blocked", true);
     ctx.set("internal", true);
 
-    const { view } = g.run(ctx);
+    const { trace } = g.run(ctx);
 
-    expect(view.all()).toHaveLength(3);
-    expect(viewByPrefix(view, "authenticate").type).toBe(NodeEventType.Active);
-    expect(viewByPrefix(view, "blockIP").type).toBe(NodeEventType.Defeated);
-    expect(viewByPrefix(view, "exemptInternalIP").type).toBe(NodeEventType.Active);
+    expect(trace).toHaveLength(3);
+    expect(byPrefix(trace, "authenticate").verdict).toBeGreaterThan(0);
+    expect(byPrefix(trace, "blockIP").verdict).toBe(0);
+    expect(byPrefix(trace, "exemptInternalIP").verdict).toBeGreaterThan(0);
   });
 });
-
-// touch

@@ -273,31 +273,27 @@ Moderation logs, audit trails, debugging — built into the engine, no extra log
 ## Run
 
 `Evaluate` judges and returns — pure and idempotent. `Run` judges first, **then acts**: it
-does a full pass, then fires exactly one handler per node based on its outcome.
-
-| Event | Condition | Meaning |
-|---|---|---|
-| `Active` | func true && verdict > 0 | applied and prevailed |
-| `Defeated` | func true && verdict <= 0 | applied but defeated |
-| `Inactive` | func false | rule did not apply |
+does a full pass, then fires one handler per **Active** node. A node is Active when its rule
+applied **and** prevailed (`activated && verdict > 0`) — that is the only event. To inspect
+any other node's outcome, read the returned `trace`: `verdict > 0` prevailed, `verdict <= 0`
+defeated, `activated == false` did not apply.
 
 ```go
 g.Rule(isAuthenticated).
-    OnActive(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error {
-        return audit(ev)          // ran and prevailed
-    }).
-    OnDefeated(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error {
-        return deny(ev)           // ran but was defeated
+    RunOn(func(ctx toulmin.Context, self toulmin.TraceEntry, trace []toulmin.TraceEntry) error {
+        return audit(self)        // ran and prevailed
     })
 
-results, view, err := g.Run(ctx)  // []EvalResult, RunView, error
+results, trace, err := g.Run(ctx)  // []EvalResult, []TraceEntry, error
 ```
 
-Handlers fire in registration order; the first handler error stops `Run`. Before any handler
-fires, `Run` builds one immutable **RunView** — a read-only snapshot of every node's final
-event — and passes it to every handler (and returns it). A handler reads its own event plus
-the whole graph's final state via `view.All()`, `view.Get(name)`, `view.Attackers(name)`.
-`ctx` is mutable (side effects); `view` is the immutable judgment snapshot.
+Handlers fire in registration order; the first handler error stops `Run`. The handler gets
+`self` (the firing node's `TraceEntry`) and `trace` (every node's `TraceEntry`, registration
+order). Each `TraceEntry` exposes **Claim** (`Name`), **Ground** (`Ground` = the `ctx` as-is),
+**Backing** (`Specs`), and **Verdict** — enough to audit, explain, or apply gradient
+thresholds without any separate view. There is no direct attacker lookup; reason from
+`trace[i].Verdict`. `ctx` is mutable (side effects propagate); the trace is the judgment
+record. If you serialise the trace as JSON, keep `ctx` to serialisable values (`Ground = ctx`).
 
 ### Execution composition
 
@@ -309,10 +305,10 @@ is capped at 64.
 
 ```go
 order := g.Rule(orderPlaced)
-order.OnActive(logOrder).Run(notifyGraph)   // Active order → Run the notify graph
+order.RunOn(logOrder).Run(notifyGraph)   // Active order → Run the notify graph
 ```
 
-The Run handler + RunView family is available across the Go, TypeScript, and Python ports.
+The `RunOn` handler + `Run(g)` execution composition is available across the Go, TypeScript, and Python ports.
 
 ## Framework Packages
 

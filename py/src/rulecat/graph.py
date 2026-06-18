@@ -4,7 +4,7 @@ from typing import Any
 
 from rulecat.types import (
     Context, EvalMethod, EvalOption, EvalResult, Strength, TraceEntry,
-    NodeEvent, NodeEventType, RunResult,
+    RunResult,
 )
 from rulecat.defeat_edge import DefeatEdge
 from rulecat.rule_meta import RuleMeta
@@ -13,7 +13,6 @@ from rulecat.rule_id import rule_id
 from rulecat.short_name import short_name
 from rulecat.detect_cycle import detect_cycle
 from rulecat.detect_run_cycle import detect_run_cycle
-from rulecat.run_view import _RunView, _build_attacker_events
 
 
 run_max_depth = 64  # 깊이 백스톱
@@ -71,45 +70,43 @@ class Graph:
             )
         results, active, verdict_cache, evidence = self._evaluate(ctx, opt, full=True)
 
-        # 디스패치 전 1회 — 불변 스냅샷
-        order: list[NodeEvent] = []
-        by_name: dict[str, NodeEvent] = {}
+        # 디스패치 전 1회 — 전 노드 TraceEntry를 등록 순서로 조립
+        # (인덱스 i ↔ self.rules[i] 구조적 보장)
+        trace: list[TraceEntry] = []
         for r in self.rules:
-            etype = _classify_event(
-                active.get(r.name, False), verdict_cache.get(r.name, 0.0)
-            )
-            ne = NodeEvent(
+            trace.append(TraceEntry(
                 name=short_name(r.name),
                 role=self.roles.get(r.name, "rule"),
-                type=etype,
+                activated=active.get(r.name, False),
+                qualifier=r.qualifier,
                 verdict=verdict_cache.get(r.name, 0.0),
                 evidence=evidence.get(r.name),
-            )
-            order.append(ne)
-            by_name[ne.name] = ne
-        attackers = _build_attacker_events(self.defeats, by_name)
-        view = _RunView(order, by_name, attackers)
+                ground=ctx,
+                specs=r.specs,
+            ))
 
-        for i, ne in enumerate(order):
-            meta = self.rules[i]            # 인덱스 대응 — short_name 매핑 불필요
-            # (a) leaf 핸들러
-            h = _select_handler(meta, ne.type)
-            if h is not None:
+        for i, e in enumerate(trace):
+            meta = self.rules[i]            # 인덱스 대응
+            active_flag = e.activated and e.verdict > 0  # Active 하나만 발화
+            if not active_flag:
+                continue
+            # (a) run_on 핸들러 — 먼저
+            if meta.run_on is not None:
                 try:
-                    h(ctx, ne, view)
-                except Exception as e:
+                    meta.run_on(ctx, e, trace)
+                except Exception as exc:
                     raise RuntimeError(
-                        f'handler "{ne.name}" ({ne.type.name}): {e}'
-                    ) from e
+                        f'run_on "{e.name}": {exc}'
+                    ) from exc
             # (b) 실행 간선 — Active면 하위 그래프 Run (ctx 아래로, depth+1)
-            if ne.type == NodeEventType.ACTIVE and meta.run_graph is not None:
+            if meta.run_graph is not None:
                 try:
                     meta.run_graph._run_depth(ctx, opt, depth + 1)
-                except Exception as e:
+                except Exception as exc:
                     raise RuntimeError(
-                        f'run "{ne.name}" → "{meta.run_graph.name}": {e}'
-                    ) from e
-        return RunResult(results=results, view=view)
+                        f'run "{e.name}" → "{meta.run_graph.name}": {exc}'
+                    ) from exc
+        return RunResult(results=results, trace=trace)
 
     def _evaluate(
         self, ctx: Context, opt: EvalOption, full: bool
@@ -292,17 +289,3 @@ def _resolve_option(opt: EvalOption | None) -> EvalOption:
     if opt.duration:
         opt = EvalOption(method=opt.method, trace=True, duration=True)
     return opt
-
-
-def _classify_event(active: bool, verdict: float) -> NodeEventType:
-    if not active:
-        return NodeEventType.INACTIVE
-    return NodeEventType.ACTIVE if verdict > 0 else NodeEventType.DEFEATED
-
-
-def _select_handler(r: RuleMeta, t: NodeEventType) -> Any:
-    if t == NodeEventType.ACTIVE:
-        return r.on_active
-    if t == NodeEventType.DEFEATED:
-        return r.on_defeated
-    return r.on_inactive

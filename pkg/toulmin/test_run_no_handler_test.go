@@ -14,12 +14,12 @@ func TestRunNoHandler(t *testing.T) {
 	if err1 != nil {
 		t.Fatalf("evaluate error: %v", err1)
 	}
-	runResults, view, err2 := g.Run(NewContext())
+	runResults, trace, err2 := g.Run(NewContext())
 	if err2 != nil {
 		t.Fatalf("run error: %v", err2)
 	}
-	if got := len(view.All()); got != 2 {
-		t.Errorf("RunView must snapshot every node even with no handlers, want 2, got %d", got)
+	if got := len(trace); got != 2 {
+		t.Errorf("trace must include every node even with no handlers, want 2, got %d", got)
 	}
 	if len(runResults) != len(evalResults) {
 		t.Fatalf("result count mismatch: run %d vs evaluate %d", len(runResults), len(evalResults))

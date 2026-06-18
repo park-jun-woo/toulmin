@@ -8,11 +8,11 @@ func TestRunRecursiveMethod(t *testing.T) {
 	g := NewGraph("recursive")
 	g.Rule(WarrantA)
 
-	results, view, err := g.Run(NewContext(), EvalOption{Method: Recursive})
+	results, trace, err := g.Run(NewContext(), EvalOption{Method: Recursive})
 	if err == nil {
 		t.Fatal("expected error for Recursive method")
 	}
-	if results != nil || view != nil {
-		t.Errorf("on option error Run must return nil results and nil view, got results=%v view=%v", results, view)
+	if results != nil || trace != nil {
+		t.Errorf("on option error Run must return nil results and nil trace, got results=%v trace=%v", results, trace)
 	}
 }

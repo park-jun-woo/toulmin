@@ -145,58 +145,66 @@ type EvalResult struct {
 }
 
 type TraceEntry struct {
-    Name      string        `json:"name"`
+    Name      string        `json:"name"`             // = Claim
     Role      string        `json:"role"`
     Activated bool          `json:"activated"`
     Qualifier float64       `json:"qualifier"`
+    Verdict   float64       `json:"verdict"`
     Evidence  any           `json:"evidence,omitempty"`
-    Specs     Specs         `json:"specs,omitempty"`
+    Ground    any           `json:"ground,omitempty"` // = ctx as-is
+    Specs     Specs         `json:"specs,omitempty"`  // = Backing
     Duration  time.Duration `json:"duration,omitempty"`
 }
 ```
 
-### Node Events (Run)
+A `TraceEntry` records, per node, *what* was judged and *on what basis*:
+
+| Field | Toulmin element | Meaning |
+|---|---|---|
+| `Name` | **Claim** | node short name (the claim being judged) |
+| `Ground` | **Ground** | the `ctx` the rule saw (facts), stored as-is |
+| `Specs` | **Backing** | the fixed Specs attached at declaration |
+| `Verdict` | — | node verdict `[-1, 1]` (`> 0` prevailed, `<= 0` defeated) |
+| `Activated` | — | whether the rule function returned `true` |
+
+> ⚠️ `Ground = ctx` is stored verbatim. If you `json.Marshal` a trace, make sure `ctx`
+> holds only serialisable values, or marshalling will fail.
+
+### Node Handler (Run)
 
 `Run` is a pre-judge → post-act variant of `Evaluate`. It evaluates the whole graph
-(full pass, Trace/Duration forced off), fires each node's event handler, and Runs any
-sub-graph declared on an Active node (execution composition, below). Every node fires
-exactly one event:
+(full pass, Trace/Duration forced off), fires each Active node's run handler, and Runs any
+sub-graph declared on an Active node (execution composition, below).
 
-| Event | Condition | Meaning |
-|---|---|---|
-| `Inactive` | func `false` | rule did not apply |
-| `Active` | func `true` && `verdict > 0` | applied and prevailed |
-| `Defeated` | func `true` && `verdict <= 0` | applied but defeated (verdict == 0 counts as Defeated) |
+There is a single node event: **Active**. A node is Active when its rule applied **and**
+prevailed (`Activated && Verdict > 0`); only then does its `RunOn` handler fire. There are
+no Defeated/Inactive events — to inspect any other node's outcome, filter the `trace`:
+`Verdict > 0` prevailed, `Verdict <= 0` defeated (incl. `0`), `Activated == false` did not apply.
 
 ```go
 g.Rule(Authenticate).
-    OnActive(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error { return audit(ev) }).
-    OnDefeated(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error { return deny(ev) })
+    RunOn(func(ctx toulmin.Context, self toulmin.TraceEntry, trace []toulmin.TraceEntry) error {
+        return audit(self)   // self is the firing node's TraceEntry
+    })
 
-results, view, err := g.Run(ctx) // []EvalResult, RunView, error
+results, trace, err := g.Run(ctx) // []EvalResult, []TraceEntry, error
 
-type NodeEvent struct {
-    Name     string        // node short name
-    Role     string        // "rule" | "counter" | "except"
-    Type     NodeEventType // Inactive | Active | Defeated
-    Verdict  float64       // 0.0 when Inactive
-    Evidence any           // evidence from the rule function
-}
-
-type RunView interface {           // read-only snapshot of every node's final event
-    All() []NodeEvent              // all nodes, registration order (Inactive included)
-    Get(name string) (NodeEvent, bool) // lookup by short name
-    Attackers(name string) []NodeEvent // final events of nodes that attacked name
-}
+type NodeHandler func(ctx Context, self TraceEntry, trace []TraceEntry) error
 ```
 
+- `self` = the firing (Active) node's `TraceEntry`.
+- `trace` = every node's `TraceEntry` in registration order (read-only view of the whole graph).
+
 Handlers fire in rule registration order (deterministic). Before any handler fires, `Run`
-builds one immutable `RunView` snapshot of every node's final event and shares it with all
-handlers, so a handler can read the whole graph's final state (audit, explanation, gradient
-thresholds via `view.Get(...).Verdict`) — mutating `ctx` never changes the `view`. A handler
-error or panic stops `Run` immediately and is returned together with that pre-dispatch
-`RunView`. Nodes without a matching handler pass through silently. `Evaluate` is unchanged
-and fires no handlers (stays idempotent).
+assembles one flat `[]TraceEntry` of every node and shares it with all handlers, so a handler
+can read the whole graph's final state (audit, explanation, gradient thresholds via
+`trace[i].Verdict`) — mutating `ctx` never changes verdicts already recorded. A handler error
+or panic stops `Run` immediately and is returned together with the trace built before dispatch.
+Nodes without a handler pass through silently. `Evaluate` is unchanged and fires no handlers
+(stays idempotent).
+
+> There is no direct **Attackers** lookup. `TraceEntry` carries no defeat-edge info, so the
+> previous `RunView.Attackers(name)` is gone; reason about outcomes from `trace[i].Verdict`.
 
 ### Execution Composition (graph-of-graphs)
 
@@ -209,18 +217,18 @@ verdict isolated.
 ```go
 notify := buildNotifyGraph()
 g.Rule(OrderPlaced).
-    OnActive(func(ctx toulmin.Context, ev toulmin.NodeEvent, v toulmin.RunView) error { return log(ev) }).
+    RunOn(func(ctx toulmin.Context, self toulmin.TraceEntry, trace []toulmin.TraceEntry) error { return log(self) }).
     Run(notify)   // when OrderPlaced is Active, Run notify
 ```
 
-- **Active-only.** A sub-graph Runs only for `Active` nodes; `Inactive`/`Defeated` never trigger one.
-- **Handler first, then sub-graph.** For an Active node, its `OnActive` handler fires before its sub-graph is Run. `OnActive` and `Run(g)` coexist.
+- **Active-only.** A sub-graph Runs only for `Active` nodes; non-Active nodes never trigger one.
+- **Handler first, then sub-graph.** For an Active node, its `RunOn` handler fires before its sub-graph is Run. `RunOn` and `Run(g)` coexist.
 - **ctx flows down, verdict isolated.** The same mutable `ctx` is shared with the sub-graph (side effects propagate); the sub-graph's verdicts are *not* merged into the parent — only errors propagate, wrapped as `run "node" → "subgraph": ...`.
-- **Each level gets its own view.** The `RunView` passed to a sub-graph's handlers snapshots that sub-graph, not the parent.
+- **Each level gets its own trace.** The `trace` passed to a sub-graph's handlers covers that sub-graph, not the parent.
 - **DAG, enforced.** Execution composition must be acyclic. `Run` rejects a static cycle once at the top-level entry via `detectRunCycle` — a 3-color DFS over `RunGraph` edges keyed by `*Graph` identity; a shared sub-graph reached by two paths (diamond) is legal. A runtime depth guard (`runMaxDepth = 64`) backstops runaway composition (`run depth exceeded 64`).
 - `Run(nil)` is a registration error and panics.
 
-The Run handler + `RunView` family above is available in the Go, TypeScript, and Python ports.
+The `RunOn` handler + `Run(g)` execution composition above is available in the Go, TypeScript, and Python ports.
 
 ### Same Function, Different Spec
 

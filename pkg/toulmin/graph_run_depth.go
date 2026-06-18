@@ -1,5 +1,5 @@
 //ff:func feature=engine type=engine control=iteration dimension=1
-//ff:what runDepth — recursively evaluates, fires handlers, and Runs Active nodes' sub-graphs
+//ff:what runDepth — recursively evaluates, fires RunOn handlers, and Runs Active nodes' sub-graphs
 package toulmin
 
 import "fmt"
@@ -8,12 +8,13 @@ import "fmt"
 // static cycle detection cannot see (e.g. future dynamic Run wiring).
 const runMaxDepth = 64
 
-// runDepth evaluates the graph (full pass), builds an immutable RunView, then for each
-// node in registration order: (a) fires its event handler (leaf side effect), and
-// (b) if the node is Active and has a RunGraph, Runs that sub-graph with the same ctx
-// at depth+1. ctx flows down (shared mutable); each level builds its own view. Sub-graph
-// verdicts stay isolated — only errors propagate, wrapped as `run ... → ...`.
-func (g *Graph) runDepth(ctx Context, opt EvalOption, depth int) ([]EvalResult, RunView, error) {
+// runDepth evaluates the graph (full pass), assembles a flat trace of every node in
+// registration order from the shared evalContext, then for each Active node (Activated &&
+// Verdict>0) in registration order: (a) fires its RunOn handler with self and the whole trace,
+// then (b) if the node has a RunGraph, Runs that sub-graph with the same ctx at depth+1.
+// ctx flows down (shared mutable); each level builds its own trace. Sub-graph verdicts stay
+// isolated — only errors propagate, wrapped as `run ... → ...`.
+func (g *Graph) runDepth(ctx Context, opt EvalOption, depth int) ([]EvalResult, []TraceEntry, error) {
 	if depth > runMaxDepth {
 		return nil, nil, fmt.Errorf("toulmin: run depth exceeded %d (possible runaway composition)", runMaxDepth)
 	}
@@ -21,24 +22,40 @@ func (g *Graph) runDepth(ctx Context, opt EvalOption, depth int) ([]EvalResult, 
 	if err != nil {
 		return nil, nil, err
 	}
-	view := newRunView(g, ec)
-	events := view.All()
-	for i := range events {
-		ne := events[i]
-		meta := &g.rules[i]
-		var herr error
-		if h := selectHandler(meta, ne.Type); h != nil {
-			herr = safeCallHandler(h, ctx, ne, view)
+	trace := make([]TraceEntry, len(g.rules))
+	for i := range g.rules {
+		name := g.rules[i].Name
+		role := g.roles[name]
+		if role == "" {
+			role = inferRole(ec.strMap, ec.attackerSet, name)
 		}
-		if herr != nil {
-			return results, view, fmt.Errorf("handler %q (%v): %w", ne.Name, ne.Type, herr)
-		}
-		if ne.Type != Active || meta.RunGraph == nil {
-			continue
-		}
-		if _, _, err := meta.RunGraph.runDepth(ctx, opt, depth+1); err != nil {
-			return results, view, fmt.Errorf("run %q → %q: %w", ne.Name, meta.RunGraph.name, err)
+		trace[i] = TraceEntry{
+			Name:      shortName(name),
+			Role:      role,
+			Activated: ec.active[name],
+			Qualifier: ec.qualMap[name],
+			Verdict:   ec.verdictCache[name],
+			Evidence:  ec.evidence[name],
+			Ground:    ctx,
+			Specs:     ec.specsMap[name],
 		}
 	}
-	return results, view, nil
+	for i := range g.rules {
+		meta := &g.rules[i]
+		self := trace[i]
+		if !(self.Activated && self.Verdict > 0) {
+			continue
+		}
+		if meta.RunOn != nil {
+			if herr := safeCallHandler(meta.RunOn, ctx, self, trace); herr != nil {
+				return results, trace, fmt.Errorf("runOn %q: %w", self.Name, herr)
+			}
+		}
+		if meta.RunGraph != nil {
+			if _, _, err := meta.RunGraph.runDepth(ctx, opt, depth+1); err != nil {
+				return results, trace, fmt.Errorf("run %q → %q: %w", self.Name, meta.RunGraph.name, err)
+			}
+		}
+	}
+	return results, trace, nil
 }

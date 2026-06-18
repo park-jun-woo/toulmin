@@ -43,18 +43,8 @@ export class Rule {
     return this;
   }
 
-  onActive(h: NodeHandler): Rule {
-    this.graph.rules[this.idx].onActive = h;
-    return this;
-  }
-
-  onDefeated(h: NodeHandler): Rule {
-    this.graph.rules[this.idx].onDefeated = h;
-    return this;
-  }
-
-  onInactive(h: NodeHandler): Rule {
-    this.graph.rules[this.idx].onInactive = h;
+  runOn(h: NodeHandler): Rule {
+    this.graph.rules[this.idx].runOn = h;
     return this;
   }
 

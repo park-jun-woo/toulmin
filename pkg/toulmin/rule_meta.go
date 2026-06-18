@@ -11,9 +11,7 @@ type RuleMeta struct {
 	Specs     Specs
 	Fn        func(ctx Context, specs Specs) (bool, any)
 
-	OnActive   NodeHandler // active event handler (nil allowed)
-	OnDefeated NodeHandler // defeated event handler (nil allowed)
-	OnInactive NodeHandler // inactive event handler (nil allowed)
+	RunOn NodeHandler // run handler, fires on Active (nil allowed)
 
 	RunGraph *Graph // sub-graph to Run when this node is Active (nil allowed)
 }

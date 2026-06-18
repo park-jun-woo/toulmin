@@ -4,8 +4,6 @@ import {
   newContext,
   detectRunCycle,
   type RuleFunc,
-  type Context,
-  type NodeEvent,
 } from "../src/index.js";
 
 const always: RuleFunc = () => [true, null];
@@ -16,7 +14,7 @@ describe("Run composition — rule.run(subGraph)", () => {
     const subRule: RuleFunc = () => [true, null];
 
     const sub = new Graph("sub");
-    sub.rule(subRule).onActive((ctx) => { ctx.set("subRan", true); });
+    sub.rule(subRule).runOn((ctx) => { ctx.set("subRan", true); });
 
     const parent = new Graph("parent");
     parent.rule(parentRule).run(sub);
@@ -33,7 +31,7 @@ describe("Run composition — rule.run(subGraph)", () => {
     const subRule: RuleFunc = () => [true, null];
 
     const sub = new Graph("sub-defeated");
-    sub.rule(subRule).onActive((ctx) => { ctx.set("subRan", true); });
+    sub.rule(subRule).runOn((ctx) => { ctx.set("subRan", true); });
 
     const parent = new Graph("parent-defeated");
     const w = parent.rule(warrant);
@@ -52,7 +50,7 @@ describe("Run composition — rule.run(subGraph)", () => {
     const subRule: RuleFunc = () => [true, null];
 
     const sub = new Graph("sub-inactive");
-    sub.rule(subRule).onActive((ctx) => { ctx.set("subRan", true); });
+    sub.rule(subRule).runOn((ctx) => { ctx.set("subRan", true); });
 
     const parent = new Graph("parent-inactive");
     parent.rule(inactive).run(sub);
@@ -63,16 +61,16 @@ describe("Run composition — rule.run(subGraph)", () => {
     expect(ctx.get("subRan")).toBeUndefined();
   });
 
-  it("handler-then-sub ordering: onActive fires before sub Run", () => {
+  it("handler-then-sub ordering: runOn fires before sub Run", () => {
     const log: string[] = [];
     const parentRule: RuleFunc = () => [true, null];
     const subRule: RuleFunc = () => [true, null];
 
     const sub = new Graph("sub-order");
-    sub.rule(subRule).onActive(() => { log.push("sub"); });
+    sub.rule(subRule).runOn(() => { log.push("sub"); });
 
     const parent = new Graph("parent-order");
-    parent.rule(parentRule).onActive(() => { log.push("handler"); }).run(sub);
+    parent.rule(parentRule).runOn(() => { log.push("handler"); }).run(sub);
 
     parent.run(newContext());
 
@@ -85,10 +83,10 @@ describe("Run composition — rule.run(subGraph)", () => {
     const subRule: RuleFunc = (ctx) => [true, ctx.get("token")];
 
     const sub = new Graph("sub-ctx");
-    sub.rule(subRule).onActive((_ctx, ev) => { seen = ev.evidence; });
+    sub.rule(subRule).runOn((_ctx, self) => { seen = self.evidence; });
 
     const parent = new Graph("parent-ctx");
-    parent.rule(parentRule).onActive((ctx) => { ctx.set("token", "from-parent"); }).run(sub);
+    parent.rule(parentRule).runOn((ctx) => { ctx.set("token", "from-parent"); }).run(sub);
 
     parent.run(newContext());
 
@@ -157,7 +155,7 @@ describe("Run composition — rule.run(subGraph)", () => {
     const bottomRule: RuleFunc = () => [true, null];
 
     const bottom = new Graph("diamond-bottom");
-    bottom.rule(bottomRule).onActive(() => { bottomRuns++; });
+    bottom.rule(bottomRule).runOn(() => { bottomRuns++; });
 
     const left = new Graph("diamond-left");
     left.rule(leftRule).run(bottom);
@@ -180,7 +178,7 @@ describe("Run composition — rule.run(subGraph)", () => {
     const subRule: RuleFunc = () => [true, null];
 
     const sub = new Graph("sub-boom");
-    sub.rule(subRule).onActive(() => { throw new Error("boom"); });
+    sub.rule(subRule).runOn(() => { throw new Error("boom"); });
 
     const parent = new Graph("parent-boom");
     parent.rule(parentRule).run(sub);

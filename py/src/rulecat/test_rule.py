@@ -24,5 +24,15 @@ class RuleRunTest(unittest.TestCase):
         self.assertIn("non-None sub-graph", str(cm.exception))
 
 
+class RuleRunOnTest(unittest.TestCase):
+    def test_run_on_sets_handler_and_returns_self(self):
+        g = Graph("g")
+        rule = g.rule(_r)
+        h = lambda ctx, self_, trace: None
+        returned = rule.run_on(h)
+        self.assertIs(returned, rule)
+        self.assertIs(g.rules[0].run_on, h)
+
+
 if __name__ == "__main__":
     unittest.main()

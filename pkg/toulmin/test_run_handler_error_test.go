@@ -11,42 +11,39 @@ import (
 func TestRunHandlerError(t *testing.T) {
 	secondFired := false
 	g := NewGraph("err")
-	g.Rule(WarrantA).OnActive(func(ctx Context, ev NodeEvent, view RunView) error {
+	g.Rule(WarrantA).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
 		return fmt.Errorf("boom")
 	})
-	g.Counter(RebuttalB).OnActive(func(ctx Context, ev NodeEvent, view RunView) error {
+	g.Rule(RebuttalB).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
 		secondFired = true
 		return nil
 	})
-	_, view, err := g.Run(NewContext())
+	_, trace, err := g.Run(NewContext())
 	if err == nil {
 		t.Fatal("expected error from handler")
 	}
 	if !strings.Contains(err.Error(), "WarrantA") {
 		t.Errorf("error should name the node: %v", err)
 	}
-	if !strings.Contains(err.Error(), "Active") {
-		t.Errorf("error should name the event type: %v", err)
-	}
 	if secondFired {
 		t.Error("Run must stop before firing later handlers")
 	}
-	if view == nil {
-		t.Error("on handler error Run must still return the pre-dispatch RunView")
+	if trace == nil {
+		t.Error("on handler error Run must still return the pre-dispatch trace")
 	}
 
 	g2 := NewGraph("panic")
-	g2.Rule(WarrantA).OnActive(func(ctx Context, ev NodeEvent, view RunView) error {
+	g2.Rule(WarrantA).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
 		panic("kaboom")
 	})
-	_, view2, err2 := g2.Run(NewContext())
+	_, trace2, err2 := g2.Run(NewContext())
 	if err2 == nil {
 		t.Fatal("expected error from panicking handler")
 	}
 	if !strings.Contains(err2.Error(), "panicked") {
 		t.Errorf("panic should convert to error: %v", err2)
 	}
-	if view2 == nil {
-		t.Error("on panic Run must still return the pre-dispatch RunView")
+	if trace2 == nil {
+		t.Error("on panic Run must still return the pre-dispatch trace")
 	}
 }

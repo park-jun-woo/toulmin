@@ -1,14 +1,13 @@
 //ff:func feature=engine type=engine control=sequence
-//ff:what TestRunViewGradient — a handler branches on the continuous verdict read via view.Get
+//ff:what TestRunTraceGradient — a handler branches on the continuous verdict read from trace
 package toulmin
 
 import "testing"
 
-func TestRunViewGradient(t *testing.T) {
+func TestRunTraceGradient(t *testing.T) {
 	var branch string
-	decide := func(ctx Context, ev NodeEvent, view RunView) error {
-		v, _ := view.Get("WarrantA")
-		if v.Verdict >= 0.5 {
+	decide := func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+		if self.Verdict >= 0.5 {
 			branch = "strong"
 		} else {
 			branch = "weak"
@@ -16,16 +15,15 @@ func TestRunViewGradient(t *testing.T) {
 		return nil
 	}
 	g := NewGraph("gradient")
-	g.Rule(WarrantA).Qualifier(0.75).OnActive(decide).OnDefeated(decide).OnInactive(decide)
+	g.Rule(WarrantA).Qualifier(0.75).RunOn(decide)
 
 	var captured float64
-	read := func(ctx Context, ev NodeEvent, view RunView) error {
-		v, _ := view.Get("WarrantA")
-		captured = v.Verdict
+	read := func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+		captured = self.Verdict
 		return nil
 	}
 	g2 := NewGraph("gradient-weak")
-	g2.Rule(WarrantA).Qualifier(0.6).OnActive(read).OnDefeated(read).OnInactive(read)
+	g2.Rule(WarrantA).Qualifier(0.6).RunOn(read)
 
 	if _, _, err := g.Run(NewContext()); err != nil {
 		t.Fatalf("run error: %v", err)

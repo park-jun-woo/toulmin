@@ -1,5 +1,5 @@
 import pytest
-from rulecat import Graph, MapContext, NodeEventType
+from rulecat import Graph, MapContext
 
 
 def _auth(ctx, specs):
@@ -30,68 +30,82 @@ def short_of(rule):
     return short_name(rule.id)
 
 
-def test_three_events_external_blocked_ip():
+def _entry(trace, name):
+    return next((e for e in trace if e.name == name), None)
+
+
+def _is_active(trace, name):
+    e = _entry(trace, name)
+    return e is not None and e.activated and e.verdict > 0
+
+
+def test_active_only_external_blocked_ip():
     g, auth, block, exempt = _build_access_control()
-    events: dict[str, NodeEventType] = {}
+    fired = []
 
     def on(name):
-        def h(ctx, ev, view):
-            events[name] = ev.type
+        def h(ctx, self_, trace):
+            fired.append(name)
         return h
 
     for r, n in ((auth, "auth"), (block, "block"), (exempt, "exempt")):
-        r.on_active(on(n)).on_defeated(on(n)).on_inactive(on(n))
+        r.run_on(on(n))
 
     ctx = MapContext()
     ctx.set("blocked", True)
     ctx.set("internal", False)
-    g.run(ctx)
+    result = g.run(ctx)
 
-    assert events["block"] == NodeEventType.ACTIVE
-    assert events["auth"] == NodeEventType.DEFEATED
-    assert events["exempt"] == NodeEventType.INACTIVE
+    # block active (verdict>0); auth defeated (verdict 0.0); exempt inactive
+    assert fired == ["block"]
+    assert _is_active(result.trace, short_of(block))
+    assert not _is_active(result.trace, short_of(auth))
+    assert not _is_active(result.trace, short_of(exempt))
 
 
-def test_three_events_internal_network():
+def test_active_only_internal_network():
     g, auth, block, exempt = _build_access_control()
-    events: dict[str, NodeEventType] = {}
+    fired = []
 
     def on(name):
-        def h(ctx, ev, view):
-            events[name] = ev.type
+        def h(ctx, self_, trace):
+            fired.append(name)
         return h
 
     for r, n in ((auth, "auth"), (block, "block"), (exempt, "exempt")):
-        r.on_active(on(n)).on_defeated(on(n)).on_inactive(on(n))
+        r.run_on(on(n))
 
     ctx = MapContext()
     ctx.set("blocked", True)
     ctx.set("internal", True)
-    g.run(ctx)
+    result = g.run(ctx)
 
-    assert events["exempt"] == NodeEventType.ACTIVE
-    assert events["block"] == NodeEventType.DEFEATED
-    assert events["auth"] == NodeEventType.ACTIVE
+    # exempt active -> block defeated -> auth active again
+    assert _is_active(result.trace, short_of(exempt))
+    assert _is_active(result.trace, short_of(auth))
+    assert not _is_active(result.trace, short_of(block))
+    assert set(fired) == {"exempt", "auth"}
 
 
-def test_full_pass_fires_inactive_for_unreached_node():
-    # Lazy evaluate: warrant W is inactive, so its attacker C is never reached.
+def test_full_pass_includes_unreached_node():
+    # Lazy evaluate: warrant W is inactive, so its attacker C is never reached
+    # during evaluate, but run's full pass still produces a trace entry for it.
     g = Graph("test")
     w = g.rule(lambda ctx, specs: (False, None))
     c = g.counter(lambda ctx, specs: (False, None))
     c.attacks(w)
 
     fired = []
-    c.on_inactive(lambda ctx, ev, view: fired.append(ev.type))
+    c.run_on(lambda ctx, self_, trace: fired.append("c"))
 
     # evaluate does not reach C and never fires handlers.
     g.evaluate(MapContext())
     assert fired == []
 
     result = g.run(MapContext())
-    assert fired == [NodeEventType.INACTIVE]
-    # Unreached node still produced an event in run's view.
-    names = [e.name for e in result.view.all()]
+    # inactive node fires nothing, but appears in the trace.
+    assert fired == []
+    names = [e.name for e in result.trace]
     assert short_of(c) in names
 
 
@@ -99,9 +113,7 @@ def test_evaluate_pure_and_idempotent():
     g, auth, block, exempt = _build_access_control()
     fired = []
     for r in (auth, block, exempt):
-        r.on_active(lambda ctx, ev, view: fired.append(ev))
-        r.on_defeated(lambda ctx, ev, view: fired.append(ev))
-        r.on_inactive(lambda ctx, ev, view: fired.append(ev))
+        r.run_on(lambda ctx, self_, trace: fired.append(self_))
 
     ctx = MapContext()
     ctx.set("blocked", True)
@@ -120,68 +132,71 @@ def test_handler_raise_stops_and_propagates_with_context():
 
     cause = RuntimeError("boom")
 
-    def bad(ctx, ev, view):
+    def bad(ctx, self_, trace):
         raise cause
 
-    w.on_active(bad)
+    w.run_on(bad)
 
     with pytest.raises(RuntimeError) as exc_info:
         g.run(MapContext())
 
     msg = str(exc_info.value)
     assert "_auth" in msg or "auth" in msg
-    assert "ACTIVE" in msg
+    assert "run_on" in msg
     assert "boom" in msg
     assert exc_info.value.__cause__ is cause
 
 
-def test_events_order_matches_registration_order():
+def test_handlers_fire_in_registration_order():
     g = Graph("test")
     order = []
 
     def make(name):
-        def h(ctx, ev, view):
+        def h(ctx, self_, trace):
             order.append(name)
         return h
 
     a = g.rule(lambda ctx, specs: (True, None))
     b = g.rule(lambda ctx, specs: (True, None))
     c = g.rule(lambda ctx, specs: (True, None))
-    a.on_active(make("a"))
-    b.on_active(make("b"))
-    c.on_active(make("c"))
+    a.run_on(make("a"))
+    b.run_on(make("b"))
+    c.run_on(make("c"))
 
     result = g.run(MapContext())
     assert order == ["a", "b", "c"]
-    assert len(result.view.all()) == 3
+    assert len(result.trace) == 3
 
 
-def test_verdict_zero_is_defeated():
-    # warrant attacked by one active counter -> verdict 0.0 -> DEFEATED
+def test_verdict_zero_node_does_not_fire():
+    # warrant attacked by one active counter -> verdict 0.0 -> not Active
     g = Graph("test")
     w = g.rule(lambda ctx, specs: (True, None))
     c = g.counter(lambda ctx, specs: (True, None))
     c.attacks(w)
 
     seen = []
-    w.on_active(lambda ctx, ev, view: seen.append(("active", ev.verdict)))
-    w.on_defeated(lambda ctx, ev, view: seen.append(("defeated", ev.verdict)))
+    w.run_on(lambda ctx, self_, trace: seen.append(self_.verdict))
 
-    g.run(MapContext())
-    assert seen == [("defeated", 0.0)]
+    result = g.run(MapContext())
+    assert seen == []  # defeated (verdict 0.0) -> no fire
+    w_entry = _entry(result.trace, short_of(w))
+    assert w_entry.verdict == 0.0
+    assert w_entry.activated is True
 
 
-# --- RunView tests ---
+# --- trace-based node queries from handlers ---
 
 
-def test_view_sees_all_three_nodes():
+def test_trace_sees_all_three_nodes():
     g, auth, block, exempt = _build_access_control()
     seen = []
 
-    def h(ctx, ev, view):
-        seen.append(sorted(e.name for e in view.all()))
+    def h(ctx, self_, trace):
+        seen.append(sorted(e.name for e in trace))
 
-    auth.on_active(h).on_defeated(h).on_inactive(h)
+    # block is the active node here.
+    block.run_on(h)
 
     ctx = MapContext()
     ctx.set("blocked", True)
@@ -192,111 +207,35 @@ def test_view_sees_all_three_nodes():
     assert seen and seen[0] == expected
 
 
-def test_view_is_immutable_across_handlers():
+def test_trace_self_is_firing_node():
     g, auth, block, exempt = _build_access_control()
-    captured = {}
+    captured = []
 
-    def h(name):
-        def handler(ctx, ev, view):
-            # mutate the returned copy; must not affect later handlers
-            view.all().append(ev)
-            captured[name] = len(view.all())
-        return handler
-
-    auth.on_active(h("auth")).on_defeated(h("auth")).on_inactive(h("auth"))
-    block.on_active(h("block")).on_defeated(h("block")).on_inactive(h("block"))
-    exempt.on_active(h("exempt")).on_defeated(h("exempt")).on_inactive(h("exempt"))
+    block.run_on(lambda ctx, self_, trace: captured.append(self_.name))
 
     ctx = MapContext()
     ctx.set("blocked", True)
     ctx.set("internal", False)
     g.run(ctx)
 
-    # every handler sees the same 3-node snapshot regardless of prior mutation
-    assert set(captured.values()) == {3}
+    assert captured == [short_of(block)]
 
 
-def test_view_attackers_returns_block_ip():
+def test_trace_ground_is_ctx():
     g, auth, block, exempt = _build_access_control()
-    found = {}
+    grounds = []
 
-    def h(ctx, ev, view):
-        found["auth"] = [a.name for a in view.attackers(short_of(auth))]
-        found["block"] = [a.name for a in view.attackers(short_of(block))]
-
-    auth.on_active(h).on_defeated(h).on_inactive(h)
+    block.run_on(lambda ctx, self_, trace: grounds.append(self_.ground))
 
     ctx = MapContext()
     ctx.set("blocked", True)
     ctx.set("internal", False)
     g.run(ctx)
 
-    assert found["auth"] == [short_of(block)]
-    assert found["block"] == [short_of(exempt)]
+    assert grounds and all(gr is ctx for gr in grounds)
 
 
-def test_view_get_missing_returns_none():
-    g, auth, block, exempt = _build_access_control()
-    seen = []
-
-    def h(ctx, ev, view):
-        seen.append(view.get("nope"))
-
-    auth.on_active(h).on_defeated(h).on_inactive(h)
-
-    ctx = MapContext()
-    ctx.set("blocked", True)
-    ctx.set("internal", False)
-    g.run(ctx)
-
-    assert seen and all(x is None for x in seen)
-
-
-def _gradient_branch(internal):
-    g, auth, block, exempt = _build_access_control()
-    branch = []
-
-    def h(ctx, ev, view):
-        node = view.get(short_of(auth))
-        if node is not None and node.verdict >= 0.5:
-            branch.append("hard")
-        else:
-            branch.append("soft")
-
-    block.on_active(h).on_defeated(h).on_inactive(h)
-
-    ctx = MapContext()
-    ctx.set("blocked", False)
-    ctx.set("internal", internal)
-    g.run(ctx)
-    return branch
-
-
-def test_view_gradient_branch_via_verdict():
-    # blocked=False: block inactive -> auth unattacked -> verdict 1.0 -> hard
-    assert _gradient_branch(internal=False) == ["hard"]
-
-
-def test_view_gradient_branch_soft_when_defeated():
-    # internal=True: exempt active -> block defeated (0.0) -> auth verdict ~0.33 -> soft
-    g, auth, block, exempt = _build_access_control()
-    branch = []
-
-    def h(ctx, ev, view):
-        node = view.get(short_of(auth))
-        branch.append("hard" if (node and node.verdict >= 0.5) else "soft")
-
-    exempt.on_active(h).on_defeated(h).on_inactive(h)
-
-    ctx = MapContext()
-    ctx.set("blocked", True)
-    ctx.set("internal", True)
-    g.run(ctx)
-
-    assert branch == ["soft"]
-
-
-def test_returned_view_is_queryable_posthoc():
+def test_returned_trace_is_queryable_posthoc():
     g, auth, block, exempt = _build_access_control()
 
     ctx = MapContext()
@@ -304,10 +243,47 @@ def test_returned_view_is_queryable_posthoc():
     ctx.set("internal", False)
     result = g.run(ctx)
 
-    view = result.view
-    assert view is not None
-    assert len(view.all()) == 3
-    assert view.get(short_of(auth)).type == NodeEventType.DEFEATED
-    assert view.get(short_of(block)).type == NodeEventType.ACTIVE
-    assert [a.name for a in view.attackers(short_of(auth))] == [short_of(block)]
-    assert view.get("nope") is None
+    trace = result.trace
+    assert len(trace) == 3
+    assert _entry(trace, short_of(auth)).verdict == 0.0   # defeated
+    assert _entry(trace, short_of(block)).verdict > 0     # active
+    assert _entry(trace, "nope") is None
+
+
+def test_gradient_branch_via_verdict():
+    # blocked=False: block inactive -> auth unattacked -> verdict 1.0 -> hard
+    g, auth, block, exempt = _build_access_control()
+    branch = []
+    auth_name = short_of(auth)
+
+    def h(ctx, self_, trace):
+        node = _entry(trace, auth_name)
+        branch.append("hard" if (node and node.verdict >= 0.5) else "soft")
+
+    auth.run_on(h)
+
+    ctx = MapContext()
+    ctx.set("blocked", False)
+    ctx.set("internal", False)
+    g.run(ctx)
+    assert branch == ["hard"]
+
+
+def test_gradient_branch_soft_when_defeated():
+    # internal=True: exempt active -> block defeated (0.0) -> auth verdict ~0.33 -> soft
+    g, auth, block, exempt = _build_access_control()
+    branch = []
+    auth_name = short_of(auth)
+
+    def h(ctx, self_, trace):
+        node = _entry(trace, auth_name)
+        branch.append("hard" if (node and node.verdict >= 0.5) else "soft")
+
+    exempt.run_on(h)
+
+    ctx = MapContext()
+    ctx.set("blocked", True)
+    ctx.set("internal", True)
+    g.run(ctx)
+
+    assert branch == ["soft"]

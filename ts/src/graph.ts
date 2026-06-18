@@ -1,5 +1,5 @@
-import type { Context, RuleFunc, EvalOption, EvalResult, Specs, TraceEntry, NodeEvent, NodeHandler, RunResult } from "./types.js";
-import { Strength, EvalMethod, NodeEventType } from "./types.js";
+import type { Context, RuleFunc, EvalOption, EvalResult, Specs, TraceEntry, RunResult } from "./types.js";
+import { Strength, EvalMethod } from "./types.js";
 import type { DefeatEdge } from "./defeat-edge.js";
 import type { RuleMeta } from "./rule-meta.js";
 import { Rule } from "./rule.js";
@@ -7,7 +7,6 @@ import { ruleID } from "./rule-id.js";
 import { shortName } from "./short-name.js";
 import { detectCycle } from "./detect-cycle.js";
 import { detectRunCycle } from "./detect-run-cycle.js";
-import { createRunView, buildAttackerEvents } from "./run-view.js";
 
 const runMaxDepth = 64;   // 깊이 백스톱 (모듈 스코프)
 
@@ -53,46 +52,45 @@ export class Graph {
     }
     const st = this._evaluate(ctx, opt, true);   // full pass
 
-    // 디스패치 전 1회 — 불변 스냅샷
-    const order: NodeEvent[] = [];
-    const byName = new Map<string, NodeEvent>();
+    // full pass 상태(active/verdictCache/evidence)와 메타(specs/qualifier/role)로
+    // 전 노드 TraceEntry[]를 등록 순서로 조립 (인덱스 i ↔ this.rules[i] 구조적 보장).
+    const trace: TraceEntry[] = [];
     for (const r of this.rules) {
-      const type = classifyEvent(st.active.get(r.name) ?? false, st.verdictCache.get(r.name) ?? 0);
-      const ne: NodeEvent = {
+      trace.push({
         name: shortName(r.name),
         role: this.roles.get(r.name) ?? "rule",
-        type,
+        activated: st.active.get(r.name) ?? false,
+        qualifier: r.qualifier,
         verdict: st.verdictCache.get(r.name) ?? 0,
         evidence: st.evidence.get(r.name),
-      };
-      order.push(ne);
-      byName.set(ne.name, ne);
+        ground: ctx,
+        specs: r.specs,
+      });
     }
-    const attackers = buildAttackerEvents(this.defeats, byName);
-    const view = createRunView(order, byName, attackers);
 
-    for (let i = 0; i < order.length; i++) {
-      const ne = order[i];
-      const meta = this.rules[i];          // 인덱스 대응 — shortName 매핑 불필요
-      // (a) leaf 핸들러
-      const h = selectHandler(meta, ne.type);
-      if (h) {
+    for (let i = 0; i < trace.length; i++) {
+      const self = trace[i];
+      const meta = this.rules[i];          // 인덱스 대응
+      // Active = activated && verdict > 0 인 노드만 발화/실행
+      if (!(self.activated && self.verdict > 0)) continue;
+      // (a) runOn 핸들러
+      if (meta.runOn) {
         try {
-          h(ctx, ne, view);
+          meta.runOn(ctx, self, trace);
         } catch (e) {
-          throw new Error(`handler "${shortName(meta.name)}" (${NodeEventType[ne.type]}): ${e}`);
+          throw new Error(`runOn "${self.name}": ${e}`);
         }
       }
       // (b) 실행 간선 — Active면 하위 그래프 Run (ctx 아래로, depth+1)
-      if (ne.type === NodeEventType.Active && meta.runGraph) {
+      if (meta.runGraph) {
         try {
           meta.runGraph._runDepth(ctx, opt, depth + 1);   // 같은 클래스 → private 접근 가능
         } catch (e) {
-          throw new Error(`run "${shortName(meta.name)}" → "${meta.runGraph.name}": ${e}`);
+          throw new Error(`run "${self.name}" → "${meta.runGraph.name}": ${e}`);
         }
       }
     }
-    return { results: st.results, view };
+    return { results: st.results, trace };
   }
 
   private _evaluate(ctx: Context, opt: { method: EvalMethod; trace: boolean; duration: boolean }, full: boolean): {
@@ -204,6 +202,7 @@ export class Graph {
           role: inferRole(id),
           activated: active.get(id) ?? false,
           qualifier: qualMap.get(id) ?? 1.0,
+          verdict: 0,                       // evaluate-trace path: verdict not assembled here (Go parity: zero-value)
           evidence: evidence.get(id),
           specs: specsMap.get(id),
           duration: elapsed,
@@ -263,19 +262,6 @@ export class Graph {
     }
 
     return { results, active, verdictCache, evidence };
-  }
-}
-
-function classifyEvent(active: boolean, verdict: number): NodeEventType {
-  if (!active) return NodeEventType.Inactive;
-  return verdict > 0 ? NodeEventType.Active : NodeEventType.Defeated;
-}
-
-function selectHandler(r: RuleMeta, t: NodeEventType): NodeHandler | undefined {
-  switch (t) {
-    case NodeEventType.Active: return r.onActive;
-    case NodeEventType.Defeated: return r.onDefeated;
-    default: return r.onInactive;
   }
 }
 

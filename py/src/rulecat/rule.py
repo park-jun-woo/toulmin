@@ -43,16 +43,8 @@ class Rule:
         self._graph.rules[self._idx].qualifier = q
         return self
 
-    def on_active(self, h: Any) -> Rule:
-        self._graph.rules[self._idx].on_active = h
-        return self
-
-    def on_defeated(self, h: Any) -> Rule:
-        self._graph.rules[self._idx].on_defeated = h
-        return self
-
-    def on_inactive(self, h: Any) -> Rule:
-        self._graph.rules[self._idx].on_inactive = h
+    def run_on(self, h: Any) -> "Rule":
+        self._graph.rules[self._idx].run_on = h
         return self
 
     def run(self, g: Any) -> "Rule":  # g: Graph — Active면 Run할 하위 그래프

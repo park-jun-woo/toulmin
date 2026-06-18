@@ -9,7 +9,7 @@ func TestRunComposeBasic(t *testing.T) {
 	subRule := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 
 	sub := NewGraph("sub")
-	sub.Rule(subRule).OnActive(func(ctx Context, ev NodeEvent, view RunView) error {
+	sub.Rule(subRule).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
 		ctx.Set("sub-ran", true)
 		return nil
 	})

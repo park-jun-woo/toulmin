@@ -6,13 +6,13 @@ import "testing"
 
 func TestRunEvaluatePure(t *testing.T) {
 	fired := false
-	mark := func(ctx Context, ev NodeEvent, view RunView) error {
+	mark := func(ctx Context, self TraceEntry, trace []TraceEntry) error {
 		fired = true
 		return nil
 	}
 	g := NewGraph("test")
-	g.Rule(WarrantA).OnActive(mark).OnDefeated(mark).OnInactive(mark)
-	g.Counter(RebuttalB).OnActive(mark).OnDefeated(mark).OnInactive(mark)
+	g.Rule(WarrantA).RunOn(mark)
+	g.Counter(RebuttalB).RunOn(mark)
 
 	r1, err1 := g.Evaluate(NewContext())
 	if err1 != nil {

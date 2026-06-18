@@ -17,14 +17,14 @@ func TestRunFillPanic(t *testing.T) {
 	c := g.Counter(panicCounter)
 	c.Attacks(w)
 
-	results, view, err := g.Run(NewContext())
+	results, trace, err := g.Run(NewContext())
 	if err == nil {
 		t.Fatal("expected error from node panicking during the full pass")
 	}
 	if !strings.Contains(err.Error(), "panicked") {
 		t.Errorf("expected panic error, got: %v", err)
 	}
-	if results != nil || view != nil {
-		t.Errorf("on full-pass error Run must return nil results and nil view, got results=%v view=%v", results, view)
+	if results != nil || trace != nil {
+		t.Errorf("on full-pass error Run must return nil results and nil trace, got results=%v trace=%v", results, trace)
 	}
 }

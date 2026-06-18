@@ -11,7 +11,7 @@ import (
 func TestRunComposeErrorPropagation(t *testing.T) {
 	subRule := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 	sub := NewGraph("sub")
-	sub.Rule(subRule).OnActive(func(ctx Context, ev NodeEvent, view RunView) error {
+	sub.Rule(subRule).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
 		return fmt.Errorf("sub boom")
 	})
 
@@ -19,7 +19,7 @@ func TestRunComposeErrorPropagation(t *testing.T) {
 	parent := NewGraph("parent")
 	parent.Rule(active).Run(sub)
 
-	results, view, err := parent.Run(NewContext())
+	results, trace, err := parent.Run(NewContext())
 	if err == nil {
 		t.Fatal("expected sub-graph error to propagate")
 	}
@@ -29,7 +29,7 @@ func TestRunComposeErrorPropagation(t *testing.T) {
 	if !strings.Contains(err.Error(), "sub boom") {
 		t.Errorf("error should wrap the underlying cause: %v", err)
 	}
-	if results == nil || view == nil {
-		t.Error("on sub-Run error the parent must still return its pre-dispatch results and view")
+	if results == nil || trace == nil {
+		t.Error("on sub-Run error the parent must still return its pre-dispatch results and trace")
 	}
 }

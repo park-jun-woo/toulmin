@@ -8,7 +8,7 @@ func TestRunComposeDiamond(t *testing.T) {
 	subRuns := 0
 	subRule := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 	shared := NewGraph("shared")
-	shared.Rule(subRule).OnActive(func(ctx Context, ev NodeEvent, view RunView) error {
+	shared.Rule(subRule).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
 		subRuns++
 		return nil
 	})

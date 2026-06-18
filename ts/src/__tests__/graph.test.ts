@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { Graph } from "../graph.js";
 import { newContext } from "../map-context.js";
-import { NodeEventType, type RuleFunc, type Context, type NodeEvent, type RunView } from "../types.js";
+import { type RuleFunc, type Context, type TraceEntry } from "../types.js";
 
 // Access-control graph used across several run() cases:
 //   authenticate (rule)               — user present
 //   blockIP      (counter → auth)     — request blocked
 //   exemptInternalIP (except → block) — internal network
-function buildAccessControl(fired: NodeEvent[]) {
+function buildAccessControl(fired: TraceEntry[]) {
   const authenticate: RuleFunc = (ctx) => [ctx.get("user") != null, null];
   const blockIP: RuleFunc = (ctx) => [ctx.get("blocked") === true, null];
   const exemptInternalIP: RuleFunc = (ctx) => [ctx.get("internal") === true, null];
@@ -19,18 +19,18 @@ function buildAccessControl(fired: NodeEvent[]) {
   block.attacks(auth);
   exempt.attacks(block);
 
-  const record = (_ctx: Context, ev: NodeEvent, _view: RunView) => { fired.push(ev); };
-  auth.onActive(record).onDefeated(record).onInactive(record);
-  block.onActive(record).onDefeated(record).onInactive(record);
-  exempt.onActive(record).onDefeated(record).onInactive(record);
+  const record = (_ctx: Context, self: TraceEntry, _trace: TraceEntry[]) => { fired.push(self); };
+  auth.runOn(record);
+  block.runOn(record);
+  exempt.runOn(record);
 
   return g;
 }
 
-function byPrefix(fired: NodeEvent[], prefix: string): NodeEvent {
-  const ev = fired.find(e => e.name.startsWith(prefix));
-  if (!ev) throw new Error(`no event for ${prefix}`);
-  return ev;
+function byPrefix(entries: TraceEntry[], prefix: string): TraceEntry {
+  const e = entries.find(t => t.name.startsWith(prefix));
+  if (!e) throw new Error(`no entry for ${prefix}`);
+  return e;
 }
 
 describe("Graph.run", () => {
@@ -40,69 +40,86 @@ describe("Graph.run", () => {
     expect(() => g.run(null as unknown as Context)).toThrow("ctx");
   });
 
-  it("external blocked IP: block Active, auth Defeated (verdict 0), exempt Inactive", () => {
-    const fired: NodeEvent[] = [];
+  it("external blocked IP: only block fires (Active); auth Defeated, exempt Inactive", () => {
+    const fired: TraceEntry[] = [];
     const g = buildAccessControl(fired);
     const ctx = newContext();
     ctx.set("user", "alice");
     ctx.set("blocked", true);
     ctx.set("internal", false);
 
-    const { view } = g.run(ctx);
+    const { trace } = g.run(ctx);
 
-    // classifyEvent: Active (verdict > 0), Defeated (verdict <= 0), Inactive
-    expect(byPrefix(fired, "blockIP").type).toBe(NodeEventType.Active);
+    // Only the Active node (activated && verdict>0) fires.
+    expect(fired.map(e => e.name.replace(/_\d+$/, ""))).toEqual(["blockIP"]);
     expect(byPrefix(fired, "blockIP").verdict).toBeGreaterThan(0);
-    expect(byPrefix(fired, "authenticate").type).toBe(NodeEventType.Defeated);
-    expect(byPrefix(fired, "authenticate").verdict).toBe(0);
-    expect(byPrefix(fired, "exemptInternalIP").type).toBe(NodeEventType.Inactive);
+
+    // trace carries the full picture: auth defeated (verdict 0), exempt inactive.
+    expect(byPrefix(trace, "authenticate").verdict).toBe(0);
+    expect(byPrefix(trace, "authenticate").activated).toBe(true);
+    expect(byPrefix(trace, "exemptInternalIP").activated).toBe(false);
 
     // roles carried through
-    expect(byPrefix(fired, "authenticate").role).toBe("rule");
-    expect(byPrefix(fired, "blockIP").role).toBe("counter");
-    expect(byPrefix(fired, "exemptInternalIP").role).toBe("except");
+    expect(byPrefix(trace, "authenticate").role).toBe("rule");
+    expect(byPrefix(trace, "blockIP").role).toBe("counter");
+    expect(byPrefix(trace, "exemptInternalIP").role).toBe("except");
 
-    // view snapshot is queryable post-hoc
-    expect(view.all()).toHaveLength(3);
+    // trace snapshot is queryable post-hoc
+    expect(trace).toHaveLength(3);
   });
 
-  it("internal network: exempt Active, block Defeated, auth Active", () => {
-    const fired: NodeEvent[] = [];
+  it("internal network: exempt Active + auth Active fire; block Defeated does not", () => {
+    const fired: TraceEntry[] = [];
     const g = buildAccessControl(fired);
     const ctx = newContext();
     ctx.set("user", "alice");
     ctx.set("blocked", true);
     ctx.set("internal", true);
 
-    g.run(ctx);
+    const { trace } = g.run(ctx);
 
-    expect(byPrefix(fired, "exemptInternalIP").type).toBe(NodeEventType.Active);
-    expect(byPrefix(fired, "blockIP").type).toBe(NodeEventType.Defeated);
-    expect(byPrefix(fired, "authenticate").type).toBe(NodeEventType.Active);
+    // exempt and auth are Active; block is Defeated (verdict 0) → no fire.
+    expect(fired.map(e => e.name.replace(/_\d+$/, "")).sort()).toEqual(["authenticate", "exemptInternalIP"]);
+    expect(byPrefix(trace, "exemptInternalIP").verdict).toBeGreaterThan(0);
+    expect(byPrefix(trace, "blockIP").verdict).toBe(0);
+    expect(byPrefix(trace, "authenticate").verdict).toBeGreaterThan(0);
   });
 
-  it("skips nodes with no handler registered for the fired event type", () => {
-    const fired: NodeEvent[] = [];
-    const onlyInactive: RuleFunc = () => [true, null]; // Active, but only onInactive registered
-    const g = new Graph("no-handler");
-    const r = g.rule(onlyInactive);
-    r.onInactive((_c, ev) => fired.push(ev)); // no onActive → selectHandler returns undefined
+  it("only Active nodes fire — a Defeated node's handler is skipped", () => {
+    const fired: TraceEntry[] = [];
+    const warrant: RuleFunc = () => [true, null];
+    const counter: RuleFunc = () => [true, null];
+    const g = new Graph("defeated-skip");
+    const w = g.rule(warrant);
+    const c = g.counter(counter);
+    c.attacks(w);
+    w.runOn((_c, self) => fired.push(self)); // w is Defeated (verdict 0) → must NOT fire
 
     expect(() => g.run(newContext())).not.toThrow();
-    expect(fired).toHaveLength(0); // handler skipped (!h continue)
+    expect(fired).toHaveLength(0);
   });
 
-  it("wraps a throwing handler with node name and event-type context", () => {
+  it("an Inactive node's handler is skipped", () => {
+    const fired: TraceEntry[] = [];
+    const inactive: RuleFunc = () => [false, null];
+    const g = new Graph("inactive-skip");
+    g.rule(inactive).runOn((_c, self) => fired.push(self));
+
+    expect(() => g.run(newContext())).not.toThrow();
+    expect(fired).toHaveLength(0);
+  });
+
+  it("wraps a throwing handler with node name context", () => {
     const g = new Graph("throw");
-    g.rule(() => [true, null]).onActive(() => { throw new Error("boom"); });
+    g.rule(() => [true, null]).runOn(() => { throw new Error("boom"); });
     const ctx = newContext();
 
     expect(() => g.run(ctx)).toThrow("boom");
-    expect(() => g.run(ctx)).toThrow("Active");
+    expect(() => g.run(ctx)).toThrow("runOn");
   });
 
-  it("forces trace/duration off (each node fires exactly once)", () => {
-    const fired: NodeEvent[] = [];
+  it("forces trace/duration off (each Active node fires exactly once)", () => {
+    const fired: TraceEntry[] = [];
     const g = buildAccessControl(fired);
     const ctx = newContext();
     ctx.set("user", "alice");
@@ -110,7 +127,8 @@ describe("Graph.run", () => {
     ctx.set("internal", true);
 
     g.run(ctx, { trace: true, duration: true });
-    expect(fired).toHaveLength(3);
+    // exempt + auth Active → 2 fires (block Defeated).
+    expect(fired).toHaveLength(2);
   });
 
   it("propagates a cycle error from evaluation", () => {
@@ -122,30 +140,46 @@ describe("Graph.run", () => {
     expect(() => g.run(newContext())).toThrow("cycle");
   });
 
-  it("diamond: two counters attack one warrant (accumulating defeat edges per target)", () => {
-    const fired: NodeEvent[] = [];
-    const w = (() => [true, null]) as RuleFunc;
-    const r1 = (() => [true, null]) as RuleFunc;
-    const r2 = (() => [true, null]) as RuleFunc;
-    const g = new Graph("diamond");
-    const ww = g.rule(w);
-    const cc1 = g.counter(r1);
-    const cc2 = g.counter(r2);
-    cc1.attacks(ww);
-    cc2.attacks(ww); // second edge to the same target → edges.get(to) ?? [] left branch
-    ww.onDefeated((_c, ev, view) => {
-      fired.push(ev);
-      expect(view.attackers(ev.name)).toHaveLength(2);
+  it("handler sees the full trace, in registration order", () => {
+    const seen: string[][] = [];
+    const fired: TraceEntry[] = [];
+    const g = new Graph("trace-all");
+    g.rule(() => [true, null]).runOn((_c, _self, trace) => {
+      seen.push(trace.map(e => e.name.replace(/_\d+$/, "")));
+      fired.push(_self);
+    });
+    g.rule(() => [true, null]).runOn((_c, _self, trace) => {
+      seen.push(trace.map(e => e.name.replace(/_\d+$/, "")));
     });
 
     g.run(newContext());
     expect(fired).toHaveLength(1);
   });
+
+  it("gradient branch via self.verdict", () => {
+    let branch = "";
+    const g = new Graph("gradient");
+    g.rule(() => [true, null]).qualifier(0.75).runOn((_c, self) => {
+      branch = self.verdict >= 0.5 ? "strong" : "weak";
+    });
+    g.run(newContext());
+    // qualifier 0.75, unattacked → verdict 2*0.75-1 = 0.5 → strong
+    expect(branch).toBe("strong");
+  });
+
+  it("gradient branch — below threshold reads weak verdict", () => {
+    let captured = 1;
+    const g = new Graph("gradient-weak");
+    g.rule(() => [true, null]).qualifier(0.6).runOn((_c, self) => { captured = self.verdict; });
+    g.run(newContext());
+    // qualifier 0.6, unattacked → verdict 2*0.6-1 = 0.2 (< 0.5)
+    expect(captured).toBeLessThan(0.5);
+  });
 });
 
 describe("Graph.evaluate (pure)", () => {
   it("returns results without firing handlers", () => {
-    const fired: NodeEvent[] = [];
+    const fired: TraceEntry[] = [];
     const g = buildAccessControl(fired);
     const ctx = newContext();
     ctx.set("user", "alice");
@@ -161,12 +195,43 @@ describe("Graph.evaluate (pure)", () => {
   });
 });
 
+describe("Graph.run — trace", () => {
+  it("trace is one entry per registered rule, in registration order", () => {
+    const g = new Graph("order");
+    g.rule(() => [true, null]);
+    g.rule(() => [true, null]);
+    g.rule(() => [true, null]);
+
+    const { trace } = g.run(newContext());
+    expect(trace).toHaveLength(3);
+  });
+
+  it("trace verdict matches the evaluation result; ground is the ctx as-is", () => {
+    const g = new Graph("trace-verdict");
+    const w = g.rule(() => [true, null]);
+    const r = g.counter(() => [false, null]);
+    r.attacks(w);
+
+    const ctx = newContext();
+    ctx.set("k", "v");
+    const { results, trace } = g.run(ctx);
+
+    expect(byPrefix(trace, "")).toBeDefined();
+    expect(trace[0].verdict).toBe(results[0].verdict);
+    expect(trace[1].activated).toBe(false);
+    expect(trace[1].verdict).toBe(0);
+    // Ground is the ctx as-is, same reference for every entry.
+    expect(trace[0].ground).toBe(ctx);
+    expect(trace[1].ground).toBe(ctx);
+  });
+});
+
 describe("Graph.run — composition (_runDepth recursion)", () => {
   const always: RuleFunc = () => [true, null];
 
   it("Active node recurses into its runGraph (ctx flows down, depth+1)", () => {
     const sub = new Graph("sub");
-    sub.rule(always).onActive((ctx) => { ctx.set("subRan", true); });
+    sub.rule(always).runOn((ctx) => { ctx.set("subRan", true); });
 
     const parent = new Graph("parent");
     parent.rule(always).run(sub); // Active → recurse
@@ -178,7 +243,7 @@ describe("Graph.run — composition (_runDepth recursion)", () => {
 
   it("non-Active node does NOT recurse into its runGraph", () => {
     const sub = new Graph("sub-skip");
-    sub.rule(always).onActive((ctx) => { ctx.set("subRan", true); });
+    sub.rule(always).runOn((ctx) => { ctx.set("subRan", true); });
 
     const parent = new Graph("parent-skip");
     parent.rule(() => [false, null]).run(sub); // Inactive → no recurse
@@ -194,9 +259,21 @@ describe("Graph.run — composition (_runDepth recursion)", () => {
     expect(() => g.run(newContext())).not.toThrow();
   });
 
+  it("runOn fires before the sub-graph Run", () => {
+    const log: string[] = [];
+    const sub = new Graph("sub-order");
+    sub.rule(always).runOn(() => { log.push("sub"); });
+
+    const parent = new Graph("parent-order");
+    parent.rule(always).runOn(() => { log.push("handler"); }).run(sub);
+
+    parent.run(newContext());
+    expect(log).toEqual(["handler", "sub"]);
+  });
+
   it("wraps a sub-graph Run error with run \"parent\" → \"sub\" context", () => {
     const sub = new Graph("sub-boom");
-    sub.rule(always).onActive(() => { throw new Error("kaboom"); });
+    sub.rule(always).runOn(() => { throw new Error("kaboom"); });
 
     const parent = new Graph("parent-boom");
     parent.rule(always).run(sub);

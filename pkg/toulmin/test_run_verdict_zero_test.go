@@ -1,29 +1,38 @@
 //ff:func feature=engine type=engine control=sequence
-//ff:what TestRunVerdictZero — verdict == 0 classifies the node as Defeated
+//ff:what TestRunVerdictZero — verdict == 0 is Defeated, so RunOn never fires
 package toulmin
 
 import "testing"
 
 func TestRunVerdictZero(t *testing.T) {
-	var gotType NodeEventType
-	var gotVerdict float64
-	rec := func(ctx Context, ev NodeEvent, view RunView) error {
-		gotType = ev.Type
-		gotVerdict = ev.Verdict
+	fired := false
+	rec := func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+		fired = true
 		return nil
 	}
 	g := NewGraph("zero")
-	w := g.Rule(WarrantA).OnActive(rec).OnDefeated(rec).OnInactive(rec)
+	w := g.Rule(WarrantA).RunOn(rec)
 	r := g.Counter(RebuttalB)
 	r.Attacks(w)
 
-	if _, _, err := g.Run(NewContext()); err != nil {
+	_, trace, err := g.Run(NewContext())
+	if err != nil {
 		t.Fatalf("run error: %v", err)
 	}
-	if gotVerdict != 0.0 {
-		t.Fatalf("expected verdict 0.0, got %f", gotVerdict)
+	if fired {
+		t.Error("verdict 0 (Defeated) must not fire RunOn")
 	}
-	if gotType != Defeated {
-		t.Errorf("verdict 0 want Defeated, got %v", gotType)
+	// trace still records WarrantA with verdict 0.0 (balanced).
+	var got *TraceEntry
+	for i := range trace {
+		if trace[i].Name == "WarrantA" {
+			got = &trace[i]
+		}
+	}
+	if got == nil {
+		t.Fatal("WarrantA missing from trace")
+	}
+	if got.Verdict != 0.0 {
+		t.Errorf("expected verdict 0.0, got %f", got.Verdict)
 	}
 }

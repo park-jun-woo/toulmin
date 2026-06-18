@@ -21,12 +21,12 @@ func TestGraphRunDepth(t *testing.T) {
 	t.Run("depthGuard", func(t *testing.T) {
 		g := NewGraph("deep")
 		g.Rule(active)
-		results, view, err := g.runDepth(NewContext(), EvalOption{}, runMaxDepth+1)
+		results, trace, err := g.runDepth(NewContext(), EvalOption{}, runMaxDepth+1)
 		if err == nil || !strings.Contains(err.Error(), "depth exceeded") {
-			t.Fatalf("expected depth exceeded error, got results=%v view=%v err=%v", results, view, err)
+			t.Fatalf("expected depth exceeded error, got results=%v trace=%v err=%v", results, trace, err)
 		}
-		if results != nil || view != nil {
-			t.Errorf("depth guard must return nil results/view, got %v %v", results, view)
+		if results != nil || trace != nil {
+			t.Errorf("depth guard must return nil results/trace, got %v %v", results, trace)
 		}
 	})
 
@@ -37,44 +37,44 @@ func TestGraphRunDepth(t *testing.T) {
 		b := g.Counter(active2)
 		a.Attacks(b)
 		b.Attacks(a)
-		results, view, err := g.runDepth(NewContext(), EvalOption{}, 0)
+		results, trace, err := g.runDepth(NewContext(), EvalOption{}, 0)
 		if err == nil {
 			t.Fatal("expected evaluate error from circular defeat graph")
 		}
-		if results != nil || view != nil {
-			t.Errorf("evaluate error must return nil results/view, got %v %v", results, view)
+		if results != nil || trace != nil {
+			t.Errorf("evaluate error must return nil results/trace, got %v %v", results, trace)
 		}
 	})
 
 	// (3) handler error: a node's handler returns an error; Run stops and wraps it.
 	t.Run("handlerError", func(t *testing.T) {
 		g := NewGraph("handler")
-		g.Rule(active).OnActive(func(ctx Context, ev NodeEvent, view RunView) error {
+		g.Rule(active).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
 			return fmt.Errorf("boom")
 		})
-		results, view, err := g.runDepth(NewContext(), EvalOption{}, 0)
+		results, trace, err := g.runDepth(NewContext(), EvalOption{}, 0)
 		if err == nil || !strings.Contains(err.Error(), "boom") {
 			t.Fatalf("expected wrapped handler error, got %v", err)
 		}
-		if results == nil || view == nil {
-			t.Error("handler error must still return pre-dispatch results and view")
+		if results == nil || trace == nil {
+			t.Error("handler error must still return pre-dispatch results and trace")
 		}
 	})
 
 	// (4) sub-Run error: an Active node Runs a sub-graph whose handler errors.
 	t.Run("subRunError", func(t *testing.T) {
 		sub := NewGraph("sub")
-		sub.Rule(active).OnActive(func(ctx Context, ev NodeEvent, view RunView) error {
+		sub.Rule(active).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
 			return fmt.Errorf("sub boom")
 		})
 		parent := NewGraph("parent")
 		parent.Rule(active).Run(sub)
-		results, view, err := parent.runDepth(NewContext(), EvalOption{}, 0)
+		results, trace, err := parent.runDepth(NewContext(), EvalOption{}, 0)
 		if err == nil || !strings.Contains(err.Error(), "run ") || !strings.Contains(err.Error(), "→") {
 			t.Fatalf("expected wrapped sub-Run error, got %v", err)
 		}
-		if results == nil || view == nil {
-			t.Error("sub-Run error must still return pre-dispatch results and view")
+		if results == nil || trace == nil {
+			t.Error("sub-Run error must still return pre-dispatch results and trace")
 		}
 	})
 
@@ -83,19 +83,19 @@ func TestGraphRunDepth(t *testing.T) {
 	t.Run("recurseAndLeaf", func(t *testing.T) {
 		subRuns := 0
 		sub := NewGraph("sub")
-		sub.Rule(active).OnActive(func(ctx Context, ev NodeEvent, view RunView) error {
+		sub.Rule(active).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
 			subRuns++
 			return nil
 		})
 		parent := NewGraph("parent")
 		parent.Rule(active).Run(sub) // Active + RunGraph -> recursion
 		parent.Rule(active2)         // no handler, no RunGraph -> leaf fall-through
-		results, view, err := parent.runDepth(NewContext(), EvalOption{}, 0)
+		results, trace, err := parent.runDepth(NewContext(), EvalOption{}, 0)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if results == nil || view == nil {
-			t.Error("success path must return results and view")
+		if results == nil || trace == nil {
+			t.Error("success path must return results and trace")
 		}
 		if subRuns != 1 {
 			t.Errorf("sub-graph should Run once, got %d", subRuns)

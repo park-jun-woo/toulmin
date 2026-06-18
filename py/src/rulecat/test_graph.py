@@ -1,39 +1,8 @@
 import unittest
 
-from rulecat import Graph, MapContext, NodeEventType
-from rulecat.graph import _classify_event, _select_handler, run_max_depth
-from rulecat.rule_meta import RuleMeta
+from rulecat import Graph, MapContext
+from rulecat.graph import run_max_depth
 from rulecat.types import EvalOption
-
-
-class ClassifyEventTest(unittest.TestCase):
-    def test_inactive(self):
-        self.assertEqual(_classify_event(False, 1.0), NodeEventType.INACTIVE)
-        self.assertEqual(_classify_event(False, -1.0), NodeEventType.INACTIVE)
-
-    def test_active_when_verdict_positive(self):
-        self.assertEqual(_classify_event(True, 0.5), NodeEventType.ACTIVE)
-
-    def test_defeated_when_verdict_not_positive(self):
-        self.assertEqual(_classify_event(True, 0.0), NodeEventType.DEFEATED)
-        self.assertEqual(_classify_event(True, -0.5), NodeEventType.DEFEATED)
-
-
-class SelectHandlerTest(unittest.TestCase):
-    def _meta(self):
-        return RuleMeta(
-            name="r", qualifier=1.0, strength=0,
-            on_active="A", on_defeated="D", on_inactive="I",
-        )
-
-    def test_active(self):
-        self.assertEqual(_select_handler(self._meta(), NodeEventType.ACTIVE), "A")
-
-    def test_defeated(self):
-        self.assertEqual(_select_handler(self._meta(), NodeEventType.DEFEATED), "D")
-
-    def test_inactive(self):
-        self.assertEqual(_select_handler(self._meta(), NodeEventType.INACTIVE), "I")
 
 
 class RunTest(unittest.TestCase):
@@ -47,32 +16,63 @@ class RunTest(unittest.TestCase):
         g = Graph("t")
         seen = []
         a = g.rule(lambda ctx, specs: (True, None))
-        a.on_active(lambda ctx, ev, view: seen.append(ev.type))
-        # rule without any handler -> _select_handler returns None -> continue
+        a.run_on(lambda ctx, self_, trace: seen.append(self_.verdict))
+        # rule without any handler -> run_on is None -> skipped
         g.rule(lambda ctx, specs: (True, None))
         res = g.run(MapContext())
-        self.assertEqual(seen, [NodeEventType.ACTIVE])
-        self.assertEqual(len(res.view.all()), 2)
+        self.assertEqual(len(seen), 1)
+        self.assertGreater(seen[0], 0)
+        self.assertEqual(len(res.trace), 2)
 
     def test_handler_exception_wrapped_with_cause(self):
         g = Graph("t")
         cause = RuntimeError("boom")
 
-        def bad(ctx, ev, view):
+        def bad(ctx, self_, trace):
             raise cause
 
-        g.rule(lambda ctx, specs: (True, None)).on_active(bad)
+        g.rule(lambda ctx, specs: (True, None)).run_on(bad)
         with self.assertRaises(RuntimeError) as cm:
             g.run(MapContext())
         self.assertIs(cm.exception.__cause__, cause)
         self.assertIn("boom", str(cm.exception))
-        self.assertIn("ACTIVE", str(cm.exception))
+        self.assertIn("run_on", str(cm.exception))
+
+    def test_only_active_node_fires(self):
+        # warrant attacked by an active counter -> warrant verdict 0.0 (defeated),
+        # so only the counter (active, verdict>0) fires.
+        g = Graph("t")
+        fired = []
+        w = g.rule(lambda ctx, specs: (True, None))
+        c = g.counter(lambda ctx, specs: (True, None))
+        c.attacks(w)
+        w.run_on(lambda ctx, self_, trace: fired.append(("w", self_.verdict)))
+        c.run_on(lambda ctx, self_, trace: fired.append(("c", self_.verdict)))
+        g.run(MapContext())
+        self.assertEqual([name for name, _ in fired], ["c"])
+
+    def test_trace_exposes_verdict_for_other_nodes(self):
+        # gradient/verdict query from a handler via the trace list.
+        g = Graph("t")
+        from rulecat.short_name import short_name
+        branch = []
+        w = g.rule(lambda ctx, specs: (True, None))
+        c = g.counter(lambda ctx, specs: (True, None))
+        c.attacks(w)
+        w_name = short_name(w.id)
+
+        def h(ctx, self_, trace):
+            node = next((e for e in trace if e.name == w_name), None)
+            branch.append("hard" if (node and node.verdict >= 0.5) else "soft")
+
+        c.run_on(h)
+        g.run(MapContext())
+        # warrant attacked -> verdict 0.0 -> soft
+        self.assertEqual(branch, ["soft"])
 
 
 class RunCycleTest(unittest.TestCase):
     def test_run_raises_on_run_cycle(self):
-        # Graph.run calls detect_run_cycle once at the top; a self-cycle makes
-        # it return an error -> the `if err is not None: raise` branch.
         def a_rule(ctx, specs):
             return (True, None)
 
@@ -85,7 +85,6 @@ class RunCycleTest(unittest.TestCase):
 
 class RunDepthTest(unittest.TestCase):
     def test_depth_guard_raises(self):
-        # Direct call past the backstop -> depth-guard raise branch.
         g = Graph("deep")
         g.rule(lambda ctx, specs: (True, None))
         opt = EvalOption(method=0, trace=False, duration=False)
@@ -94,7 +93,6 @@ class RunDepthTest(unittest.TestCase):
         self.assertIn("depth exceeded", str(cm.exception))
 
     def test_active_node_runs_sub_graph(self):
-        # ACTIVE node with run_graph -> recurse into sub (ctx side effect).
         def parent_rule(ctx, specs):
             return (True, None)
 
@@ -102,7 +100,7 @@ class RunDepthTest(unittest.TestCase):
             return (True, None)
 
         sub = Graph("sub-run")
-        sub.rule(sub_rule).on_active(lambda ctx, ev, view: ctx.set("ran", True))
+        sub.rule(sub_rule).run_on(lambda ctx, self_, trace: ctx.set("ran", True))
 
         parent = Graph("parent-run")
         parent.rule(parent_rule).run(sub)
@@ -112,7 +110,6 @@ class RunDepthTest(unittest.TestCase):
         self.assertTrue(ctx.get("ran"))
 
     def test_inactive_node_with_run_graph_skips_sub(self):
-        # run_graph set but node not ACTIVE -> the recurse branch is skipped.
         def parent_rule(ctx, specs):
             return (False, None)
 
@@ -120,7 +117,7 @@ class RunDepthTest(unittest.TestCase):
             return (True, None)
 
         sub = Graph("sub-skip")
-        sub.rule(sub_rule).on_active(lambda ctx, ev, view: ctx.set("ran", True))
+        sub.rule(sub_rule).run_on(lambda ctx, self_, trace: ctx.set("ran", True))
 
         parent = Graph("parent-skip")
         parent.rule(parent_rule).run(sub)
@@ -130,7 +127,6 @@ class RunDepthTest(unittest.TestCase):
         self.assertIsNone(ctx.get("ran"))
 
     def test_sub_run_error_is_wrapped(self):
-        # Error raised inside the sub-run gets wrapped as `run "..." -> "..."`.
         cause = RuntimeError("boom")
 
         def parent_rule(ctx, specs):
@@ -139,11 +135,11 @@ class RunDepthTest(unittest.TestCase):
         def sub_rule(ctx, specs):
             return (True, None)
 
-        def bad(ctx, ev, view):
+        def bad(ctx, self_, trace):
             raise cause
 
         sub = Graph("sub-err")
-        sub.rule(sub_rule).on_active(bad)
+        sub.rule(sub_rule).run_on(bad)
 
         parent = Graph("parent-err")
         parent.rule(parent_rule).run(sub)
@@ -163,9 +159,6 @@ class EvaluateInternalTest(unittest.TestCase):
             g.evaluate(None)
 
     def test_duplicate_target_and_attackers(self):
-        # Two counters attack the same warrant: the edges dict sees the target
-        # missing (True branch) then present (False branch), and the attacker
-        # set is built from a non-empty attacker list.
         g = Graph("t")
         w = g.rule(lambda ctx, specs: (True, None))
         c1 = g.counter(lambda ctx, specs: (True, None))

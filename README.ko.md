@@ -1,5 +1,8 @@
 # toulmin
 
+[![version](https://img.shields.io/badge/version-0.3.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
+
 **if-else를 그만 중첩하라. 규칙을 선언하고, 관계를 선언하라.**
 
 TypeScript, Python, Go 룰 엔진. 규칙은 함수다. 예외는 그래프 엣지다. DSL 없음. 사이드카 없음. 새 언어 없음.
@@ -212,31 +215,26 @@ for _, t := range results[0].Trace {
 ## Run
 
 `Evaluate`는 판정하고 반환만 한다 — 순수하고 멱등하다. `Run`은 먼저 판정한 뒤 **행동한다**:
-전체 패스를 수행하고, 각 노드의 결과에 따라 정확히 하나의 핸들러를 발화한다.
-
-| 이벤트 | 조건 | 의미 |
-|---|---|---|
-| `Active` | func true && verdict > 0 | 적용되어 우세 |
-| `Defeated` | func true && verdict <= 0 | 적용됐으나 패배 |
-| `Inactive` | func false | 규칙 미적용 |
+전체 패스를 수행하고, **Active** 노드마다 핸들러를 하나 발화한다. 노드는 규칙이 적용되고
+**우세**할 때(`activated && verdict > 0`) Active이며, 이벤트는 이 하나뿐이다. 다른 노드의
+결과가 궁금하면 반환된 `trace`를 읽는다: `verdict > 0` 우세, `verdict <= 0` 패배,
+`activated == false` 미적용.
 
 ```go
 g.Rule(isAuthenticated).
-    OnActive(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error {
-        return audit(ev)          // 적용되어 우세
-    }).
-    OnDefeated(func(ctx toulmin.Context, ev toulmin.NodeEvent, view toulmin.RunView) error {
-        return deny(ev)           // 적용됐으나 패배
+    RunOn(func(ctx toulmin.Context, self toulmin.TraceEntry, trace []toulmin.TraceEntry) error {
+        return audit(self)        // 적용되어 우세
     })
 
-results, view, err := g.Run(ctx)  // []EvalResult, RunView, error
+results, trace, err := g.Run(ctx)  // []EvalResult, []TraceEntry, error
 ```
 
-핸들러는 등록 순서로 발화하며, 첫 핸들러 에러에서 `Run`이 멈춘다. 어떤 핸들러가 발화하기
-전에 `Run`은 모든 노드의 최종 이벤트를 담은 불변 스냅샷 **RunView**를 한 번 빌드해 모든
-핸들러에 전달하고(반환값으로도 돌려준다), 핸들러는 자신의 이벤트와 함께 `view.All()`,
-`view.Get(name)`, `view.Attackers(name)`로 그래프 전체의 최종 상태를 읽는다. `ctx`는 가변
-(부수효과)이고, `view`는 불변 판정 스냅샷이다.
+핸들러는 등록 순서로 발화하며, 첫 핸들러 에러에서 `Run`이 멈춘다. 핸들러는 `self`(발화한
+노드의 `TraceEntry`)와 `trace`(전 노드의 `TraceEntry`, 등록 순서)를 받는다. 각 `TraceEntry`는
+**Claim**(`Name`), **Ground**(`Ground` = ctx 그대로), **Backing**(`Specs`), **Verdict**를
+노출하므로 별도 뷰 없이 감사·설명·gradient 임계값 판정이 가능하다. 공격자 직접 조회 API는
+없다 — `trace[i].Verdict`로 추론한다. `ctx`는 가변(부수효과 전파)이고, trace가 판정 기록이다.
+trace를 JSON으로 내보낸다면 `ctx`(= `Ground`)에 직렬화 가능한 값만 담아야 한다.
 
 ### 실행 합성 (execution composition)
 
@@ -247,10 +245,10 @@ DAG여야 한다 — 사이클은 사전에 거부되고, 깊이는 64로 제한
 
 ```go
 order := g.Rule(orderPlaced)
-order.OnActive(logOrder).Run(notifyGraph)   // Active order → notify 그래프 Run
+order.RunOn(logOrder).Run(notifyGraph)   // Active order → notify 그래프 Run
 ```
 
-Run 핸들러 + RunView 계열은 Go, TypeScript, Python 포트 모두에서 제공된다.
+`RunOn` 핸들러 + `Run(g)` 실행 합성은 Go, TypeScript, Python 포트 모두에서 제공된다.
 
 ## 프레임워크 패키지
 
