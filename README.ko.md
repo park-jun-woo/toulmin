@@ -1,5 +1,9 @@
 # toulmin
 
+<p align="center">
+  <img src="images/toulmin.webp" alt="toulmin" width="100%">
+</p>
+
 [![version](https://img.shields.io/badge/version-0.3.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
 
