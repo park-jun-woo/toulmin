@@ -8,3 +8,4 @@ export { Rule } from "./rule.js";
 export { MapContext, newContext } from "./map-context.js";
 export { verdictAbove, verdictAtMost, verdictBetween, noResult } from "./expectations.js";
 export { detectCycle } from "./detect-cycle.js";
+export { detectRunCycle } from "./detect-run-cycle.js";

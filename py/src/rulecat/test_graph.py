@@ -1,8 +1,9 @@
 import unittest
 
 from rulecat import Graph, MapContext, NodeEventType
-from rulecat.graph import _classify_event, _select_handler
+from rulecat.graph import _classify_event, _select_handler, run_max_depth
 from rulecat.rule_meta import RuleMeta
+from rulecat.types import EvalOption
 
 
 class ClassifyEventTest(unittest.TestCase):
@@ -66,6 +67,92 @@ class RunTest(unittest.TestCase):
         self.assertIs(cm.exception.__cause__, cause)
         self.assertIn("boom", str(cm.exception))
         self.assertIn("ACTIVE", str(cm.exception))
+
+
+class RunCycleTest(unittest.TestCase):
+    def test_run_raises_on_run_cycle(self):
+        # Graph.run calls detect_run_cycle once at the top; a self-cycle makes
+        # it return an error -> the `if err is not None: raise` branch.
+        def a_rule(ctx, specs):
+            return (True, None)
+
+        g = Graph("cyc")
+        g.rule(a_rule).run(g)  # self run-cycle
+        with self.assertRaises(RuntimeError) as cm:
+            g.run(MapContext())
+        self.assertIn("run cycle", str(cm.exception))
+
+
+class RunDepthTest(unittest.TestCase):
+    def test_depth_guard_raises(self):
+        # Direct call past the backstop -> depth-guard raise branch.
+        g = Graph("deep")
+        g.rule(lambda ctx, specs: (True, None))
+        opt = EvalOption(method=0, trace=False, duration=False)
+        with self.assertRaises(RuntimeError) as cm:
+            g._run_depth(MapContext(), opt, run_max_depth + 1)
+        self.assertIn("depth exceeded", str(cm.exception))
+
+    def test_active_node_runs_sub_graph(self):
+        # ACTIVE node with run_graph -> recurse into sub (ctx side effect).
+        def parent_rule(ctx, specs):
+            return (True, None)
+
+        def sub_rule(ctx, specs):
+            return (True, None)
+
+        sub = Graph("sub-run")
+        sub.rule(sub_rule).on_active(lambda ctx, ev, view: ctx.set("ran", True))
+
+        parent = Graph("parent-run")
+        parent.rule(parent_rule).run(sub)
+
+        ctx = MapContext()
+        parent.run(ctx)
+        self.assertTrue(ctx.get("ran"))
+
+    def test_inactive_node_with_run_graph_skips_sub(self):
+        # run_graph set but node not ACTIVE -> the recurse branch is skipped.
+        def parent_rule(ctx, specs):
+            return (False, None)
+
+        def sub_rule(ctx, specs):
+            return (True, None)
+
+        sub = Graph("sub-skip")
+        sub.rule(sub_rule).on_active(lambda ctx, ev, view: ctx.set("ran", True))
+
+        parent = Graph("parent-skip")
+        parent.rule(parent_rule).run(sub)
+
+        ctx = MapContext()
+        parent.run(ctx)
+        self.assertIsNone(ctx.get("ran"))
+
+    def test_sub_run_error_is_wrapped(self):
+        # Error raised inside the sub-run gets wrapped as `run "..." -> "..."`.
+        cause = RuntimeError("boom")
+
+        def parent_rule(ctx, specs):
+            return (True, None)
+
+        def sub_rule(ctx, specs):
+            return (True, None)
+
+        def bad(ctx, ev, view):
+            raise cause
+
+        sub = Graph("sub-err")
+        sub.rule(sub_rule).on_active(bad)
+
+        parent = Graph("parent-err")
+        parent.rule(parent_rule).run(sub)
+
+        with self.assertRaises(RuntimeError) as cm:
+            parent.run(MapContext())
+        msg = str(cm.exception)
+        self.assertTrue(msg.startswith('run "'))
+        self.assertIn("sub-err", msg)
 
 
 class EvaluateInternalTest(unittest.TestCase):

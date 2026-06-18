@@ -12,7 +12,11 @@ from rulecat.rule import Rule
 from rulecat.rule_id import rule_id
 from rulecat.short_name import short_name
 from rulecat.detect_cycle import detect_cycle
+from rulecat.detect_run_cycle import detect_run_cycle
 from rulecat.run_view import _RunView, _build_attacker_events
+
+
+run_max_depth = 64  # 깊이 백스톱
 
 
 class Graph:
@@ -52,8 +56,19 @@ class Graph:
     def run(self, ctx: Context, option: EvalOption | None = None) -> RunResult:
         if ctx is None:
             raise ValueError("ctx must not be None")
+        err = detect_run_cycle(self)  # 최상위 1회
+        if err is not None:
+            raise RuntimeError(f"toulmin: {err}")
         opt = _resolve_option(option)
         opt = EvalOption(method=opt.method, trace=False, duration=False)  # 강제 off
+        return self._run_depth(ctx, opt, 0)
+
+    def _run_depth(self, ctx: Context, opt: EvalOption, depth: int) -> RunResult:
+        if depth > run_max_depth:
+            raise RuntimeError(
+                f"toulmin: run depth exceeded {run_max_depth} "
+                "(possible runaway composition)"
+            )
         results, active, verdict_cache, evidence = self._evaluate(ctx, opt, full=True)
 
         # 디스패치 전 1회 — 불변 스냅샷
@@ -77,15 +92,23 @@ class Graph:
 
         for i, ne in enumerate(order):
             meta = self.rules[i]            # 인덱스 대응 — short_name 매핑 불필요
+            # (a) leaf 핸들러
             h = _select_handler(meta, ne.type)
-            if h is None:
-                continue
-            try:
-                h(ctx, ne, view)
-            except Exception as e:
-                raise RuntimeError(
-                    f'handler "{ne.name}" ({ne.type.name}): {e}'
-                ) from e
+            if h is not None:
+                try:
+                    h(ctx, ne, view)
+                except Exception as e:
+                    raise RuntimeError(
+                        f'handler "{ne.name}" ({ne.type.name}): {e}'
+                    ) from e
+            # (b) 실행 간선 — Active면 하위 그래프 Run (ctx 아래로, depth+1)
+            if ne.type == NodeEventType.ACTIVE and meta.run_graph is not None:
+                try:
+                    meta.run_graph._run_depth(ctx, opt, depth + 1)
+                except Exception as e:
+                    raise RuntimeError(
+                        f'run "{ne.name}" → "{meta.run_graph.name}": {e}'
+                    ) from e
         return RunResult(results=results, view=view)
 
     def _evaluate(

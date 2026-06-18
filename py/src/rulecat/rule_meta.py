@@ -14,3 +14,4 @@ class RuleMeta:
     on_active: Any = None     # NodeHandler | None
     on_defeated: Any = None
     on_inactive: Any = None
+    run_graph: Any = None     # "Graph | None" — Active면 Run할 하위 그래프 (순환 import 회피로 Any)

@@ -250,8 +250,7 @@ order := g.Rule(orderPlaced)
 order.OnActive(logOrder).Run(notifyGraph)   // Active order → notify 그래프 Run
 ```
 
-Run 핸들러 + RunView 계열은 Go, TypeScript, Python 포트 모두에서 제공된다. 실행
-합성(`rule.Run(g)`)은 현재 Go 전용이다.
+Run 핸들러 + RunView 계열은 Go, TypeScript, Python 포트 모두에서 제공된다.
 
 ## 프레임워크 패키지
 

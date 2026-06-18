@@ -220,8 +220,7 @@ g.Rule(OrderPlaced).
 - **DAG, enforced.** Execution composition must be acyclic. `Run` rejects a static cycle once at the top-level entry via `detectRunCycle` — a 3-color DFS over `RunGraph` edges keyed by `*Graph` identity; a shared sub-graph reached by two paths (diamond) is legal. A runtime depth guard (`runMaxDepth = 64`) backstops runaway composition (`run depth exceeded 64`).
 - `Run(nil)` is a registration error and panics.
 
-Execution composition (`rule.Run(g)`, `RunGraph`) is currently Go-only; the Run handler +
-`RunView` family above is available in the Go, TypeScript, and Python ports.
+The Run handler + `RunView` family above is available in the Go, TypeScript, and Python ports.
 
 ### Same Function, Different Spec
 

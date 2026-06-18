@@ -1,5 +1,8 @@
 # toulmin
 
+[![version](https://img.shields.io/badge/version-0.3.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
+
 **Stop nesting if-else. Declare rules, declare relationships.**
 
 A rule engine for TypeScript, Python, and Go. Rules are functions. Exceptions are graph edges. No DSL. No sidecar. No new language.
@@ -309,8 +312,7 @@ order := g.Rule(orderPlaced)
 order.OnActive(logOrder).Run(notifyGraph)   // Active order → Run the notify graph
 ```
 
-The Run handler + RunView family is available across the Go, TypeScript, and Python ports;
-execution composition (`rule.Run(g)`) is currently Go-only.
+The Run handler + RunView family is available across the Go, TypeScript, and Python ports.
 
 ## Framework Packages
 

@@ -54,3 +54,9 @@ class Rule:
     def on_inactive(self, h: Any) -> Rule:
         self._graph.rules[self._idx].on_inactive = h
         return self
+
+    def run(self, g: Any) -> "Rule":  # g: Graph — Active면 Run할 하위 그래프
+        if g is None:
+            raise ValueError("toulmin: run requires a non-None sub-graph")
+        self._graph.rules[self._idx].run_graph = g
+        return self

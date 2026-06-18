@@ -160,3 +160,72 @@ describe("Graph.evaluate (pure)", () => {
     expect(() => g.evaluate(null as unknown as Context)).toThrow("ctx");
   });
 });
+
+describe("Graph.run — composition (_runDepth recursion)", () => {
+  const always: RuleFunc = () => [true, null];
+
+  it("Active node recurses into its runGraph (ctx flows down, depth+1)", () => {
+    const sub = new Graph("sub");
+    sub.rule(always).onActive((ctx) => { ctx.set("subRan", true); });
+
+    const parent = new Graph("parent");
+    parent.rule(always).run(sub); // Active → recurse
+
+    const ctx = newContext();
+    parent.run(ctx);
+    expect(ctx.get("subRan")).toBe(true);
+  });
+
+  it("non-Active node does NOT recurse into its runGraph", () => {
+    const sub = new Graph("sub-skip");
+    sub.rule(always).onActive((ctx) => { ctx.set("subRan", true); });
+
+    const parent = new Graph("parent-skip");
+    parent.rule(() => [false, null]).run(sub); // Inactive → no recurse
+
+    const ctx = newContext();
+    parent.run(ctx);
+    expect(ctx.get("subRan")).toBeUndefined();
+  });
+
+  it("Active node with no runGraph takes the non-recurse branch", () => {
+    const g = new Graph("no-subgraph");
+    g.rule(always); // Active, but runGraph undefined
+    expect(() => g.run(newContext())).not.toThrow();
+  });
+
+  it("wraps a sub-graph Run error with run \"parent\" → \"sub\" context", () => {
+    const sub = new Graph("sub-boom");
+    sub.rule(always).onActive(() => { throw new Error("kaboom"); });
+
+    const parent = new Graph("parent-boom");
+    parent.rule(always).run(sub);
+
+    const ctx = newContext();
+    expect(() => parent.run(ctx)).toThrow(/run "/);
+    expect(() => parent.run(ctx)).toThrow(/→ "sub-boom"/);
+    expect(() => parent.run(ctx)).toThrow(/kaboom/);
+  });
+
+  it("throws when run composition depth exceeds the backstop", () => {
+    const chain: Graph[] = [];
+    for (let i = 0; i < 70; i++) {
+      const g = new Graph(`chain-${i}`);
+      g.rule(always);
+      chain.push(g);
+    }
+    for (let i = 0; i < chain.length - 1; i++) {
+      chain[i].rules[0].runGraph = chain[i + 1]; // acyclic chain, wired directly
+    }
+    expect(() => chain[0].run(newContext())).toThrow(/run depth exceeded/);
+  });
+
+  it("Graph.run throws the detected run cycle before dispatching", () => {
+    const ga = new Graph("rc-A");
+    const gb = new Graph("rc-B");
+    ga.rule(always).run(gb);
+    gb.rule(always).run(ga); // execution cycle
+
+    expect(() => ga.run(newContext())).toThrow(/run cycle detected/);
+  });
+});

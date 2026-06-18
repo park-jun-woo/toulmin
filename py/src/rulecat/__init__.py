@@ -13,6 +13,7 @@ from rulecat.expectations import (
     verdict_above, verdict_at_most, verdict_between, no_result,
 )
 from rulecat.detect_cycle import detect_cycle
+from rulecat.detect_run_cycle import detect_run_cycle
 
 __all__ = [
     "Context", "Spec", "RuleFunc",
@@ -24,4 +25,5 @@ __all__ = [
     "MapContext", "Graph", "Rule",
     "verdict_above", "verdict_at_most", "verdict_between", "no_result",
     "detect_cycle",
+    "detect_run_cycle",
 ]

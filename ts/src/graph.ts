@@ -6,7 +6,10 @@ import { Rule } from "./rule.js";
 import { ruleID } from "./rule-id.js";
 import { shortName } from "./short-name.js";
 import { detectCycle } from "./detect-cycle.js";
+import { detectRunCycle } from "./detect-run-cycle.js";
 import { createRunView, buildAttackerEvents } from "./run-view.js";
+
+const runMaxDepth = 64;   // 깊이 백스톱 (모듈 스코프)
 
 export class Graph {
   readonly name: string;
@@ -36,9 +39,18 @@ export class Graph {
 
   run(ctx: Context, option?: EvalOption): RunResult {
     if (ctx == null) throw new Error("ctx must not be null");
+    const err = detectRunCycle(this);       // ★ 최상위 1회
+    if (err) throw err;
     const opt = resolveOption(option);
     opt.trace = false;      // 강제 off — full pass는 공유·비초기화 상태에서만 정확
     opt.duration = false;
+    return this._runDepth(ctx, opt, 0);
+  }
+
+  private _runDepth(ctx: Context, opt: { method: EvalMethod; trace: boolean; duration: boolean }, depth: number): RunResult {
+    if (depth > runMaxDepth) {
+      throw new Error(`toulmin: run depth exceeded ${runMaxDepth} (possible runaway composition)`);
+    }
     const st = this._evaluate(ctx, opt, true);   // full pass
 
     // 디스패치 전 1회 — 불변 스냅샷
@@ -62,12 +74,22 @@ export class Graph {
     for (let i = 0; i < order.length; i++) {
       const ne = order[i];
       const meta = this.rules[i];          // 인덱스 대응 — shortName 매핑 불필요
+      // (a) leaf 핸들러
       const h = selectHandler(meta, ne.type);
-      if (!h) continue;
-      try {
-        h(ctx, ne, view);
-      } catch (e) {
-        throw new Error(`handler "${shortName(meta.name)}" (${NodeEventType[ne.type]}): ${e}`);
+      if (h) {
+        try {
+          h(ctx, ne, view);
+        } catch (e) {
+          throw new Error(`handler "${shortName(meta.name)}" (${NodeEventType[ne.type]}): ${e}`);
+        }
+      }
+      // (b) 실행 간선 — Active면 하위 그래프 Run (ctx 아래로, depth+1)
+      if (ne.type === NodeEventType.Active && meta.runGraph) {
+        try {
+          meta.runGraph._runDepth(ctx, opt, depth + 1);   // 같은 클래스 → private 접근 가능
+        } catch (e) {
+          throw new Error(`run "${shortName(meta.name)}" → "${meta.runGraph.name}": ${e}`);
+        }
       }
     }
     return { results: st.results, view };

@@ -57,4 +57,10 @@ export class Rule {
     this.graph.rules[this.idx].onInactive = h;
     return this;
   }
+
+  run(g: Graph): Rule {
+    if (g == null) throw new Error("toulmin: run requires a non-null sub-graph");
+    this.graph.rules[this.idx].runGraph = g;
+    return this;
+  }
 }
