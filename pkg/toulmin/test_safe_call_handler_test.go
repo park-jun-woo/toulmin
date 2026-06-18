@@ -9,18 +9,18 @@ import (
 )
 
 func TestSafeCallHandler(t *testing.T) {
-	self := TraceEntry{Name: "n"}
+	tr := Trace{nodes: []TraceEntry{{Name: "n"}}, ctx: NewContext()}
 
-	if err := safeCallHandler(func(ctx Context, self TraceEntry, trace []TraceEntry) error { return nil }, NewContext(), self, nil); err != nil {
+	if err := safeCallHandler(func(t Trace) error { return nil }, tr); err != nil {
 		t.Errorf("ok handler should return nil, got %v", err)
 	}
 
 	want := fmt.Errorf("bad")
-	if err := safeCallHandler(func(ctx Context, self TraceEntry, trace []TraceEntry) error { return want }, NewContext(), self, nil); err != want {
+	if err := safeCallHandler(func(t Trace) error { return want }, tr); err != want {
 		t.Errorf("error handler should propagate error, got %v", err)
 	}
 
-	err := safeCallHandler(func(ctx Context, self TraceEntry, trace []TraceEntry) error { panic("boom") }, NewContext(), self, nil)
+	err := safeCallHandler(func(t Trace) error { panic("boom") }, tr)
 	if err == nil || !strings.Contains(err.Error(), "panicked") {
 		t.Errorf("panicking handler should yield a panic error, got %v", err)
 	}

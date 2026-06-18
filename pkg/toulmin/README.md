@@ -24,7 +24,7 @@ func(ctx Context, specs Specs) (bool, any)
 | `rule.Attacks(target)` | rule_attacks.go | Declare defeat edge (method on `*Rule`) |
 | `rule.With(spec)` | rule_with.go | Attach a Spec to the rule (additive, supports chaining) |
 | `g.Evaluate(ctx, opt ...EvalOption)` | graph_evaluate.go | Run evaluation, return verdicts (ctx is Context, opt controls Trace/Duration) |
-| `g.Run(ctx, opt ...EvalOption)` | graph_run.go | Pre-evaluate (full pass), fire each Active node's `RunOn` handler with the flat trace, and Run any Active node's sub-graph; returns `([]EvalResult, []TraceEntry, error)` |
+| `g.Run(ctx, opt ...EvalOption)` | graph_run.go | Pre-evaluate (full pass), fire each Active node's `RunOn` handler with the whole-graph `Trace`, and Run any Active node's sub-graph; returns `([]EvalResult, Trace, error)` |
 | `rule.RunOn(h)` | rule_run_on.go | Register the handler fired when this node is Active (func true && verdict > 0) |
 | `rule.Run(g)` | rule_run.go | Declare execution edge: when this node is Active, Run sub-graph `g` (graph-of-graphs; panics on nil) |
 | `NewContext()` | new_context.go | Create `*MapContext` implementing Context interface |
@@ -35,15 +35,25 @@ only event; there are no Defeated/Inactive handlers. Handlers fire in rule regis
 a handler error or panic stops `Run` immediately and is returned with the trace built before
 dispatch. `Evaluate` is unchanged and fires no handlers (stays idempotent).
 
-Each handler has signature `func(ctx Context, self TraceEntry, trace []TraceEntry) error`.
-`self` is the firing node's `TraceEntry`; `trace` is every node's `TraceEntry` in registration
-order — a read-only view of the whole graph's final state, useful for audit logging,
-explanations, and gradient thresholds via `trace[i].Verdict`. To inspect another node's
-outcome, filter `trace`: `Verdict > 0` prevailed, `Verdict <= 0` defeated, `Activated == false`
-did not apply. There is no direct attacker lookup — `TraceEntry` carries no defeat-edge info,
-so the former `RunView.Attackers(name)` is gone; reason from `trace[i].Verdict`. `ctx` is
-mutable; the trace is the judgment record. Since `TraceEntry.Ground = ctx`, keep `ctx` to
-serialisable values if you `json.Marshal` the trace.
+Each handler has signature `func(t Trace) error`. The single `Trace` argument is the same
+read-only value `Run` returns, with exactly three methods:
+
+| Method | File | Returns |
+|---|---|---|
+| `t.All()` | trace_all.go | `[]TraceEntry` — every node's entry in registration order |
+| `t.Get(name)` | trace_get.go | `(TraceEntry, bool)` — one node's entry by short name |
+| `t.Ctx()` | trace_ctx.go | `Context` — this Run's context |
+
+`self` is not a separate argument: a handler attached with `g.Rule(X).RunOn(h)` already knows
+its own node is `X`, so it finds its own `TraceEntry` via `t.Get("X")`. `t.All()` is the whole
+graph's final state, useful for audit logging, explanations, and gradient thresholds via
+`t.All()[i].Verdict`; `t.Ctx()` exposes this Run's `Context` typed (each `TraceEntry.Ground`
+also holds it, but as `any`). To inspect another node's outcome, filter `t.All()`:
+`Verdict > 0` prevailed, `Verdict <= 0` defeated, `Activated == false` did not apply. There is
+no direct attacker lookup — `TraceEntry` carries no defeat-edge info, so the former
+`RunView.Attackers(name)` is gone; reason from `t.All()[i].Verdict`. `ctx` is mutable; the
+trace is the judgment record. Since `TraceEntry.Ground = ctx`, keep `ctx` to serialisable
+values if you `json.Marshal` the trace.
 
 #### Execution composition
 
@@ -86,7 +96,8 @@ two paths is legal), and a runtime depth guard (`runMaxDepth = 64`) backstops ru
 | `Graph` | graph.go | Graph builder |
 | `Rule` | rule.go | Opaque rule reference |
 | `RuleMeta` | rule_meta.go | Rule metadata (Name, Qualifier, Strength, Defeats, Specs, Fn, RunOn, RunGraph) |
-| `NodeHandler` | node_handler.go | Handler signature `func(ctx Context, self TraceEntry, trace []TraceEntry) error` |
+| `NodeHandler` | node_handler.go | Handler signature `func(t Trace) error` |
+| `Trace` | trace.go | Read-only view of one Run: all node entries + ctx (`All()`, `Get(name)`, `Ctx()`) |
 | `EvalResult` | eval_result.go | Verdict + trace |
 | `TraceEntry` | trace_entry.go | Single rule evaluation record (Name=Claim, Ground=ctx, Specs=Backing, Verdict) |
 | `Strength` | strength.go | Defeasible / Strict / Defeater |

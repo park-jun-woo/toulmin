@@ -6,6 +6,7 @@ from rulecat.types import (
     Context, EvalMethod, EvalOption, EvalResult, Strength, TraceEntry,
     RunResult,
 )
+from rulecat.trace import Trace
 from rulecat.defeat_edge import DefeatEdge
 from rulecat.rule_meta import RuleMeta
 from rulecat.rule import Rule
@@ -72,9 +73,9 @@ class Graph:
 
         # 디스패치 전 1회 — 전 노드 TraceEntry를 등록 순서로 조립
         # (인덱스 i ↔ self.rules[i] 구조적 보장)
-        trace: list[TraceEntry] = []
+        entries: list[TraceEntry] = []
         for r in self.rules:
-            trace.append(TraceEntry(
+            entries.append(TraceEntry(
                 name=short_name(r.name),
                 role=self.roles.get(r.name, "rule"),
                 activated=active.get(r.name, False),
@@ -85,7 +86,9 @@ class Graph:
                 specs=r.specs,
             ))
 
-        for i, e in enumerate(trace):
+        tr = Trace(entries, ctx)
+
+        for i, e in enumerate(entries):
             meta = self.rules[i]            # 인덱스 대응
             active_flag = e.activated and e.verdict > 0  # Active 하나만 발화
             if not active_flag:
@@ -93,7 +96,7 @@ class Graph:
             # (a) run_on 핸들러 — 먼저
             if meta.run_on is not None:
                 try:
-                    meta.run_on(ctx, e, trace)
+                    meta.run_on(tr)
                 except Exception as exc:
                     raise RuntimeError(
                         f'run_on "{e.name}": {exc}'
@@ -106,7 +109,7 @@ class Graph:
                     raise RuntimeError(
                         f'run "{e.name}" → "{meta.run_graph.name}": {exc}'
                     ) from exc
-        return RunResult(results=results, trace=trace)
+        return RunResult(results=results, trace=tr)
 
     def _evaluate(
         self, ctx: Context, opt: EvalOption, full: bool

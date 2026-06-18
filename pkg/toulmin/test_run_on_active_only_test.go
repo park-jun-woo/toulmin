@@ -1,4 +1,4 @@
-//ff:func feature=engine type=engine control=iteration dimension=1
+//ff:func feature=engine type=engine control=sequence
 //ff:what TestRunOnActiveOnly — RunOn fires only on Active nodes, never on Defeated or Inactive
 package toulmin
 
@@ -7,7 +7,7 @@ import "testing"
 func TestRunOnActiveOnly(t *testing.T) {
 	fired := map[string]bool{}
 	mark := func(name string) NodeHandler {
-		return func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+		return func(t Trace) error {
 			fired[name] = true
 			return nil
 		}

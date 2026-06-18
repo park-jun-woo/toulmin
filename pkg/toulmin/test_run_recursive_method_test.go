@@ -12,7 +12,7 @@ func TestRunRecursiveMethod(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for Recursive method")
 	}
-	if results != nil || trace != nil {
-		t.Errorf("on option error Run must return nil results and nil trace, got results=%v trace=%v", results, trace)
+	if results != nil || trace.All() != nil {
+		t.Errorf("on option error Run must return nil results and an empty trace, got results=%v trace=%v", results, trace.All())
 	}
 }

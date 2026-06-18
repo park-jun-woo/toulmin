@@ -17,7 +17,7 @@ def test_basic_active_runs_sub_graph():
         return (True, "sub")
 
     sub = Graph("sub")
-    sub.rule(sub_rule).run_on(lambda ctx, self_, trace: ctx.set("sub_ran", True))
+    sub.rule(sub_rule).run_on(lambda t: t.ctx().set("sub_ran", True))
 
     parent = Graph("parent")
     parent.rule(parent_rule).run(sub)
@@ -41,7 +41,7 @@ def test_defeated_node_does_not_run_sub():
         return (True, "sub")
 
     sub = Graph("sub-defeated")
-    sub.rule(sub_rule).run_on(lambda ctx, self_, trace: ctx.set("sub_ran", True))
+    sub.rule(sub_rule).run_on(lambda t: t.ctx().set("sub_ran", True))
 
     parent = Graph("parent-defeated")
     w = parent.rule(warrant)
@@ -62,7 +62,7 @@ def test_inactive_node_does_not_run_sub():
         return (True, "sub")
 
     sub = Graph("sub-inactive")
-    sub.rule(sub_rule).run_on(lambda ctx, self_, trace: ctx.set("sub_ran", True))
+    sub.rule(sub_rule).run_on(lambda t: t.ctx().set("sub_ran", True))
 
     parent = Graph("parent-inactive")
     parent.rule(inactive_rule).run(sub)
@@ -85,11 +85,11 @@ def test_handler_fires_before_sub_run():
         return (True, "s")
 
     sub = Graph("sub-order")
-    sub.rule(sub_rule).run_on(lambda ctx, self_, trace: order.append("sub"))
+    sub.rule(sub_rule).run_on(lambda t: order.append("sub"))
 
     parent = Graph("parent-order")
     parent.rule(parent_rule).run_on(
-        lambda ctx, self_, trace: order.append("handler")
+        lambda t: order.append("handler")
     ).run(sub)
 
     parent.run(MapContext())
@@ -110,12 +110,12 @@ def test_ctx_flows_down_to_sub():
 
     sub = Graph("sub-ctx")
     sub.rule(sub_rule).run_on(
-        lambda ctx, self_, trace: captured.__setitem__("seen", ctx.get("from_parent"))
+        lambda t: captured.__setitem__("seen", t.ctx().get("from_parent"))
     )
 
     parent = Graph("parent-ctx")
     parent.rule(parent_rule).run_on(
-        lambda ctx, self_, trace: ctx.set("from_parent", 42)
+        lambda t: t.ctx().set("from_parent", 42)
     ).run(sub)
 
     parent.run(MapContext())
@@ -203,7 +203,7 @@ def test_diamond_dag_runs_shared_sub_twice():
 
     shared = Graph("shared")
     shared.rule(shared_rule).run_on(
-        lambda ctx, self_, trace: counter.__setitem__("n", counter["n"] + 1)
+        lambda t: counter.__setitem__("n", counter["n"] + 1)
     )
 
     root = Graph("root-diamond")
@@ -226,7 +226,7 @@ def test_sub_handler_error_wrapped_and_propagated():
     def sub_rule(ctx, specs):
         return (True, "s")
 
-    def bad(ctx, self_, trace):
+    def bad(t):
         raise cause
 
     sub = Graph("sub-error")

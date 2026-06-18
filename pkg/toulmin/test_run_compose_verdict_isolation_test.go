@@ -12,9 +12,9 @@ func TestRunComposeVerdictIsolation(t *testing.T) {
 	var subVerdict float64
 	subWarrant := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 	sub := NewGraph("sub")
-	sub.Rule(subWarrant).Qualifier(0.75).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+	sub.Rule(subWarrant).Qualifier(0.75).RunOn(func(t Trace) error {
 		subRan = true
-		subVerdict = self.Verdict
+		subVerdict = t.All()[0].Verdict
 		return nil
 	})
 

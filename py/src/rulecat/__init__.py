@@ -6,6 +6,7 @@ from rulecat.types import (
     find_spec,
     NodeHandler, RunResult,
 )
+from rulecat.trace import Trace
 from rulecat.context import MapContext
 from rulecat.graph import Graph
 from rulecat.rule import Rule
@@ -21,7 +22,7 @@ __all__ = [
     "EvalOption", "EvalResult", "TraceEntry",
     "Expectation", "TestCase",
     "find_spec",
-    "NodeHandler", "RunResult",
+    "NodeHandler", "RunResult", "Trace",
     "MapContext", "Graph", "Rule",
     "verdict_above", "verdict_at_most", "verdict_between", "no_result",
     "detect_cycle",

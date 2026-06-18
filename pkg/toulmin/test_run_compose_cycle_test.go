@@ -23,7 +23,7 @@ func TestRunComposeCycle(t *testing.T) {
 	if !strings.Contains(err.Error(), "cycle") {
 		t.Errorf("error should mention cycle: %v", err)
 	}
-	if results != nil || trace != nil {
-		t.Errorf("on cycle error Run must return nil results and trace, got results=%v trace=%v", results, trace)
+	if results != nil || trace.All() != nil {
+		t.Errorf("on cycle error Run must return nil results and an empty trace, got results=%v trace=%v", results, trace.All())
 	}
 }

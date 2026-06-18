@@ -6,7 +6,8 @@ import "testing"
 
 func TestRunTraceGradient(t *testing.T) {
 	var branch string
-	decide := func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+	decide := func(t Trace) error {
+		self, _ := t.Get("WarrantA")
 		if self.Verdict >= 0.5 {
 			branch = "strong"
 		} else {
@@ -18,7 +19,8 @@ func TestRunTraceGradient(t *testing.T) {
 	g.Rule(WarrantA).Qualifier(0.75).RunOn(decide)
 
 	var captured float64
-	read := func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+	read := func(t Trace) error {
+		self, _ := t.Get("WarrantA")
 		captured = self.Verdict
 		return nil
 	}

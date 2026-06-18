@@ -1,0 +1,6 @@
+# filefunc: 모노레포에서 Go 구조 검증 시 비-Go 트리 제외
+py
+ts
+node_modules
+.venv
+plans

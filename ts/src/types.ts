@@ -51,11 +51,17 @@ export interface TraceEntry {
   duration?: number;
 }
 
-export type NodeHandler = (ctx: Context, self: TraceEntry, trace: TraceEntry[]) => void;
+export interface Trace {
+  all(): TraceEntry[];                       // 전 노드(등록순)
+  get(name: string): TraceEntry | undefined; // 짧은 이름 조회
+  ctx(): Context;                            // 이 Run의 컨텍스트
+}
+
+export type NodeHandler = (t: Trace) => void;
 
 export interface RunResult {
   results: EvalResult[];
-  trace: TraceEntry[];     // full pass 후 전 노드 TraceEntry (등록 순서)
+  trace: Trace;            // full pass 후 전 노드 Trace (등록 순서)
 }
 
 export type Expectation = (results: EvalResult[]) => void;

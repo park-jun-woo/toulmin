@@ -6,14 +6,18 @@ import "testing"
 
 func TestRunOrder(t *testing.T) {
 	var order []string
-	rec := func(ctx Context, self TraceEntry, trace []TraceEntry) error {
-		order = append(order, self.Name)
-		return nil
+	rec := func(name string) NodeHandler {
+		return func(t Trace) error {
+			// self = this handler's own node, looked up by its known name.
+			self, _ := t.Get(name)
+			order = append(order, self.Name)
+			return nil
+		}
 	}
 	g := NewGraph("order")
-	g.Rule(authenticate).RunOn(rec)
-	g.Rule(WarrantA).RunOn(rec)
-	g.Rule(RebuttalB).RunOn(rec)
+	g.Rule(authenticate).RunOn(rec("authenticate"))
+	g.Rule(WarrantA).RunOn(rec("WarrantA"))
+	g.Rule(RebuttalB).RunOn(rec("RebuttalB"))
 
 	ctx := NewContext()
 	ctx.Set("authenticated", true)

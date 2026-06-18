@@ -11,7 +11,7 @@ import (
 func TestRunComposeErrorPropagation(t *testing.T) {
 	subRule := func(ctx Context, specs Specs) (bool, any) { return true, nil }
 	sub := NewGraph("sub")
-	sub.Rule(subRule).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+	sub.Rule(subRule).RunOn(func(t Trace) error {
 		return fmt.Errorf("sub boom")
 	})
 
@@ -29,7 +29,7 @@ func TestRunComposeErrorPropagation(t *testing.T) {
 	if !strings.Contains(err.Error(), "sub boom") {
 		t.Errorf("error should wrap the underlying cause: %v", err)
 	}
-	if results == nil || trace == nil {
+	if results == nil || trace.All() == nil {
 		t.Error("on sub-Run error the parent must still return its pre-dispatch results and trace")
 	}
 }

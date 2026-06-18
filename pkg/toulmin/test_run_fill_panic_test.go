@@ -24,7 +24,7 @@ func TestRunFillPanic(t *testing.T) {
 	if !strings.Contains(err.Error(), "panicked") {
 		t.Errorf("expected panic error, got: %v", err)
 	}
-	if results != nil || trace != nil {
-		t.Errorf("on full-pass error Run must return nil results and nil trace, got results=%v trace=%v", results, trace)
+	if results != nil || trace.All() != nil {
+		t.Errorf("on full-pass error Run must return nil results and an empty trace, got results=%v trace=%v", results, trace.All())
 	}
 }

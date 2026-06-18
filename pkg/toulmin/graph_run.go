@@ -7,14 +7,14 @@ package toulmin
 // At the top-level entry it rejects static run cycles once via detectRunCycle, then resolves
 // options (preserving option errors such as Recursive), forces Trace and Duration off so the
 // full pass runs on shared non-reset state, and delegates the recursive dispatch to runDepth.
-// It returns each warrant's result plus the whole graph's flat trace (every node, registration order).
-func (g *Graph) Run(ctx Context, opts ...EvalOption) ([]EvalResult, []TraceEntry, error) {
+// It returns each warrant's result plus the whole graph's Trace (every node, registration order).
+func (g *Graph) Run(ctx Context, opts ...EvalOption) ([]EvalResult, Trace, error) {
 	if err := detectRunCycle(g); err != nil {
-		return nil, nil, err
+		return nil, Trace{}, err
 	}
 	opt, err := resolveOption(opts)
 	if err != nil {
-		return nil, nil, err
+		return nil, Trace{}, err
 	}
 	opt.Trace = false
 	opt.Duration = false

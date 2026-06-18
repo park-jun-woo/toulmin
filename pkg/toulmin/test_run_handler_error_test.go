@@ -11,10 +11,10 @@ import (
 func TestRunHandlerError(t *testing.T) {
 	secondFired := false
 	g := NewGraph("err")
-	g.Rule(WarrantA).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+	g.Rule(WarrantA).RunOn(func(t Trace) error {
 		return fmt.Errorf("boom")
 	})
-	g.Rule(RebuttalB).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+	g.Rule(RebuttalB).RunOn(func(t Trace) error {
 		secondFired = true
 		return nil
 	})
@@ -28,12 +28,12 @@ func TestRunHandlerError(t *testing.T) {
 	if secondFired {
 		t.Error("Run must stop before firing later handlers")
 	}
-	if trace == nil {
+	if trace.All() == nil {
 		t.Error("on handler error Run must still return the pre-dispatch trace")
 	}
 
 	g2 := NewGraph("panic")
-	g2.Rule(WarrantA).RunOn(func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+	g2.Rule(WarrantA).RunOn(func(t Trace) error {
 		panic("kaboom")
 	})
 	_, trace2, err2 := g2.Run(NewContext())
@@ -43,7 +43,7 @@ func TestRunHandlerError(t *testing.T) {
 	if !strings.Contains(err2.Error(), "panicked") {
 		t.Errorf("panic should convert to error: %v", err2)
 	}
-	if trace2 == nil {
+	if trace2.All() == nil {
 		t.Error("on panic Run must still return the pre-dispatch trace")
 	}
 }

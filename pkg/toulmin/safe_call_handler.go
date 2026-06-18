@@ -5,11 +5,11 @@ package toulmin
 import "fmt"
 
 // safeCallHandler runs h with panic recovery. Returns error if h panics or returns an error.
-func safeCallHandler(h NodeHandler, ctx Context, self TraceEntry, trace []TraceEntry) (err error) {
+func safeCallHandler(h NodeHandler, t Trace) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("handler panicked: %v", r)
 		}
 	}()
-	return h(ctx, self, trace)
+	return h(t)
 }

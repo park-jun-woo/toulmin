@@ -280,19 +280,23 @@ defeated, `activated == false` did not apply.
 
 ```go
 g.Rule(isAuthenticated).
-    RunOn(func(ctx toulmin.Context, self toulmin.TraceEntry, trace []toulmin.TraceEntry) error {
-        return audit(self)        // ran and prevailed
+    RunOn(func(t toulmin.Trace) error {
+        me, _ := t.Get("isAuthenticated")   // self = this handler's own node
+        return audit(me)                    // ran and prevailed
     })
 
-results, trace, err := g.Run(ctx)  // []EvalResult, []TraceEntry, error
+results, trace, err := g.Run(ctx)  // []EvalResult, Trace, error
 ```
 
-Handlers fire in registration order; the first handler error stops `Run`. The handler gets
-`self` (the firing node's `TraceEntry`) and `trace` (every node's `TraceEntry`, registration
-order). Each `TraceEntry` exposes **Claim** (`Name`), **Ground** (`Ground` = the `ctx` as-is),
-**Backing** (`Specs`), and **Verdict** — enough to audit, explain, or apply gradient
+Handlers fire in registration order; the first handler error stops `Run`. The handler gets a
+single read-only `Trace` — the same value `Run` returns — with exactly three methods:
+`t.All()` (every node's `TraceEntry`, registration order), `t.Get(name)` (one node by short
+name), and `t.Ctx()` (this Run's context). `self` is not an argument: a handler attached with
+`g.Rule(X).RunOn(h)` already knows its own node is `X`, so it finds its own row via
+`t.Get("X")`. Each `TraceEntry` exposes **Claim** (`Name`), **Ground** (`Ground` = the `ctx`
+as-is), **Backing** (`Specs`), and **Verdict** — enough to audit, explain, or apply gradient
 thresholds without any separate view. There is no direct attacker lookup; reason from
-`trace[i].Verdict`. `ctx` is mutable (side effects propagate); the trace is the judgment
+`t.All()[i].Verdict`. `ctx` is mutable (side effects propagate); the trace is the judgment
 record. If you serialise the trace as JSON, keep `ctx` to serialisable values (`Ground = ctx`).
 
 ### Execution composition

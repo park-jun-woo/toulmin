@@ -15,20 +15,22 @@ class RunTest(unittest.TestCase):
     def test_dispatch_calls_handler_and_skips_handlerless(self):
         g = Graph("t")
         seen = []
+        from rulecat.short_name import short_name
         a = g.rule(lambda ctx, specs: (True, None))
-        a.run_on(lambda ctx, self_, trace: seen.append(self_.verdict))
+        a_name = short_name(a.id)
+        a.run_on(lambda t: seen.append(t.get(a_name).verdict))
         # rule without any handler -> run_on is None -> skipped
         g.rule(lambda ctx, specs: (True, None))
         res = g.run(MapContext())
         self.assertEqual(len(seen), 1)
         self.assertGreater(seen[0], 0)
-        self.assertEqual(len(res.trace), 2)
+        self.assertEqual(len(res.trace.all()), 2)
 
     def test_handler_exception_wrapped_with_cause(self):
         g = Graph("t")
         cause = RuntimeError("boom")
 
-        def bad(ctx, self_, trace):
+        def bad(t):
             raise cause
 
         g.rule(lambda ctx, specs: (True, None)).run_on(bad)
@@ -41,13 +43,16 @@ class RunTest(unittest.TestCase):
     def test_only_active_node_fires(self):
         # warrant attacked by an active counter -> warrant verdict 0.0 (defeated),
         # so only the counter (active, verdict>0) fires.
+        from rulecat.short_name import short_name
         g = Graph("t")
         fired = []
         w = g.rule(lambda ctx, specs: (True, None))
         c = g.counter(lambda ctx, specs: (True, None))
         c.attacks(w)
-        w.run_on(lambda ctx, self_, trace: fired.append(("w", self_.verdict)))
-        c.run_on(lambda ctx, self_, trace: fired.append(("c", self_.verdict)))
+        w_name = short_name(w.id)
+        c_name = short_name(c.id)
+        w.run_on(lambda t: fired.append(("w", t.get(w_name).verdict)))
+        c.run_on(lambda t: fired.append(("c", t.get(c_name).verdict)))
         g.run(MapContext())
         self.assertEqual([name for name, _ in fired], ["c"])
 
@@ -61,8 +66,8 @@ class RunTest(unittest.TestCase):
         c.attacks(w)
         w_name = short_name(w.id)
 
-        def h(ctx, self_, trace):
-            node = next((e for e in trace if e.name == w_name), None)
+        def h(t):
+            node = next((e for e in t.all() if e.name == w_name), None)
             branch.append("hard" if (node and node.verdict >= 0.5) else "soft")
 
         c.run_on(h)
@@ -100,7 +105,7 @@ class RunDepthTest(unittest.TestCase):
             return (True, None)
 
         sub = Graph("sub-run")
-        sub.rule(sub_rule).run_on(lambda ctx, self_, trace: ctx.set("ran", True))
+        sub.rule(sub_rule).run_on(lambda t: t.ctx().set("ran", True))
 
         parent = Graph("parent-run")
         parent.rule(parent_rule).run(sub)
@@ -117,7 +122,7 @@ class RunDepthTest(unittest.TestCase):
             return (True, None)
 
         sub = Graph("sub-skip")
-        sub.rule(sub_rule).run_on(lambda ctx, self_, trace: ctx.set("ran", True))
+        sub.rule(sub_rule).run_on(lambda t: t.ctx().set("ran", True))
 
         parent = Graph("parent-skip")
         parent.rule(parent_rule).run(sub)
@@ -135,7 +140,7 @@ class RunDepthTest(unittest.TestCase):
         def sub_rule(ctx, specs):
             return (True, None)
 
-        def bad(ctx, self_, trace):
+        def bad(t):
             raise cause
 
         sub = Graph("sub-err")

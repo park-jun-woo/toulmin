@@ -178,33 +178,45 @@ sub-graph declared on an Active node (execution composition, below).
 
 There is a single node event: **Active**. A node is Active when its rule applied **and**
 prevailed (`Activated && Verdict > 0`); only then does its `RunOn` handler fire. There are
-no Defeated/Inactive events — to inspect any other node's outcome, filter the `trace`:
+no Defeated/Inactive events — to inspect any other node's outcome, filter the `Trace`:
 `Verdict > 0` prevailed, `Verdict <= 0` defeated (incl. `0`), `Activated == false` did not apply.
 
 ```go
 g.Rule(Authenticate).
-    RunOn(func(ctx toulmin.Context, self toulmin.TraceEntry, trace []toulmin.TraceEntry) error {
-        return audit(self)   // self is the firing node's TraceEntry
+    RunOn(func(t toulmin.Trace) error {
+        me, _ := t.Get("Authenticate")   // self = this handler's own node
+        return audit(me)
     })
 
-results, trace, err := g.Run(ctx) // []EvalResult, []TraceEntry, error
+results, trace, err := g.Run(ctx) // []EvalResult, Trace, error
 
-type NodeHandler func(ctx Context, self TraceEntry, trace []TraceEntry) error
+type NodeHandler func(t Trace) error
 ```
 
-- `self` = the firing (Active) node's `TraceEntry`.
-- `trace` = every node's `TraceEntry` in registration order (read-only view of the whole graph).
+The handler receives a single read-only **`Trace`** — the same value `Run` returns, so the
+handler's view and the caller's view are symmetric. `Trace` has exactly three methods:
+
+| Method | Returns | Meaning |
+|---|---|---|
+| `t.All()` | `[]TraceEntry` | every node's entry in registration order |
+| `t.Get(name)` | `(TraceEntry, bool)` | one node's entry by short name |
+| `t.Ctx()` | `Context` | this Run's context |
+
+- **`self` is not an argument.** A handler is attached via `g.Rule(X).RunOn(h)`, so it already
+  knows its own node is `X`; it finds its own `TraceEntry` with `t.Get("X")`. (Think class
+  ranking: `t.All()` is the whole class's report card, `self` is the one row that is you.)
+- `t.Ctx()` exposes this Run's `Context` for side effects or reading sub-graph state. Each
+  `TraceEntry.Ground` also carries the ctx, but as `any`; `t.Ctx()` exposes it typed.
 
 Handlers fire in rule registration order (deterministic). Before any handler fires, `Run`
-assembles one flat `[]TraceEntry` of every node and shares it with all handlers, so a handler
-can read the whole graph's final state (audit, explanation, gradient thresholds via
-`trace[i].Verdict`) — mutating `ctx` never changes verdicts already recorded. A handler error
-or panic stops `Run` immediately and is returned together with the trace built before dispatch.
-Nodes without a handler pass through silently. `Evaluate` is unchanged and fires no handlers
-(stays idempotent).
+assembles one `Trace` of every node and shares it with all handlers, so a handler can read the
+whole graph's final state (audit, explanation, gradient thresholds via `t.All()[i].Verdict`) —
+mutating `ctx` never changes verdicts already recorded. A handler error or panic stops `Run`
+immediately and is returned together with the trace built before dispatch. Nodes without a
+handler pass through silently. `Evaluate` is unchanged and fires no handlers (stays idempotent).
 
 > There is no direct **Attackers** lookup. `TraceEntry` carries no defeat-edge info, so the
-> previous `RunView.Attackers(name)` is gone; reason about outcomes from `trace[i].Verdict`.
+> previous `RunView.Attackers(name)` is gone; reason about outcomes from `t.All()[i].Verdict`.
 
 ### Execution Composition (graph-of-graphs)
 
@@ -217,14 +229,14 @@ verdict isolated.
 ```go
 notify := buildNotifyGraph()
 g.Rule(OrderPlaced).
-    RunOn(func(ctx toulmin.Context, self toulmin.TraceEntry, trace []toulmin.TraceEntry) error { return log(self) }).
+    RunOn(func(t toulmin.Trace) error { me, _ := t.Get("OrderPlaced"); return log(me) }).
     Run(notify)   // when OrderPlaced is Active, Run notify
 ```
 
 - **Active-only.** A sub-graph Runs only for `Active` nodes; non-Active nodes never trigger one.
 - **Handler first, then sub-graph.** For an Active node, its `RunOn` handler fires before its sub-graph is Run. `RunOn` and `Run(g)` coexist.
 - **ctx flows down, verdict isolated.** The same mutable `ctx` is shared with the sub-graph (side effects propagate); the sub-graph's verdicts are *not* merged into the parent — only errors propagate, wrapped as `run "node" → "subgraph": ...`.
-- **Each level gets its own trace.** The `trace` passed to a sub-graph's handlers covers that sub-graph, not the parent.
+- **Each level gets its own trace.** The `Trace` passed to a sub-graph's handlers covers that sub-graph, not the parent.
 - **DAG, enforced.** Execution composition must be acyclic. `Run` rejects a static cycle once at the top-level entry via `detectRunCycle` — a 3-color DFS over `RunGraph` edges keyed by `*Graph` identity; a shared sub-graph reached by two paths (diamond) is legal. A runtime depth guard (`runMaxDepth = 64`) backstops runaway composition (`run depth exceeded 64`).
 - `Run(nil)` is a registration error and panics.
 

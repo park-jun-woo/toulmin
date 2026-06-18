@@ -1,7 +1,10 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Any, Callable, Protocol, runtime_checkable
+from typing import Any, Callable, Protocol, runtime_checkable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rulecat.trace import Trace
 
 
 @runtime_checkable
@@ -73,11 +76,11 @@ def find_spec(specs: list[Spec], name: str) -> Spec | None:
     return next((s for s in specs if s.spec_name() == name), None)
 
 
-# self = 발화한 노드의 TraceEntry, trace = 전 노드 TraceEntry 목록(조회용)
-NodeHandler = Callable[[Context, "TraceEntry", list["TraceEntry"]], None]
+# 핸들러는 Run의 Trace 하나를 받는다. 자기 노드는 t.get("X"), 컨텍스트는 t.ctx().
+NodeHandler = Callable[["Trace"], None]
 
 
 @dataclass
 class RunResult:
     results: list[EvalResult] = field(default_factory=list)
-    trace: list[TraceEntry] = field(default_factory=list)
+    trace: "Trace | None" = None

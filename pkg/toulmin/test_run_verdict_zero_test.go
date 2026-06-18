@@ -6,7 +6,7 @@ import "testing"
 
 func TestRunVerdictZero(t *testing.T) {
 	fired := false
-	rec := func(ctx Context, self TraceEntry, trace []TraceEntry) error {
+	rec := func(t Trace) error {
 		fired = true
 		return nil
 	}
@@ -23,13 +23,8 @@ func TestRunVerdictZero(t *testing.T) {
 		t.Error("verdict 0 (Defeated) must not fire RunOn")
 	}
 	// trace still records WarrantA with verdict 0.0 (balanced).
-	var got *TraceEntry
-	for i := range trace {
-		if trace[i].Name == "WarrantA" {
-			got = &trace[i]
-		}
-	}
-	if got == nil {
+	got, ok := trace.Get("WarrantA")
+	if !ok {
 		t.Fatal("WarrantA missing from trace")
 	}
 	if got.Verdict != 0.0 {

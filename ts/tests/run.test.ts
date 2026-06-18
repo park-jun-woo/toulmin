@@ -3,9 +3,10 @@ import {
   Graph,
   newContext,
   type RuleFunc,
-  type Context,
+  type Trace,
   type TraceEntry,
 } from "../src/index.js";
+import { shortName } from "../src/short-name.js";
 
 // Access-control graph:
 //   authenticate (rule)  — user present
@@ -23,10 +24,10 @@ function buildAccessControl(fired: TraceEntry[]) {
   block.attacks(auth);
   exempt.attacks(block);
 
-  const record = (_ctx: Context, self: TraceEntry, _trace: TraceEntry[]) => { fired.push(self); };
-  auth.runOn(record);
-  block.runOn(record);
-  exempt.runOn(record);
+  const record = (name: string) => (t: Trace) => { const self = t.get(name); if (self) fired.push(self); };
+  auth.runOn(record(shortName(auth.id)));
+  block.runOn(record(shortName(block.id)));
+  exempt.runOn(record(shortName(exempt.id)));
 
   return g;
 }
@@ -49,9 +50,9 @@ describe("Run — node handlers (Active only)", () => {
     const { trace } = g.run(ctx);
 
     expect(fired.map(e => e.name.replace(/_\d+$/, ""))).toEqual(["blockIP"]);
-    expect(byPrefix(trace, "blockIP").verdict).toBeGreaterThan(0);
-    expect(byPrefix(trace, "authenticate").verdict).toBe(0);
-    expect(byPrefix(trace, "exemptInternalIP").activated).toBe(false);
+    expect(byPrefix(trace.all(), "blockIP").verdict).toBeGreaterThan(0);
+    expect(byPrefix(trace.all(), "authenticate").verdict).toBe(0);
+    expect(byPrefix(trace.all(), "exemptInternalIP").activated).toBe(false);
   });
 
   it("internal network → exempt + auth fire (Active); block Defeated does not", () => {
@@ -65,9 +66,9 @@ describe("Run — node handlers (Active only)", () => {
     const { trace } = g.run(ctx);
 
     expect(fired.map(e => e.name.replace(/_\d+$/, "")).sort()).toEqual(["authenticate", "exemptInternalIP"]);
-    expect(byPrefix(trace, "exemptInternalIP").verdict).toBeGreaterThan(0);
-    expect(byPrefix(trace, "blockIP").verdict).toBe(0);
-    expect(byPrefix(trace, "authenticate").verdict).toBeCloseTo(1 / 3, 5);
+    expect(byPrefix(trace.all(), "exemptInternalIP").verdict).toBeGreaterThan(0);
+    expect(byPrefix(trace.all(), "blockIP").verdict).toBe(0);
+    expect(byPrefix(trace.all(), "authenticate").verdict).toBeCloseTo(1 / 3, 5);
   });
 
   it("roles are carried on trace entries", () => {
@@ -80,9 +81,9 @@ describe("Run — node handlers (Active only)", () => {
 
     const { trace } = g.run(ctx);
 
-    expect(byPrefix(trace, "authenticate").role).toBe("rule");
-    expect(byPrefix(trace, "blockIP").role).toBe("counter");
-    expect(byPrefix(trace, "exemptInternalIP").role).toBe("except");
+    expect(byPrefix(trace.all(), "authenticate").role).toBe("rule");
+    expect(byPrefix(trace.all(), "blockIP").role).toBe("counter");
+    expect(byPrefix(trace.all(), "exemptInternalIP").role).toBe("except");
   });
 
   it("full pass — unreached nodes still appear in the trace as inactive", () => {
@@ -96,8 +97,8 @@ describe("Run — node handlers (Active only)", () => {
 
     const { trace } = g.run(newContext());
 
-    expect(trace.map(e => e.activated)).toEqual([false, false]);
-    expect(byPrefix(trace, "unreachedC").activated).toBe(false);
+    expect(trace.all().map(e => e.activated)).toEqual([false, false]);
+    expect(byPrefix(trace.all(), "unreachedC").activated).toBe(false);
   });
 
   it("evaluate stays pure — handlers never fire", () => {
@@ -152,7 +153,7 @@ describe("Run — node handlers (Active only)", () => {
     g.rule(ruleC);
 
     const { trace } = g.run(newContext());
-    const order = trace.map(e => e.name.replace(/_\d+$/, ""));
+    const order = trace.all().map(e => e.name.replace(/_\d+$/, ""));
     expect(order).toEqual(["ruleA", "ruleB", "ruleC"]);
   });
 
@@ -165,12 +166,13 @@ describe("Run — node handlers (Active only)", () => {
     const w = g.rule(warrant);
     const c = g.counter(counter);
     c.attacks(w);
-    w.runOn((_c, self) => fired.push(self));
+    const wName = shortName(w.id);
+    w.runOn((t) => { const self = t.get(wName); if (self) fired.push(self); });
 
     const { trace } = g.run(newContext());
 
     expect(fired).toHaveLength(0);
-    expect(byPrefix(trace, "warrant").verdict).toBe(0);
+    expect(byPrefix(trace.all(), "warrant").verdict).toBe(0);
   });
 
   it("run forces trace/duration off (Active nodes fire once)", () => {
@@ -205,8 +207,8 @@ describe("Run — trace argument (node inspection)", () => {
     const exempt = g2.except(exemptInternalIP);
     block.attacks(auth);
     exempt.attacks(block);
-    const inspect = (_c: Context, _self: TraceEntry, trace: TraceEntry[]) => {
-      seen.push(trace.map(e => e.name.replace(/_\d+$/, "")));
+    const inspect = (t: Trace) => {
+      seen.push(t.all().map(e => e.name.replace(/_\d+$/, "")));
     };
     auth.runOn(inspect);
     block.runOn(inspect);
@@ -230,14 +232,14 @@ describe("Run — trace argument (node inspection)", () => {
     const b = g.rule(ruleB);
 
     const verdictsSeenForA: (number | undefined)[] = [];
-    a.runOn((c) => { c.set("mutated", true); });
-    b.runOn((_c, _self, trace) => {
-      verdictsSeenForA.push(trace.find(e => e.name.startsWith("ruleA"))?.verdict);
+    a.runOn((t) => { t.ctx().set("mutated", true); });
+    b.runOn((t) => {
+      verdictsSeenForA.push(t.all().find(e => e.name.startsWith("ruleA"))?.verdict);
     });
 
     const { trace } = g.run(newContext());
 
-    const aVerdict = trace.find(e => e.name.startsWith("ruleA"))?.verdict;
+    const aVerdict = trace.all().find(e => e.name.startsWith("ruleA"))?.verdict;
     expect(verdictsSeenForA).toHaveLength(1);
     expect(verdictsSeenForA[0]).toBe(aVerdict);
   });
@@ -252,10 +254,12 @@ describe("Run — trace argument (node inspection)", () => {
     const block = g.counter(blockIP);
     block.attacks(auth);
 
-    block.runOn((_c, self, trace) => {
-      const target = trace.find(e => e.name.startsWith("authenticate"));
+    const blockName = shortName(block.id);
+    block.runOn((t) => {
+      const target = t.all().find(e => e.name.startsWith("authenticate"));
       const v = target?.verdict ?? 0;
-      if (self.verdict >= 0.5 && v <= 0) branch.push("hardBlock");
+      const self = t.get(blockName);
+      if ((self?.verdict ?? 0) >= 0.5 && v <= 0) branch.push("hardBlock");
       else branch.push("softFlag");
     });
 
@@ -278,9 +282,9 @@ describe("Run — trace argument (node inspection)", () => {
 
     const { trace } = g.run(ctx);
 
-    expect(trace).toHaveLength(3);
-    expect(byPrefix(trace, "authenticate").verdict).toBeGreaterThan(0);
-    expect(byPrefix(trace, "blockIP").verdict).toBe(0);
-    expect(byPrefix(trace, "exemptInternalIP").verdict).toBeGreaterThan(0);
+    expect(trace.all()).toHaveLength(3);
+    expect(byPrefix(trace.all(), "authenticate").verdict).toBeGreaterThan(0);
+    expect(byPrefix(trace.all(), "blockIP").verdict).toBe(0);
+    expect(byPrefix(trace.all(), "exemptInternalIP").verdict).toBeGreaterThan(0);
   });
 });

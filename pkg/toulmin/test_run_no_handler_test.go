@@ -18,7 +18,7 @@ func TestRunNoHandler(t *testing.T) {
 	if err2 != nil {
 		t.Fatalf("run error: %v", err2)
 	}
-	if got := len(trace); got != 2 {
+	if got := len(trace.All()); got != 2 {
 		t.Errorf("trace must include every node even with no handlers, want 2, got %d", got)
 	}
 	if len(runResults) != len(evalResults) {

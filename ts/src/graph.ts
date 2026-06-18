@@ -7,6 +7,7 @@ import { ruleID } from "./rule-id.js";
 import { shortName } from "./short-name.js";
 import { detectCycle } from "./detect-cycle.js";
 import { detectRunCycle } from "./detect-run-cycle.js";
+import { createTrace } from "./trace.js";
 
 const runMaxDepth = 64;   // 깊이 백스톱 (모듈 스코프)
 
@@ -54,9 +55,9 @@ export class Graph {
 
     // full pass 상태(active/verdictCache/evidence)와 메타(specs/qualifier/role)로
     // 전 노드 TraceEntry[]를 등록 순서로 조립 (인덱스 i ↔ this.rules[i] 구조적 보장).
-    const trace: TraceEntry[] = [];
+    const entries: TraceEntry[] = [];
     for (const r of this.rules) {
-      trace.push({
+      entries.push({
         name: shortName(r.name),
         role: this.roles.get(r.name) ?? "rule",
         activated: st.active.get(r.name) ?? false,
@@ -68,17 +69,18 @@ export class Graph {
       });
     }
 
-    for (let i = 0; i < trace.length; i++) {
-      const self = trace[i];
+    const tr = createTrace(entries, ctx);
+
+    for (let i = 0; i < entries.length; i++) {
       const meta = this.rules[i];          // 인덱스 대응
       // Active = activated && verdict > 0 인 노드만 발화/실행
-      if (!(self.activated && self.verdict > 0)) continue;
+      if (!(entries[i].activated && entries[i].verdict > 0)) continue;
       // (a) runOn 핸들러
       if (meta.runOn) {
         try {
-          meta.runOn(ctx, self, trace);
+          meta.runOn(tr);
         } catch (e) {
-          throw new Error(`runOn "${self.name}": ${e}`);
+          throw new Error(`runOn "${entries[i].name}": ${e}`);
         }
       }
       // (b) 실행 간선 — Active면 하위 그래프 Run (ctx 아래로, depth+1)
@@ -86,11 +88,11 @@ export class Graph {
         try {
           meta.runGraph._runDepth(ctx, opt, depth + 1);   // 같은 클래스 → private 접근 가능
         } catch (e) {
-          throw new Error(`run "${self.name}" → "${meta.runGraph.name}": ${e}`);
+          throw new Error(`run "${entries[i].name}" → "${meta.runGraph.name}": ${e}`);
         }
       }
     }
-    return { results: st.results, trace };
+    return { results: st.results, trace: tr };
   }
 
   private _evaluate(ctx: Context, opt: { method: EvalMethod; trace: boolean; duration: boolean }, full: boolean): {

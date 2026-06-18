@@ -17,7 +17,7 @@ func TestRunCycleError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for circular defeat graph")
 	}
-	if results != nil || view != nil {
-		t.Errorf("on evaluate error Run must return nil results and nil view, got results=%v view=%v", results, view)
+	if results != nil || view.All() != nil {
+		t.Errorf("on evaluate error Run must return nil results and an empty view, got results=%v view=%v", results, view.All())
 	}
 }

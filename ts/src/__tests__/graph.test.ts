@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Graph } from "../graph.js";
 import { newContext } from "../map-context.js";
-import { type RuleFunc, type Context, type TraceEntry } from "../types.js";
+import { type RuleFunc, type Context, type Trace, type TraceEntry } from "../types.js";
+import { shortName } from "../short-name.js";
 
 // Access-control graph used across several run() cases:
 //   authenticate (rule)               — user present
@@ -19,10 +20,10 @@ function buildAccessControl(fired: TraceEntry[]) {
   block.attacks(auth);
   exempt.attacks(block);
 
-  const record = (_ctx: Context, self: TraceEntry, _trace: TraceEntry[]) => { fired.push(self); };
-  auth.runOn(record);
-  block.runOn(record);
-  exempt.runOn(record);
+  const record = (name: string) => (t: Trace) => { const self = t.get(name); if (self) fired.push(self); };
+  auth.runOn(record(shortName(auth.id)));
+  block.runOn(record(shortName(block.id)));
+  exempt.runOn(record(shortName(exempt.id)));
 
   return g;
 }
@@ -55,17 +56,17 @@ describe("Graph.run", () => {
     expect(byPrefix(fired, "blockIP").verdict).toBeGreaterThan(0);
 
     // trace carries the full picture: auth defeated (verdict 0), exempt inactive.
-    expect(byPrefix(trace, "authenticate").verdict).toBe(0);
-    expect(byPrefix(trace, "authenticate").activated).toBe(true);
-    expect(byPrefix(trace, "exemptInternalIP").activated).toBe(false);
+    expect(byPrefix(trace.all(), "authenticate").verdict).toBe(0);
+    expect(byPrefix(trace.all(), "authenticate").activated).toBe(true);
+    expect(byPrefix(trace.all(), "exemptInternalIP").activated).toBe(false);
 
     // roles carried through
-    expect(byPrefix(trace, "authenticate").role).toBe("rule");
-    expect(byPrefix(trace, "blockIP").role).toBe("counter");
-    expect(byPrefix(trace, "exemptInternalIP").role).toBe("except");
+    expect(byPrefix(trace.all(), "authenticate").role).toBe("rule");
+    expect(byPrefix(trace.all(), "blockIP").role).toBe("counter");
+    expect(byPrefix(trace.all(), "exemptInternalIP").role).toBe("except");
 
     // trace snapshot is queryable post-hoc
-    expect(trace).toHaveLength(3);
+    expect(trace.all()).toHaveLength(3);
   });
 
   it("internal network: exempt Active + auth Active fire; block Defeated does not", () => {
@@ -80,9 +81,9 @@ describe("Graph.run", () => {
 
     // exempt and auth are Active; block is Defeated (verdict 0) → no fire.
     expect(fired.map(e => e.name.replace(/_\d+$/, "")).sort()).toEqual(["authenticate", "exemptInternalIP"]);
-    expect(byPrefix(trace, "exemptInternalIP").verdict).toBeGreaterThan(0);
-    expect(byPrefix(trace, "blockIP").verdict).toBe(0);
-    expect(byPrefix(trace, "authenticate").verdict).toBeGreaterThan(0);
+    expect(byPrefix(trace.all(), "exemptInternalIP").verdict).toBeGreaterThan(0);
+    expect(byPrefix(trace.all(), "blockIP").verdict).toBe(0);
+    expect(byPrefix(trace.all(), "authenticate").verdict).toBeGreaterThan(0);
   });
 
   it("only Active nodes fire — a Defeated node's handler is skipped", () => {
@@ -93,7 +94,8 @@ describe("Graph.run", () => {
     const w = g.rule(warrant);
     const c = g.counter(counter);
     c.attacks(w);
-    w.runOn((_c, self) => fired.push(self)); // w is Defeated (verdict 0) → must NOT fire
+    const wName = shortName(w.id);
+    w.runOn((t) => { const self = t.get(wName); if (self) fired.push(self); }); // w is Defeated (verdict 0) → must NOT fire
 
     expect(() => g.run(newContext())).not.toThrow();
     expect(fired).toHaveLength(0);
@@ -103,7 +105,9 @@ describe("Graph.run", () => {
     const fired: TraceEntry[] = [];
     const inactive: RuleFunc = () => [false, null];
     const g = new Graph("inactive-skip");
-    g.rule(inactive).runOn((_c, self) => fired.push(self));
+    const r = g.rule(inactive);
+    const rName = shortName(r.id);
+    r.runOn((t) => { const self = t.get(rName); if (self) fired.push(self); });
 
     expect(() => g.run(newContext())).not.toThrow();
     expect(fired).toHaveLength(0);
@@ -144,12 +148,15 @@ describe("Graph.run", () => {
     const seen: string[][] = [];
     const fired: TraceEntry[] = [];
     const g = new Graph("trace-all");
-    g.rule(() => [true, null]).runOn((_c, _self, trace) => {
-      seen.push(trace.map(e => e.name.replace(/_\d+$/, "")));
-      fired.push(_self);
+    const r1 = g.rule(() => [true, null]);
+    const r1Name = shortName(r1.id);
+    r1.runOn((t) => {
+      seen.push(t.all().map(e => e.name.replace(/_\d+$/, "")));
+      const self = t.get(r1Name);
+      if (self) fired.push(self);
     });
-    g.rule(() => [true, null]).runOn((_c, _self, trace) => {
-      seen.push(trace.map(e => e.name.replace(/_\d+$/, "")));
+    g.rule(() => [true, null]).runOn((t) => {
+      seen.push(t.all().map(e => e.name.replace(/_\d+$/, "")));
     });
 
     g.run(newContext());
@@ -159,8 +166,11 @@ describe("Graph.run", () => {
   it("gradient branch via self.verdict", () => {
     let branch = "";
     const g = new Graph("gradient");
-    g.rule(() => [true, null]).qualifier(0.75).runOn((_c, self) => {
-      branch = self.verdict >= 0.5 ? "strong" : "weak";
+    const r = g.rule(() => [true, null]).qualifier(0.75);
+    const rName = shortName(r.id);
+    r.runOn((t) => {
+      const self = t.get(rName);
+      branch = (self?.verdict ?? 0) >= 0.5 ? "strong" : "weak";
     });
     g.run(newContext());
     // qualifier 0.75, unattacked → verdict 2*0.75-1 = 0.5 → strong
@@ -170,7 +180,9 @@ describe("Graph.run", () => {
   it("gradient branch — below threshold reads weak verdict", () => {
     let captured = 1;
     const g = new Graph("gradient-weak");
-    g.rule(() => [true, null]).qualifier(0.6).runOn((_c, self) => { captured = self.verdict; });
+    const r = g.rule(() => [true, null]).qualifier(0.6);
+    const rName = shortName(r.id);
+    r.runOn((t) => { captured = t.get(rName)?.verdict ?? 0; });
     g.run(newContext());
     // qualifier 0.6, unattacked → verdict 2*0.6-1 = 0.2 (< 0.5)
     expect(captured).toBeLessThan(0.5);
@@ -203,7 +215,7 @@ describe("Graph.run — trace", () => {
     g.rule(() => [true, null]);
 
     const { trace } = g.run(newContext());
-    expect(trace).toHaveLength(3);
+    expect(trace.all()).toHaveLength(3);
   });
 
   it("trace verdict matches the evaluation result; ground is the ctx as-is", () => {
@@ -215,14 +227,17 @@ describe("Graph.run — trace", () => {
     const ctx = newContext();
     ctx.set("k", "v");
     const { results, trace } = g.run(ctx);
+    const entries = trace.all();
 
-    expect(byPrefix(trace, "")).toBeDefined();
-    expect(trace[0].verdict).toBe(results[0].verdict);
-    expect(trace[1].activated).toBe(false);
-    expect(trace[1].verdict).toBe(0);
+    expect(byPrefix(entries, "")).toBeDefined();
+    expect(entries[0].verdict).toBe(results[0].verdict);
+    expect(entries[1].activated).toBe(false);
+    expect(entries[1].verdict).toBe(0);
     // Ground is the ctx as-is, same reference for every entry.
-    expect(trace[0].ground).toBe(ctx);
-    expect(trace[1].ground).toBe(ctx);
+    expect(entries[0].ground).toBe(ctx);
+    expect(entries[1].ground).toBe(ctx);
+    // ctx() exposes this Run's context.
+    expect(trace.ctx()).toBe(ctx);
   });
 });
 
@@ -231,7 +246,7 @@ describe("Graph.run — composition (_runDepth recursion)", () => {
 
   it("Active node recurses into its runGraph (ctx flows down, depth+1)", () => {
     const sub = new Graph("sub");
-    sub.rule(always).runOn((ctx) => { ctx.set("subRan", true); });
+    sub.rule(always).runOn((t) => { t.ctx().set("subRan", true); });
 
     const parent = new Graph("parent");
     parent.rule(always).run(sub); // Active → recurse
@@ -243,7 +258,7 @@ describe("Graph.run — composition (_runDepth recursion)", () => {
 
   it("non-Active node does NOT recurse into its runGraph", () => {
     const sub = new Graph("sub-skip");
-    sub.rule(always).runOn((ctx) => { ctx.set("subRan", true); });
+    sub.rule(always).runOn((t) => { t.ctx().set("subRan", true); });
 
     const parent = new Graph("parent-skip");
     parent.rule(() => [false, null]).run(sub); // Inactive → no recurse
