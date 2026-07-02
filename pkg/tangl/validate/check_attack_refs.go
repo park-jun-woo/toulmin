@@ -1,30 +1,23 @@
-//ff:func feature=tangl type=validator control=iteration dimension=1
-//ff:what checkAttackRefs — check that attack attacker and target reference existing bindings
+//ff:func feature=tangl type=validator control=iteration dimension=2
+//ff:what checkAttackRefs — verifies don't/do-not target and attacker name registered nodes
 package validate
 
-import (
-	"fmt"
+import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 
-	"github.com/park-jun-woo/toulmin/pkg/tangl/parser"
-)
-
-// checkAttackRefs checks that AttackDecl.Attacker and .Target reference existing RuleBinding names.
-func checkAttackRefs(f *parser.File) []string {
-	var errs []string
-
-	bindings := make(map[string]bool)
-	for _, b := range f.Bindings {
-		bindings[b.Name] = true
-	}
-
-	for _, a := range f.Attacks {
-		if !bindings[a.Attacker] {
-			errs = append(errs, fmt.Sprintf("attack attacker %q references unknown binding (line %d)", a.Attacker, a.Line))
-		}
-		if !bindings[a.Target] {
-			errs = append(errs, fmt.Sprintf("attack target %q references unknown binding (line %d)", a.Target, a.Line))
+// checkAttackRefs verifies that every Attack's Target and Attacker name a
+// node registered in the same case.
+func checkAttackRefs(doc *ast.Document) []error {
+	var errs []error
+	for _, c := range doc.Cases {
+		nodes := caseNodeSet(c)
+		for _, a := range c.Attacks {
+			if !nodes[a.Target] {
+				errs = append(errs, errAt(doc.Path, a.Line, "case %q: don't target %q is not a registered node", c.Name, a.Target))
+			}
+			if !nodes[a.Attacker] {
+				errs = append(errs, errAt(doc.Path, a.Line, "case %q: don't attacker %q is not a registered node", c.Name, a.Attacker))
+			}
 		}
 	}
-
 	return errs
 }

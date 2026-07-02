@@ -1,40 +1,25 @@
 //ff:func feature=tangl type=validator control=iteration dimension=1
-//ff:what checkDuplicates — check for duplicate graph, inline rule, and binding names
+//ff:what checkDuplicates — reports every repeated name in locs, keyed to its first occurrence
 package validate
 
-import (
-	"fmt"
-
-	"github.com/park-jun-woo/toulmin/pkg/tangl/parser"
-)
-
-// checkDuplicates checks for duplicate names across graphs, inline rules, and bindings.
-func checkDuplicates(f *parser.File) []string {
-	var errs []string
-
-	graphNames := make(map[string]int)
-	for _, g := range f.Graphs {
-		if prev, ok := graphNames[g.Name]; ok {
-			errs = append(errs, fmt.Sprintf("duplicate graph name %q (lines %d and %d)", g.Name, prev, g.Line))
+// checkDuplicates walks locs in declaration order and reports every name seen
+// more than once, referencing the line of its first declaration. kind labels
+// the name space in the error message (e.g. "case name", "See alias").
+func checkDuplicates(path, kind string, locs []nameLoc) []error {
+	first := make(map[string]int)
+	reported := make(map[string]bool)
+	var errs []error
+	for _, loc := range locs {
+		line, ok := first[loc.Name]
+		if !ok {
+			first[loc.Name] = loc.Line
+			continue
 		}
-		graphNames[g.Name] = g.Line
-	}
-
-	ruleNames := make(map[string]int)
-	for _, r := range f.Rules {
-		if prev, ok := ruleNames[r.Name]; ok {
-			errs = append(errs, fmt.Sprintf("duplicate inline rule name %q (lines %d and %d)", r.Name, prev, r.Line))
+		if reported[loc.Name] {
+			continue
 		}
-		ruleNames[r.Name] = r.Line
+		reported[loc.Name] = true
+		errs = append(errs, errAt(path, loc.Line, "duplicate %s %q (first declared at line %d)", kind, loc.Name, line))
 	}
-
-	bindingNames := make(map[string]int)
-	for _, b := range f.Bindings {
-		if prev, ok := bindingNames[b.Name]; ok {
-			errs = append(errs, fmt.Sprintf("duplicate binding name %q (lines %d and %d)", b.Name, prev, b.Line))
-		}
-		bindingNames[b.Name] = b.Line
-	}
-
 	return errs
 }
