@@ -3,8 +3,8 @@
 package state
 
 import (
-	"time"
 	"github.com/park-jun-woo/toulmin/pkg/toulmin"
+	"time"
 )
 
 // IsExpired checks if the resource is expired using spec (*ExpirySpec).

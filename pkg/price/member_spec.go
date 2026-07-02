@@ -4,6 +4,6 @@ package price
 
 // MemberSpec carries membership criteria.
 type MemberSpec struct {
-	Level    string           // membership level to match ("basic", "gold", "vip")
+	Level    string        // membership level to match ("basic", "gold", "vip")
 	Discount *DiscountSpec // discount to apply if matched
 }

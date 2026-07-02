@@ -40,4 +40,21 @@ func TestRuleID(t *testing.T) {
 	if idD1 != idD2 {
 		t.Errorf("(d) equal-value specs with nested pointer should produce same ID (no address leak): %q != %q", idD1, idD2)
 	}
+
+	// (e) empty specs → returns funcID only
+	idE := ruleID(ruleIDTestFn, Specs{})
+	idFn := funcID(ruleIDTestFn)
+	if idE != idFn {
+		t.Errorf("(e) empty specs should return funcID only: %q != %q", idE, idFn)
+	}
+
+	// (f) spec that fails json.Marshal → falls back to %+v serialization
+	idF1 := ruleID(ruleIDTestFn, Specs{&ruleIDUnmarshalableSpec{}})
+	idF2 := ruleID(ruleIDTestFn, Specs{&ruleIDUnmarshalableSpec{}})
+	if idF1 != idF2 {
+		t.Errorf("(f) unmarshalable spec fallback should still be stable: %q != %q", idF1, idF2)
+	}
+	if idF1 == idFn {
+		t.Errorf("(f) fallback id should differ from bare funcID: %q == %q", idF1, idFn)
+	}
 }

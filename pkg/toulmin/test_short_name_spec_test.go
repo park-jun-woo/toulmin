@@ -13,6 +13,7 @@ func TestShortNameSpec(t *testing.T) {
 		{"github.com/example/pkg.IsAdult", "IsAdult"},
 		{"IsAdult", "IsAdult"},
 		{"pkg.Fn#specA+specB", "Fn#specA+specB"},
+		{"IsAdult#specA", "IsAdult#specA"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
