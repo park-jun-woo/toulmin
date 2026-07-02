@@ -21,8 +21,7 @@ func renderNodeExecBlock(w *strings.Builder, subject, caseName string, ni nodeIn
 	fmt.Fprintf(w, "\t%s", ni.Var)
 	if hasDoOrUndo(execs) {
 		fmt.Fprintln(w, ".RunOn(func(self toulmin.TraceEntry, t toulmin.Trace) error {")
-		writeDoStatements(w, subject, caseName, ni.Node.Name, execs)
-		writeUndoPushes(w, execs)
+		writeNodeExecs(w, subject, caseName, ni.Node.Name, execs)
 		fmt.Fprintln(w, "\t\treturn nil")
 		fmt.Fprint(w, "\t})")
 	}
