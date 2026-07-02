@@ -5,7 +5,7 @@
 | Package | Description | Key API |
 |---|---|---|
 | `toulmin` | Core engine. Defeats graph + h-Categoriser verdict | `NewGraph`, `Evaluate`, `RunCases` |
-| `tangl` | Markdown-based policy language (parser + validator) | `parser.Parse`, `validate.Validate` |
+| `tangl` | TANGL v0.3 markdown policy language: parser, validator, effect-summary analyzer, Go codegen, saga runtime | `parser.Parse`, `validate.Validate`, `effects.Closure`, `gen.Generate` |
 
 ## Domain Frameworks
 

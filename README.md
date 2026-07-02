@@ -4,7 +4,7 @@
   <img src="images/toulmin.webp" alt="toulmin" width="100%">
 </p>
 
-[![version](https://img.shields.io/badge/version-0.3.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
+[![version](https://img.shields.io/badge/version-0.4.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
 
 **Stop nesting if-else. Declare rules, declare relationships.**
@@ -330,9 +330,37 @@ Domain-specific frameworks built on the core. Pre-built rule functions and wrapp
 | `pkg/price` | Price judgment (coupons, membership) | `Pricer.Evaluate` |
 | `pkg/feature` | Feature flags (rollout, toggle) | `Flags.IsEnabled` |
 | `pkg/moderate` | Content moderation (hate speech, spam) | `Moderator.Review` |
-| `pkg/tangl` | Markdown-based policy language | `parser.Parse`, `validate.Validate` |
+| `pkg/tangl` | Markdown policy language (TANGL v0.3): parser, validator, effect-summary analyzer, Go codegen, saga runtime | `parser.Parse`, `gen.Generate`, `effects.Closure` |
 
 You can use the core without any framework. Writing your own rule functions — like the killer example above — is the most flexible approach.
+
+## TANGL
+
+TANGL v0.3 is a markdown policy language that compiles directly onto the core: no separate runtime, no hand-written glue.
+
+- **Markdown is the executable.** A `tangl:Cases` block — nodes, `don't` attack edges, `do`/`undo`/`run` execution edges — compiles straight to a `toulmin.Graph`. Nothing is hand-transcribed.
+- **Judgment and execution are separated.** A `Provides`/`Internal` entry either `check`s a case (compiles to `Graph.Evaluate` — pure) or `run`s one (compiles to `Graph.Run` — judgment then `do`/`undo` side effects via `RunOn`).
+- **Saga compensation, built in.** Each `do` arms its paired `undo` on a compensation stack the moment it succeeds; a later failure in the same pass replays the stack LIFO, and unrecoverable failures escalate to a `*tangl.ReviewError` carrying both the cause and the compensation error.
+- **Effect summary, for audit.** `tangl effects` statically lists every `do`/`undo` an endpoint can trigger — without running it.
+
+```bash
+go install github.com/park-jun-woo/toulmin/cmd/tangl@latest
+
+tangl check policy.md              # parse + validate + lint
+tangl effects policy.md pay        # static do/undo summary reachable from endpoint "pay"
+tangl gen policy.md -o pay_gen.go  # compile the document to Go source
+```
+
+```
+$ tangl check pkg/tangl/parser/testdata/transfer.md
+ok
+
+$ tangl effects pkg/tangl/parser/testdata/transfer.md transfer
+do   bank.withdraw        once (can withdraw / balance sufficient)
+undo bank.refund               (can withdraw / balance sufficient)
+do   bank.deposit         once (can deposit / recipient valid)
+do   log.TransferComplete      (can deposit / recipient valid)
+```
 
 ## Why toulmin
 

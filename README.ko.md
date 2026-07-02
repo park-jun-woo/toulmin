@@ -4,7 +4,7 @@
   <img src="images/toulmin.webp" alt="toulmin" width="100%">
 </p>
 
-[![version](https://img.shields.io/badge/version-0.3.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
+[![version](https://img.shields.io/badge/version-0.4.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
 
 **if-else를 그만 중첩하라. 규칙을 선언하고, 관계를 선언하라.**
@@ -270,9 +270,37 @@ order.RunOn(logOrder).Run(notifyGraph)   // Active order → notify 그래프 Ru
 | `pkg/price` | 할인 판정 (쿠폰, 멤버십) | `Pricer.Evaluate` |
 | `pkg/feature` | 피처 플래그 (롤아웃, 토글) | `Flags.IsEnabled` |
 | `pkg/moderate` | 콘텐츠 모더레이션 (혐오, 스팸) | `Moderator.Review` |
-| `pkg/tangl` | 마크다운 기반 정책 언어 | `parser.Parse`, `validate.Validate` |
+| `pkg/tangl` | 마크다운 정책 언어 (TANGL v0.3): 파서, 검증기, effect 요약 분석기, Go 코드 생성, saga 런타임 | `parser.Parse`, `gen.Generate`, `effects.Closure` |
 
 프레임워크 없이 코어만 써도 된다. 위 킬러 예제처럼 직접 규칙 함수를 작성하는 게 가장 유연하다.
+
+## TANGL
+
+TANGL v0.3은 코어 위에 바로 컴파일되는 마크다운 정책 언어다 — 별도 런타임도, 수작업 접착 코드도 없다.
+
+- **마크다운이 곧 실행 코드다.** `tangl:Cases` 블록(노드, `don't` 공격 엣지, `do`/`undo`/`run` 실행 엣지)이 `toulmin.Graph`로 그대로 컴파일된다. 손으로 옮겨 적는 부분이 없다.
+- **판정과 실행이 분리된다.** `Provides`/`Internal` 항목은 케이스를 `check`(순수 판정 — `Graph.Evaluate`로 컴파일)하거나 `run`(판정 후 `RunOn`을 통한 `do`/`undo` 부수효과 — `Graph.Run`으로 컴파일)한다.
+- **saga 보상이 내장되어 있다.** `do`가 성공하는 순간 짝을 이루는 `undo`가 보상 스택에 적재되고, 같은 패스 안에서 이후 단계가 실패하면 스택을 LIFO로 되돌린다. 복구 불가능한 실패는 원인과 보상 실패를 함께 담은 `*tangl.ReviewError`로 승격된다.
+- **effect summary로 감사한다.** `tangl effects`는 실행하지 않고도 한 엔드포인트가 일으킬 수 있는 모든 `do`/`undo`를 정적으로 나열한다.
+
+```bash
+go install github.com/park-jun-woo/toulmin/cmd/tangl@latest
+
+tangl check policy.md              # 파싱 + 검증 + lint
+tangl effects policy.md pay        # 엔드포인트 "pay"에서 도달 가능한 정적 do/undo 요약
+tangl gen policy.md -o pay_gen.go  # 문서를 Go 소스로 컴파일
+```
+
+```
+$ tangl check pkg/tangl/parser/testdata/transfer.md
+ok
+
+$ tangl effects pkg/tangl/parser/testdata/transfer.md transfer
+do   bank.withdraw        once (can withdraw / balance sufficient)
+undo bank.refund               (can withdraw / balance sufficient)
+do   bank.deposit         once (can deposit / recipient valid)
+do   log.TransferComplete      (can deposit / recipient valid)
+```
 
 ## 왜 toulmin인가
 
