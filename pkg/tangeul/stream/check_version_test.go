@@ -12,7 +12,7 @@ import (
 // TestCheckVersion covers checkVersion's outcomes: a non-Control frame class,
 // a frame header word.DecodeFrame cannot parse, a body shorter than 5 words, a
 // first control word that is not STREAM_HEADER, a GEUL major mismatch, a
-// TANGL profile mismatch, a codebook major mismatch, and a fully valid stamp.
+// TANGEUL profile mismatch, a codebook major mismatch, and a fully valid stamp.
 func TestCheckVersion(t *testing.T) {
 	// makeVersionBody builds a well-formed STREAM_HEADER body (5 words) with
 	// the given majors/profile so each mismatch check in checkVersion can be

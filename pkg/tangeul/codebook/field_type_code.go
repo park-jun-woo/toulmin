@@ -1,13 +1,13 @@
 //ff:type feature=tangl type=model
-//ff:what FieldTypeCode — the ten TANGL basic field-type codes (ast.Field.Type)
+//ff:what FieldTypeCode — the ten TANGEUL basic field-type codes (ast.Field.Type)
 package codebook
 
-// FieldTypeCode is the code for a TANGL basic type name written in "as <Type>"
+// FieldTypeCode is the code for a TANGEUL basic type name written in "as <Type>"
 // clauses. It maps to the ten canonical ast.Field.Type strings (the same set as
 // pkg/tangl/types.Name). Free-area L1 codebook value, FROZEN append-only.
 type FieldTypeCode uint16
 
-// The ten TANGL basic type codes, assigned 0x0201..0x020A.
+// The ten TANGEUL basic type codes, assigned 0x0201..0x020A.
 const (
 	// FieldText is "Text" (0x0201).
 	FieldText FieldTypeCode = 0x0201

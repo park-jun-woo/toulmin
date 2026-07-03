@@ -1,8 +1,8 @@
 //ff:func feature=tangl type=engine control=selection
-//ff:what Valid — checks that v satisfies the TANGL basic type named typeName
+//ff:what Valid — checks that v satisfies the TANGEUL basic type named typeName
 package types
 
-// Valid reports whether v is a valid value of the TANGL basic type typeName.
+// Valid reports whether v is a valid value of the TANGEUL basic type typeName.
 // An unrecognized typeName always returns false.
 func Valid(typeName string, v any) bool {
 	switch typeName {

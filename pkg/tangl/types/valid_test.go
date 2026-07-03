@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=engine control=iteration dimension=1
-//ff:what TestValid — table-driven check of Valid dispatching to each TANGL basic type validator
+//ff:what TestValid — table-driven check of Valid dispatching to each TANGEUL basic type validator
 package types
 
 import "testing"

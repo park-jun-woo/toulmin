@@ -11,7 +11,7 @@ func NewRootCmd() *cobra.Command {
 	registerCodecs()
 	cmd := &cobra.Command{
 		Use:   "tangl",
-		Short: "TANGL v0.3 markdown policy DSL toolchain",
+		Short: "TANGEUL v0.3 markdown policy DSL toolchain",
 	}
 	cmd.AddCommand(NewCheckCmd())
 	cmd.AddCommand(NewAstCmd())

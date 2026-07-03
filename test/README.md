@@ -1,4 +1,4 @@
-# test/ — TANGL v0.3 검증용 예제 문서
+# test/ — TANGEUL v0.3 검증용 예제 문서
 
 `pkg/tangl/{ast,parser,validate,effects,gen}` + `cmd/tangl`(`internal/tanglcli`)
 구현을 스펙(`files/TANGL문법v0.3.md`, 읽기 전용)에 없는 새 도메인으로 검증하는

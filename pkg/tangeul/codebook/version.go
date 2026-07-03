@@ -1,11 +1,11 @@
 //ff:type feature=tangl type=model
-//ff:what version stamp — GEUL version, TANGL profile ID and codebook version constants
+//ff:what version stamp — GEUL version, TANGEUL profile ID and codebook version constants
 package codebook
 
 // The stream version stamp written into the STREAM_HEADER Control packet
 // (§2.4, §7.1) and checked by the reader, which rejects an unknown major
 // version. Three parts: the GEUL primitive spec version this build targets, the
-// TANGL Free-area profile ID, and this codebook's own version.
+// TANGEUL Free-area profile ID, and this codebook's own version.
 //
 // All values are Proposal placeholders per §11-1/§11-2; the codebook version is
 // v0.2 and is FROZEN append-only from here.
@@ -17,7 +17,7 @@ const (
 	// GEULVersionPatch is the targeted GEUL spec patch version (GEUL v0.3.0).
 	GEULVersionPatch uint8 = 0
 
-	// TANGLProfileID identifies the TANGL Free-area profile (Proposal).
+	// TANGLProfileID identifies the TANGEUL Free-area profile (Proposal).
 	TANGLProfileID uint16 = 0x0001
 
 	// CodebookVersionMajor is this codebook's major version (v0.2).

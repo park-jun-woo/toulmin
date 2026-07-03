@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=parser control=sequence
-//ff:what Parse — read a TANGL v0.3 markdown file and parse it into a Document
+//ff:what Parse — read a TANGEUL v0.3 markdown file and parse it into a Document
 package parser
 
 import (

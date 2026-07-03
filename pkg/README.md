@@ -5,7 +5,7 @@
 | Package | Description | Key API |
 |---|---|---|
 | `toulmin` | Core engine. Defeats graph + h-Categoriser verdict | `NewGraph`, `Evaluate`, `RunCases` |
-| `tangl` | TANGL v0.3 markdown policy language: parser, validator, effect-summary analyzer, Go codegen, saga runtime | `parser.Parse`, `validate.Validate`, `effects.Closure`, `gen.Generate` |
+| `tangl` | TANGEUL v0.3 markdown policy language: parser, validator, effect-summary analyzer, Go codegen, saga runtime | `parser.Parse`, `validate.Validate`, `effects.Closure`, `gen.Generate` |
 | `tangeul` | TANGEUL binary SSOT stream: `.tangeul` load/save, AST+prose tiling, surface codecs (encode/decode) — EN + KO audit surfaces over a shared locale-blind span scanner | `tangeul.Load`, `tangeul.Save`, `codec/en.ENCodec`, `codec/ko.KoCodec`, `codec/scan` |
 
 ## Domain Frameworks

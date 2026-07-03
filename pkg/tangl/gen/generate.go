@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=codegen control=sequence
-//ff:what Generate — compiles a TANGL v0.3 Document into a single Go source file
+//ff:what Generate — compiles a TANGEUL v0.3 Document into a single Go source file
 package gen
 
 import (

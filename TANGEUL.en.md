@@ -1,10 +1,10 @@
-# TANGL
+# TANGEUL
 
-**Toulmin Amgoud Nute Graph Language**
+**Toulmin Amgoud Nute Graph - General Encoding Unified Language**
 
 An executable language written by AI and read by humans. A markdown file is the executable code itself.
 
-Core principle: **repetition is only safe on top of idempotency, and failure is never silent — it is compensated or escalated to a human.** In this language's domain of use (autonomous RPA handling money, e.g. tax/banking), re-firing every tick becomes a double transfer, and a half-executed process is the most dangerous state. TANGL blocks both of these at the language level.
+Core principle: **repetition is only safe on top of idempotency, and failure is never silent — it is compensated or escalated to a human.** In this language's domain of use (autonomous RPA handling money, e.g. tax/banking), re-firing every tick becomes a double transfer, and a half-executed process is the most dangerous state. TANGEUL blocks both of these at the language level.
 
 ## File format
 
@@ -563,7 +563,7 @@ FUNC_REF = NAME | NAME "." NAME
 
 ## Go API correspondence table
 
-| TANGL | Go |
+| TANGEUL | Go |
 |---|---|
 | `` this document is `x` `` | `package x` |
 | `` see `p` from `path` `` | `import p "path"` |

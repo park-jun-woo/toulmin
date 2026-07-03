@@ -1,6 +1,6 @@
-# TANGL — 한국어판
+# TANGEUL — 한국어판
 
-**Toulmin Amgoud Nute Graph Language — 한국어 로케일 스킨**
+**Toulmin Amgoud Nute Graph - General Encoding Unified Language — 한국어 로케일 스킨**
 
 AI가 작성하고 한국인 감사자가 읽는 실행 가능한 언어. 마크다운 파일이 곧 실행 코드.
 
@@ -13,7 +13,7 @@ AI가 작성하고 한국인 감사자가 읽는 실행 가능한 언어. 마크
 
 ## 왜 한국어판인가
 
-TANGL의 설계 원리는 "AI가 작성, 인간이 읽는다". 읽는 인간이 한국인이면 **읽는 층이 한국어여야** 감사·검증·신뢰가 작동한다 — `don't X when Y`, `is a general rule` 같은 영어 키워드로는 비개발자가 "이대로 맞네" 하고 감사·검증할 수 없다.
+TANGEUL의 설계 원리는 "AI가 작성, 인간이 읽는다". 읽는 인간이 한국인이면 **읽는 층이 한국어여야** 감사·검증·신뢰가 작동한다 — `don't X when Y`, `is a general rule` 같은 영어 키워드로는 비개발자가 "이대로 맞네" 하고 감사·검증할 수 없다.
 
 한국어는 SOV + "조건 → 결과" 어순이다. `` `Y` 면 `X` 실행한다 `` 가 영어 `do X when Y`보다 오히려 잘 읽힌다 — 조건이 앞에 오고 서술어로 맺는 것이 한국어의 자연 어순이다.
 

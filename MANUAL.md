@@ -13,7 +13,7 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 | `pkg/price` | Price judgment (DiscountSpec, Pricer) | `pkg/price/README.md` |
 | `pkg/feature` | Feature flags (Flags, rollout, net/http Require/Inject) | `pkg/feature/README.md` |
 | `pkg/moderate` | Content moderation (Classifier, 3-level action) | `pkg/moderate/README.md` |
-| `pkg/tangl` | TANGL v0.3 markdown policy language: runtime, ast, parser, validate, effects, gen | see "TANGL — Markdown Policy Language" below |
+| `pkg/tangl` | TANGEUL v0.3 markdown policy language: runtime, ast, parser, validate, effects, gen | see "TANGEUL — Markdown Policy Language" below |
 | `pkg/tangeul` | TANGEUL binary stream: the `.tangeul` SSOT the CLI operates on (load/save, AST+prose tiling, surface codecs) | `pkg/tangeul/README.md` |
 
 ## How to Navigate
@@ -347,9 +347,9 @@ Detected at evaluation time via DFS.
 
 ---
 
-## TANGL — Markdown Policy Language
+## TANGEUL — Markdown Policy Language
 
-TANGL v0.3 compiles a markdown document straight into a `toulmin` defeats
+TANGEUL v0.3 compiles a markdown document straight into a `toulmin` defeats
 graph plus saga-style execution. The old `pkg/tangl` prototype parser/validate
 has been fully replaced by the pipeline below (`pkg/tangl` is now the
 runtime; parsing/validation/codegen live in dedicated subpackages). For the

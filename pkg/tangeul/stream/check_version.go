@@ -10,7 +10,7 @@ import (
 )
 
 // checkVersion decodes the STREAM_HEADER control (§7.1) and validates its
-// version stamp against this build. It rejects a stream whose GEUL major, TANGL
+// version stamp against this build. It rejects a stream whose GEUL major, TANGEUL
 // profile id, or codebook major differs — an unknown major means the bit layout
 // or codebook may be incompatible, so decoding must fail loudly rather than
 // misread. Minor/patch drift is tolerated (forward compatible).
@@ -36,7 +36,7 @@ func checkVersion(rp rawPacket) error {
 		return fmt.Errorf("tangeul/stream: unknown GEUL major version %d (this build targets %d)", geulMajor, codebook.GEULVersionMajor)
 	}
 	if profile != codebook.TANGLProfileID {
-		return fmt.Errorf("tangeul/stream: unknown TANGL profile 0x%04X (this build is 0x%04X)", profile, codebook.TANGLProfileID)
+		return fmt.Errorf("tangeul/stream: unknown TANGEUL profile 0x%04X (this build is 0x%04X)", profile, codebook.TANGLProfileID)
 	}
 	if cbMajor != codebook.CodebookVersionMajor {
 		return fmt.Errorf("tangeul/stream: unknown codebook major version %d (this build is %d)", cbMajor, codebook.CodebookVersionMajor)

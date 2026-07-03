@@ -7,7 +7,7 @@ package codebook
 // "or". Free-area L1 codebook value, FROZEN append-only.
 type LogicOp uint16
 
-// The two TANGL boolean combiner codes, assigned 0x0311..0x0312.
+// The two TANGEUL boolean combiner codes, assigned 0x0311..0x0312.
 const (
 	// LogicAnd is "and" (0x0311).
 	LogicAnd LogicOp = 0x0311

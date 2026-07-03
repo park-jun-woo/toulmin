@@ -4,7 +4,7 @@
   <img src="images/toulmin.webp" alt="toulmin" width="100%">
 </p>
 
-[![version](https://img.shields.io/badge/version-0.5.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
+[![version](https://img.shields.io/badge/version-0.5.1-blue)](https://github.com/park-jun-woo/toulmin/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
 
 **Stop nesting if-else. Declare rules, declare relationships.**
@@ -342,13 +342,13 @@ Domain-specific frameworks built on the core. Pre-built rule functions and wrapp
 | `pkg/price` | Price judgment (coupons, membership) | `Pricer.Evaluate` |
 | `pkg/feature` | Feature flags (rollout, toggle) | `Flags.IsEnabled` |
 | `pkg/moderate` | Content moderation (hate speech, spam) | `Moderator.Review` |
-| `pkg/tangl` | Markdown policy language (TANGL v0.3): parser, validator, effect-summary analyzer, Go codegen, saga runtime | `parser.Parse`, `gen.Generate`, `effects.Closure` |
+| `pkg/tangl` | Markdown policy language (TANGEUL v0.3): parser, validator, effect-summary analyzer, Go codegen, saga runtime | `parser.Parse`, `gen.Generate`, `effects.Closure` |
 
 You can use the core without any framework. Writing your own rule functions — like the killer example above — is the most flexible approach.
 
-## TANGL
+## TANGEUL
 
-TANGL v0.3 is a markdown policy language that compiles directly onto the core: no separate runtime, no hand-written glue.
+TANGEUL v0.3 is a markdown policy language that compiles directly onto the core: no separate runtime, no hand-written glue.
 
 - **Markdown is the executable.** A `tangl:Cases` block — nodes, `don't` attack edges, `do`/`undo`/`run` execution edges — compiles straight to a `toulmin.Graph`. Nothing is hand-transcribed.
 - **Judgment and execution are separated.** A `Provides`/`Internal` entry either `check`s a case (compiles to `Graph.Evaluate` — pure) or `run`s one (compiles to `Graph.Run` — judgment then `do`/`undo` side effects via `RunOn`).

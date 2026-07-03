@@ -5,7 +5,7 @@ package codebook
 import "fmt"
 
 // FieldTypeFromAST maps a canonical ast.Field.Type string (one of the ten
-// TANGL basic type names) to its FieldTypeCode. An unrecognized string is a
+// TANGEUL basic type names) to its FieldTypeCode. An unrecognized string is a
 // hard error — never a silent fallback.
 func FieldTypeFromAST(name string) (FieldTypeCode, error) {
 	switch name {

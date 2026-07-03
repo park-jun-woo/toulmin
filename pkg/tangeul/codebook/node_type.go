@@ -1,5 +1,5 @@
 //ff:type feature=tangl type=model
-//ff:what NodeType — the ten TANGL Node-packet entity types (codebook §2.1)
+//ff:what NodeType — the ten TANGEUL Node-packet entity types (codebook §2.1)
 package codebook
 
 // NodeType is the entity-type code carried in word 3 of a Node packet
@@ -9,7 +9,7 @@ package codebook
 // than deleted.
 type NodeType uint16
 
-// The ten TANGL NodeType codes (§2.1). Assigned 0x0001..0x000A; 0x0000 is
+// The ten TANGEUL NodeType codes (§2.1). Assigned 0x0001..0x000A; 0x0000 is
 // reserved as "unset" and is never a valid NodeType.
 const (
 	// NodeNamespace is `this document is x` (0x0001).

@@ -3,7 +3,7 @@
 package word
 
 // GateOp is the 2-bit threshold operator of a GATE16 (GEUL §3.2), matching
-// TANGL's THRESHOLD_OP. Mapping between these values and the ast.Certainty.Op
+// TANGEUL's THRESHOLD_OP. Mapping between these values and the ast.Certainty.Op
 // strings is the codebook's concern, not this package's.
 type GateOp uint8
 

@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=parser control=iteration dimension=1
-//ff:what Encode — absorb English TANGL markdown into a fully tiled doc.Doc
+//ff:what Encode — absorb English TANGEUL markdown into a fully tiled doc.Doc
 package en
 
 import (

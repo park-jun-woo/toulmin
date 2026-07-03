@@ -15,7 +15,7 @@ func TestNewRootCmd(t *testing.T) {
 	if got, want := cmd.Use, "tangl"; got != want {
 		t.Errorf("Use = %q, want %q", got, want)
 	}
-	if got, want := cmd.Short, "TANGL v0.3 markdown policy DSL toolchain"; got != want {
+	if got, want := cmd.Short, "TANGEUL v0.3 markdown policy DSL toolchain"; got != want {
 		t.Errorf("Short = %q, want %q", got, want)
 	}
 	wantUses := map[string]bool{

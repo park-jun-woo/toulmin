@@ -5,7 +5,7 @@ package stream
 import "strconv"
 
 // nodeKey builds the tidTable.nodeByCase key for an in-case rule node, scoping
-// the node name to its case index. Node names are case-local (TANGL §execution
+// the node name to its case index. Node names are case-local (TANGEUL §execution
 // edges), so attacks and `when <node>` triggers must resolve within the same
 // case; the NUL separator keeps distinct (index, name) pairs from aliasing.
 func nodeKey(caseIdx int, name string) string {

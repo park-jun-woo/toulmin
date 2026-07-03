@@ -1,12 +1,12 @@
 //ff:type feature=tangl type=model
-//ff:what Name — the ten TANGL basic type name constants used in "as <Type>" clauses
+//ff:what Name — the ten TANGEUL basic type name constants used in "as <Type>" clauses
 package types
 
-// Name is a TANGL basic type name, as written in Definitions ("as <Type>") and
+// Name is a TANGEUL basic type name, as written in Definitions ("as <Type>") and
 // Cases/Provides ("is required as <Type>") clauses.
 type Name = string
 
-// The ten TANGL basic type names.
+// The ten TANGEUL basic type names.
 const (
 	Text     Name = "Text"
 	Integer  Name = "Integer"

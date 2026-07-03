@@ -7,7 +7,7 @@ package codebook
 // Free-area L1 codebook value, FROZEN append-only.
 type CompareOp uint16
 
-// The eight TANGL comparison operator codes, assigned 0x0301..0x0308.
+// The eight TANGEUL comparison operator codes, assigned 0x0301..0x0308.
 const (
 	// CompareIsEmpty is "is empty" (0x0301).
 	CompareIsEmpty CompareOp = 0x0301

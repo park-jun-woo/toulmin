@@ -1,14 +1,14 @@
 //ff:type feature=tangl type=model
-//ff:what ControlCode — the seven TANGL Control-packet subcodes (codebook §2.4)
+//ff:what ControlCode — the seven TANGEUL Control-packet subcodes (codebook §2.4)
 package codebook
 
 // ControlCode is the subcode of a Control packet (Class 11), carried in word 2
 // (TANGEUL §2.4, §7.1). Free-area L1 codebook value, FROZEN append-only.
 type ControlCode uint16
 
-// The seven TANGL Control subcodes (§2.4), assigned 0x00..0x06.
+// The seven TANGEUL Control subcodes (§2.4), assigned 0x00..0x06.
 const (
-	// ControlStreamHeader carries GEUL version, codebook decl and TANGL profile ID (0x00).
+	// ControlStreamHeader carries GEUL version, codebook decl and TANGEUL profile ID (0x00).
 	ControlStreamHeader ControlCode = 0x00
 	// ControlSegmentBoundary is a resync point; one document = one segment (0x01).
 	ControlSegmentBoundary ControlCode = 0x01

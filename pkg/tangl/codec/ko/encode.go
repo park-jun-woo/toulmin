@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=parser control=iteration dimension=1
-//ff:what Encode — absorb Korean TANGL markdown into a fully tiled doc.Doc
+//ff:what Encode — absorb Korean TANGEUL markdown into a fully tiled doc.Doc
 package ko
 
 import (

@@ -8,7 +8,7 @@ import (
 )
 
 // emitHeader encodes the two leading stream controls (§7.1): a STREAM_HEADER
-// carrying the version stamp (GEUL spec version, TANGL profile id, codebook
+// carrying the version stamp (GEUL spec version, TANGEUL profile id, codebook
 // version — §11-1/§11-2) that the reader checks to reject an unknown major plus
 // the authoring locale code (§11-11) that mode selection needs, and a
 // SEGMENT_BOUNDARY (one document = one segment). The version payload words are

@@ -7,7 +7,7 @@ package codebook
 // codebook value, FROZEN append-only.
 type RoleCode uint16
 
-// The three TANGL role subcodes (§2.2).
+// The three TANGEUL role subcodes (§2.2).
 const (
 	// RoleGeneral is a general rule — engine Rule (Warrant), asserts (0).
 	RoleGeneral RoleCode = 0
