@@ -4,7 +4,7 @@
   <img src="images/toulmin.webp" alt="toulmin" width="100%">
 </p>
 
-[![version](https://img.shields.io/badge/version-0.4.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
+[![version](https://img.shields.io/badge/version-0.5.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
 
 **Stop nesting if-else. Declare rules, declare relationships.**
@@ -342,20 +342,27 @@ TANGL v0.3 is a markdown policy language that compiles directly onto the core: n
 - **Judgment and execution are separated.** A `Provides`/`Internal` entry either `check`s a case (compiles to `Graph.Evaluate` — pure) or `run`s one (compiles to `Graph.Run` — judgment then `do`/`undo` side effects via `RunOn`).
 - **Saga compensation, built in.** Each `do` arms its paired `undo` on a compensation stack the moment it succeeds; a later failure in the same pass replays the stack LIFO, and unrecoverable failures escalate to a `*tangl.ReviewError` carrying both the cause and the compensation error.
 - **Effect summary, for audit.** `tangl effects` statically lists every `do`/`undo` an endpoint can trigger — without running it.
+- **One binary source of truth (TANGEUL).** `tangl encode` absorbs an authored `.md` surface into a compact, locale-independent `.tangeul` stream (AST + verbatim prose spans); every other command runs on that stream. `tangl decode` renders it back to a text surface — byte-identically in mode 1, or regenerated into another locale in mode 2.
+- **English or Korean surface, same AST.** `tangl encode` auto-detects en/ko from the document's section headers; `tangl decode --locale ko` renders any `.tangeul` as a Korean audit surface for non-developer reviewers (see `files/TANGL문법v0.3-한국어.md`).
 
 ```bash
 go install github.com/park-jun-woo/toulmin/cmd/tangl@latest
 
-tangl check policy.md              # parse + validate + lint
-tangl effects policy.md pay        # static do/undo summary reachable from endpoint "pay"
-tangl gen policy.md -o pay_gen.go  # compile the document to Go source
+tangl encode policy.md -o policy.tangeul   # absorb the .md surface into a .tangeul stream (locale auto-detected)
+tangl check policy.tangeul                 # validate + lint
+tangl effects policy.tangeul pay           # static do/undo summary reachable from endpoint "pay"
+tangl gen policy.tangeul -o pay_gen.go     # compile the document to Go source
+tangl decode policy.tangeul                # render the stream back to text (mode-1, byte-identical)
+tangl decode policy.tangeul --locale ko    # render the same stream as a Korean audit surface (mode-2)
 ```
 
 ```
-$ tangl check pkg/tangl/parser/testdata/transfer.md
+$ tangl encode pkg/tangl/parser/testdata/transfer.md -o transfer.tangeul
+
+$ tangl check transfer.tangeul
 ok
 
-$ tangl effects pkg/tangl/parser/testdata/transfer.md transfer
+$ tangl effects transfer.tangeul transfer
 do   bank.withdraw        once (can withdraw / balance sufficient)
 undo bank.refund               (can withdraw / balance sufficient)
 do   bank.deposit         once (can deposit / recipient valid)
