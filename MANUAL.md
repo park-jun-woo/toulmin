@@ -304,7 +304,10 @@ Detected at evaluation time via DFS.
 TANGL v0.3 compiles a markdown document straight into a `toulmin` defeats
 graph plus saga-style execution. The old `pkg/tangl` prototype parser/validate
 has been fully replaced by the pipeline below (`pkg/tangl` is now the
-runtime; parsing/validation/codegen live in dedicated subpackages).
+runtime; parsing/validation/codegen live in dedicated subpackages). For the
+full English-language grammar reference — the `do`/`undo`/`once`/`when`/`is`/
+`a`/`rule`/`don't`/`run` keyword surface, cascade timing, and effect
+summaries — see [TANGEUL.en.md](./TANGEUL.en.md).
 
 ### Document Shape (7 sections, in order)
 
