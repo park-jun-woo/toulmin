@@ -43,6 +43,15 @@ func TestSkipParticlesKo(t *testing.T) {
 		}
 	})
 
+	t.Run("ConsumesParticleAbuttingComma", func(t *testing.T) {
+		// '의,' (particle fused to a separator comma, left by strings.Join) splits
+		// into 의 + ',' so the particle is peeled and the leading comma dropped.
+		got := skipParticlesKo("의, 실패를 보고하는")
+		if got != "실패를 보고하는" {
+			t.Fatalf("got %q, want %q", got, "실패를 보고하는")
+		}
+	})
+
 	t.Run("IdaOrderingNotSplit", func(t *testing.T) {
 		// standalone 이 is dropped, but the 계사 키워드 이다 is not a particle so it
 		// survives even if skipParticlesKo were applied to it — the suffix keyword

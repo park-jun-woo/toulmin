@@ -4,7 +4,7 @@
   <img src="images/toulmin.webp" alt="toulmin" width="100%">
 </p>
 
-[![version](https://img.shields.io/badge/version-0.5.1-blue)](https://github.com/park-jun-woo/toulmin/releases)
+[![version](https://img.shields.io/badge/version-0.6.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
 
 **Stop nesting if-else. Declare rules, declare relationships.**
@@ -354,7 +354,7 @@ TANGEUL v0.3 is a markdown policy language that compiles directly onto the core:
 - **Judgment and execution are separated.** A `Provides`/`Internal` entry either `check`s a case (compiles to `Graph.Evaluate` — pure) or `run`s one (compiles to `Graph.Run` — judgment then `do`/`undo` side effects via `RunOn`).
 - **Saga compensation, built in.** Each `do` arms its paired `undo` on a compensation stack the moment it succeeds; a later failure in the same pass replays the stack LIFO, and unrecoverable failures escalate to a `*tangl.ReviewError` carrying both the cause and the compensation error.
 - **Effect summary, for audit.** `tangl effects` statically lists every `do`/`undo` an endpoint can trigger — without running it.
-- **Crisp overrides and levels, in the surface too.** `` `X` supersedes `Y` `` excludes `Y` from the tally when `X` holds; a trailing `, level fail` / `, level review` tags a case's crisp reporting level. Both round-trip through encode/decode in either locale (Korean: `` `X` 면 `Y` 배제한다 ``, `, 수준 실패` / `, 수준 검토`).
+- **Crisp overrides and levels, in the surface too.** `` `X` supersedes `Y` `` excludes `Y` from the tally when `X` holds; a trailing `, level fail` / `, level review` tags a case's crisp reporting level. Both round-trip through encode/decode in either locale (Korean: `` `X` 면 `Y` 배제한다 ``, `실패를 보고하는` / `검토를 보고하는`).
 - **One binary source of truth (TANGEUL).** `tangl encode` absorbs an authored `.md` surface into a compact, locale-independent `.tangeul` stream (AST + verbatim prose spans); every other command runs on that stream. `tangl decode` renders it back to a text surface — byte-identically in mode 1, or regenerated into another locale in mode 2.
 - **English or Korean surface, same AST.** `tangl encode` auto-detects en/ko from the document's section headers; `tangl decode --locale ko` renders any `.tangeul` as a Korean audit surface for non-developer reviewers (see `files/TANGL문법v0.3-한국어.md`).
 

@@ -54,4 +54,16 @@ func TestTakeKeywordKo(t *testing.T) {
 			t.Fatalf("rest = %q, want empty", rest)
 		}
 	})
+
+	t.Run("MatchWithCommaBoundary", func(t *testing.T) {
+		// A modifier keyword abutting a separator comma (left by strings.Join)
+		// still matches; the leading comma survives in rest for skipParticlesKo.
+		rest, ok := takeKeywordKo("하는, 가중치 0.8 의", "하는")
+		if !ok {
+			t.Fatal("expected match when the following byte is a comma")
+		}
+		if rest != ", 가중치 0.8 의" {
+			t.Fatalf("rest = %q, want %q", rest, ", 가중치 0.8 의")
+		}
+	})
 }

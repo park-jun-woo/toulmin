@@ -4,7 +4,7 @@
   <img src="images/toulmin.webp" alt="toulmin" width="100%">
 </p>
 
-[![version](https://img.shields.io/badge/version-0.5.1-blue)](https://github.com/park-jun-woo/toulmin/releases)
+[![version](https://img.shields.io/badge/version-0.6.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
 
 **if-else를 그만 중첩하라. 규칙을 선언하고, 관계를 선언하라.**
@@ -294,7 +294,7 @@ TANGEUL v0.3은 코어 위에 바로 컴파일되는 마크다운 정책 언어�
 - **판정과 실행이 분리된다.** `Provides`/`Internal` 항목은 케이스를 `check`(순수 판정 — `Graph.Evaluate`로 컴파일)하거나 `run`(판정 후 `RunOn`을 통한 `do`/`undo` 부수효과 — `Graph.Run`으로 컴파일)한다.
 - **saga 보상이 내장되어 있다.** `do`가 성공하는 순간 짝을 이루는 `undo`가 보상 스택에 적재되고, 같은 패스 안에서 이후 단계가 실패하면 스택을 LIFO로 되돌린다. 복구 불가능한 실패는 원인과 보상 실패를 함께 담은 `*tangl.ReviewError`로 승격된다.
 - **effect summary로 감사한다.** `tangl effects`는 실행하지 않고도 한 엔드포인트가 일으킬 수 있는 모든 `do`/`undo`를 정적으로 나열한다.
-- **크리스프 우선권과 레벨도 표면에서.** `` `X` 면 `Y` 배제한다 ``는 `X`가 성립하면 `Y`를 집계에서 배제하고, 꼬리에 붙는 `, 수준 실패` / `, 수준 검토`는 케이스의 크리스프 리포팅 레벨을 표기한다. 둘 다 encode/decode를 거쳐 어느 로케일에서든 왕복 보존된다(영어: `` `X` supersedes `Y` ``, `, level fail` / `, level review`).
+- **크리스프 우선권과 레벨도 표면에서.** `` `X` 면 `Y` 배제한다 ``는 `X`가 성립하면 `Y`를 집계에서 배제하고, 관형절 `실패를 보고하는` / `검토를 보고하는`은 케이스의 크리스프 리포팅 레벨을 표기한다. 둘 다 encode/decode를 거쳐 어느 로케일에서든 왕복 보존된다(영어: `` `X` supersedes `Y` ``, `, level fail` / `, level review`).
 - **하나의 이진 단일 진실(TANGEUL).** `tangl encode`는 저작한 `.md` 표면을 로케일 독립적인 컴팩트 `.tangeul` 스트림(AST + 원문 prose span)으로 흡수하며, 이후 모든 명령은 그 스트림 위에서 동작한다. `tangl decode`는 스트림을 다시 텍스트 표면으로 렌더링한다 — 모드 1에서는 바이트 항등, 모드 2에서는 다른 로케일로 재생성.
 - **영어·한국어 표면, 같은 AST.** `tangl encode`는 문서의 섹션 헤더로 en/ko를 자동 판별하고, `tangl decode --locale ko`는 임의의 `.tangeul`을 비개발자 감사자를 위한 한국어 감사 표면으로 렌더링한다(`files/TANGL문법v0.3-한국어.md` 참조).
 
