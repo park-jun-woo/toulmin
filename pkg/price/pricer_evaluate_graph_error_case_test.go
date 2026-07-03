@@ -1,5 +1,5 @@
 //ff:func feature=price type=engine control=sequence
-//ff:what pricerEvaluateGraphErrorCase — verifies Pricer.Evaluate returns an error and nil result when the defeats graph evaluation fails (cyclic graph)
+//ff:what TestPricerEvaluateGraphErrorCase — verifies Pricer.Evaluate returns an error and nil result when the defeats graph evaluation fails (cyclic graph)
 package price
 
 import (
@@ -8,7 +8,7 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/toulmin"
 )
 
-func pricerEvaluateGraphErrorCase(t *testing.T) {
+func TestPricerEvaluateGraphErrorCase(t *testing.T) {
 	cycleA := func(ctx toulmin.Context, specs toulmin.Specs) (bool, any) { return true, nil }
 	cycleB := func(ctx toulmin.Context, specs toulmin.Specs) (bool, any) { return true, nil }
 

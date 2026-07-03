@@ -1,5 +1,5 @@
 //ff:func feature=price type=engine control=sequence
-//ff:what pricerEvaluateNonDiscountEvidenceCase — verifies Pricer.Evaluate ignores evidence that is not a *DiscountSpec
+//ff:what TestPricerEvaluateNonDiscountEvidenceCase — verifies Pricer.Evaluate ignores evidence that is not a *DiscountSpec
 package price
 
 import (
@@ -8,7 +8,7 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/toulmin"
 )
 
-func pricerEvaluateNonDiscountEvidenceCase(t *testing.T) {
+func TestPricerEvaluateNonDiscountEvidenceCase(t *testing.T) {
 	// nonDiscountRule is an always-active rule whose evidence is not a *DiscountSpec,
 	// exercising the `!ok` side of `db, ok := r.Evidence.(*DiscountSpec)`.
 	nonDiscountRule := func(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {

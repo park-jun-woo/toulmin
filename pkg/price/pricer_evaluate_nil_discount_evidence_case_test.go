@@ -1,5 +1,5 @@
 //ff:func feature=price type=engine control=sequence
-//ff:what pricerEvaluateNilDiscountEvidenceCase — verifies Pricer.Evaluate treats a matched rule with nil Discount evidence as no discount applied
+//ff:what TestPricerEvaluateNilDiscountEvidenceCase — verifies Pricer.Evaluate treats a matched rule with nil Discount evidence as no discount applied
 package price
 
 import (
@@ -8,7 +8,7 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/toulmin"
 )
 
-func pricerEvaluateNilDiscountEvidenceCase(t *testing.T) {
+func TestPricerEvaluateNilDiscountEvidenceCase(t *testing.T) {
 	g := toulmin.NewGraph("test:nildiscount")
 	g.Rule(IsMemberLevel).With(&MemberSpec{Level: "basic", Discount: nil})
 

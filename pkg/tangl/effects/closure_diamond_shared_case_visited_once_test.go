@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=analyzer control=sequence
-//ff:what closureDiamondSharedCaseVisitedOnce — verifies a case reachable via two run paths executes only once
+//ff:what TestClosureDiamondSharedCaseVisitedOnce — verifies a case reachable via two run paths executes only once
 package effects
 
 import (
@@ -11,7 +11,7 @@ import (
 // closureDiamondSharedCaseVisitedOnce verifies that a case reachable via two
 // independent run paths (a diamond) is only executed once: the second visit
 // hits state[name]==2 (done) and is skipped.
-func closureDiamondSharedCaseVisitedOnce(t *testing.T) {
+func TestClosureDiamondSharedCaseVisitedOnce(t *testing.T) {
 	ref := &ast.Ref{Name: "shared"}
 	doc := &ast.Document{
 		Cases: []ast.Case{

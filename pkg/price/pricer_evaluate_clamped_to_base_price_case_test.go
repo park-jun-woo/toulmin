@@ -1,5 +1,5 @@
 //ff:func feature=price type=engine control=sequence
-//ff:what pricerEvaluateClampedToBasePriceCase — verifies Pricer.Evaluate clamps the total discount to the request's base price when combined discounts exceed it
+//ff:what TestPricerEvaluateClampedToBasePriceCase — verifies Pricer.Evaluate clamps the total discount to the request's base price when combined discounts exceed it
 package price
 
 import (
@@ -8,7 +8,7 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/toulmin"
 )
 
-func pricerEvaluateClampedToBasePriceCase(t *testing.T) {
+func TestPricerEvaluateClampedToBasePriceCase(t *testing.T) {
 	g := toulmin.NewGraph("test:overbase")
 	g.Rule(HasCoupon).With(&DiscountSpec{Name: "A", Fixed: 80000})
 	g.Rule(HasActivePromotion).With(&DiscountSpec{Name: "bf", Fixed: 80000})

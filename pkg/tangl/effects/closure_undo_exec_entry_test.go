@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=analyzer control=sequence
-//ff:what closureUndoExecEntry — exercises the UndoExec switch branch directly, independent of the transfer fixture
+//ff:what TestClosureUndoExecEntry — exercises the UndoExec switch branch directly, independent of the transfer fixture
 package effects
 
 import (
@@ -10,7 +10,7 @@ import (
 
 // closureUndoExecEntry exercises the UndoExec switch branch directly
 // (independent of the transfer fixture) to keep it self-contained.
-func closureUndoExecEntry(t *testing.T) {
+func TestClosureUndoExecEntry(t *testing.T) {
 	ref := &ast.Ref{Name: "f"}
 	doc := &ast.Document{
 		Cases: []ast.Case{

@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=analyzer control=sequence
-//ff:what closureSelfCycleSkipped — verifies Closure does not infinite-loop when a case runs itself
+//ff:what TestClosureSelfCycleSkipped — verifies Closure does not infinite-loop when a case runs itself
 package effects
 
 import (
@@ -11,7 +11,7 @@ import (
 // closureSelfCycleSkipped verifies that a case that runs itself does not
 // infinite-loop: the state[name]==1 (visiting) branch short-circuits the
 // recursive re-entry and Closure returns without error.
-func closureSelfCycleSkipped(t *testing.T) {
+func TestClosureSelfCycleSkipped(t *testing.T) {
 	ref := &ast.Ref{Name: "f"}
 	doc := &ast.Document{
 		Cases: []ast.Case{

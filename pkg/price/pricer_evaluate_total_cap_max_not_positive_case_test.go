@@ -1,5 +1,5 @@
 //ff:func feature=price type=engine control=sequence
-//ff:what pricerEvaluateTotalCapMaxNotPositiveCase — verifies Pricer.Evaluate does not clamp the total discount when the total cap's Max is not positive
+//ff:what TestPricerEvaluateTotalCapMaxNotPositiveCase — verifies Pricer.Evaluate does not clamp the total discount when the total cap's Max is not positive
 package price
 
 import (
@@ -9,7 +9,7 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/toulmin"
 )
 
-func pricerEvaluateTotalCapMaxNotPositiveCase(t *testing.T) {
+func TestPricerEvaluateTotalCapMaxNotPositiveCase(t *testing.T) {
 	g := toulmin.NewGraph("test:capzero")
 	g.Rule(HasCoupon).With(&DiscountSpec{Name: "A", Rate: 0.2})
 

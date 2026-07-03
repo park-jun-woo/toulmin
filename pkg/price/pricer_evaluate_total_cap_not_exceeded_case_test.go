@@ -1,5 +1,5 @@
 //ff:func feature=price type=engine control=sequence
-//ff:what pricerEvaluateTotalCapNotExceededCase — verifies Pricer.Evaluate leaves the total discount unclamped when it stays below the total cap
+//ff:what TestPricerEvaluateTotalCapNotExceededCase — verifies Pricer.Evaluate leaves the total discount unclamped when it stays below the total cap
 package price
 
 import (
@@ -9,7 +9,7 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/toulmin"
 )
 
-func pricerEvaluateTotalCapNotExceededCase(t *testing.T) {
+func TestPricerEvaluateTotalCapNotExceededCase(t *testing.T) {
 	g := toulmin.NewGraph("test:capnotexceeded")
 	g.Rule(HasCoupon).With(&DiscountSpec{Name: "A", Rate: 0.1})
 
