@@ -1,25 +1,25 @@
 //ff:func feature=cli type=command control=sequence
-//ff:what runCheck — parses, validates, and lints a TANGL v0.3 file
+//ff:what runCheck — loads, validates, and lints a .tangeul file
 package tanglcli
 
 import (
 	"fmt"
 
-	"github.com/park-jun-woo/toulmin/pkg/tangl/parser"
 	"github.com/park-jun-woo/toulmin/pkg/tangl/validate"
 	"github.com/spf13/cobra"
 )
 
-// runCheck parses args[0], validates the resulting Document, prints every
-// Lint warning to stderr, and returns the Validate error (if any) so the
-// caller exits non-zero. On success it prints a single "ok" line to stdout.
+// runCheck loads the .tangeul at args[0] (tiling verified by Load), validates the
+// recovered Document, prints every Lint warning to stderr, and returns the
+// Validate error (if any) so the caller exits non-zero. On success it prints a
+// single "ok" line to stdout.
 func runCheck(cmd *cobra.Command, args []string) error {
-	doc, err := parser.Parse(args[0])
+	d, err := loadExecutable(args[0])
 	if err != nil {
 		return err
 	}
-	verr := validate.Validate(doc)
-	printLintWarnings(cmd.ErrOrStderr(), validate.Lint(doc))
+	verr := validate.Validate(d.AST)
+	printLintWarnings(cmd.ErrOrStderr(), validate.Lint(d.AST))
 	if verr != nil {
 		return verr
 	}

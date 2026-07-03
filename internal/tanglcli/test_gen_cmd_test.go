@@ -1,5 +1,5 @@
 //ff:func feature=cli type=command control=sequence
-//ff:what TestGenCmdTransfer — gen on the transfer fixture prints a generated-file header to stdout, and -o writes it to a file instead
+//ff:what TestGenCmdTransfer — gen on the transfer .tangeul fixture prints a generated-file header to stdout, and -o writes it to a file instead
 package tanglcli
 
 import (
@@ -10,16 +10,20 @@ import (
 	"testing"
 )
 
-// TestGenCmdTransfer runs "tangl gen" against transfer.md both with no -o
-// flag, checking the generated source is printed to stdout with the "Code
-// generated" banner, and with an -o flag, checking the generated source is
-// written to that file (and not to stdout) with the same banner.
+// TestGenCmdTransfer saves the transfer fixture to a .tangeul file and runs
+// "tangl gen" against it both with no -o flag, checking the generated source is
+// printed to stdout with the "Code generated" banner, and with an -o flag,
+// checking the generated source is written to that file (and not to stdout) with
+// the same banner.
 func TestGenCmdTransfer(t *testing.T) {
+	src := filepath.Join(t.TempDir(), "transfer.tangeul")
+	saveTangeul(t, src, buildTransferDoc())
+
 	t.Run("stdout", func(t *testing.T) {
 		cmd := NewRootCmd()
 		var out bytes.Buffer
 		cmd.SetOut(&out)
-		cmd.SetArgs([]string{"gen", "../../pkg/tangl/parser/testdata/transfer.md"})
+		cmd.SetArgs([]string{"gen", src})
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("Execute: %v", err)
 		}
@@ -36,7 +40,7 @@ func TestGenCmdTransfer(t *testing.T) {
 		cmd := NewRootCmd()
 		var out bytes.Buffer
 		cmd.SetOut(&out)
-		cmd.SetArgs([]string{"gen", "../../pkg/tangl/parser/testdata/transfer.md", "-o", outPath})
+		cmd.SetArgs([]string{"gen", src, "-o", outPath})
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("Execute: %v", err)
 		}

@@ -3,25 +3,27 @@
 package tanglcli
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
-const transferFixture = "../../pkg/tangl/parser/testdata/transfer.md"
-const transferFixtureDir = "../../pkg/tangl/parser/testdata"
-
 // TestResolveEffectsTarget covers every branch of resolveEffectsTarget: the
-// two-arg (file, endpoint) form both succeeding and failing to parse, and
-// the one-arg (subject.endpoint) form failing to split, failing to find a
-// matching document, and succeeding.
+// two-arg (file, endpoint) form both succeeding and failing to load, and the
+// one-arg (subject.endpoint) form failing to split, failing to find a matching
+// document, and succeeding.
 func TestResolveEffectsTarget(t *testing.T) {
-	t.Run("two args: file parses and endpoint is returned", func(t *testing.T) {
-		doc, endpoint, err := resolveEffectsTarget([]string{transferFixture, "`transfer`"}, ".")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "transfer.tangeul")
+	saveTangeul(t, path, buildTransferDoc())
+
+	t.Run("two args: file loads and endpoint is returned", func(t *testing.T) {
+		doc, endpoint, err := resolveEffectsTarget([]string{path, "`transfer`"}, ".")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if doc == nil {
-			t.Fatal("doc = nil, want a parsed document")
+			t.Fatal("doc = nil, want a loaded document")
 		}
 		if doc.Subject != "transfer" {
 			t.Errorf("doc.Subject = %q, want %q", doc.Subject, "transfer")
@@ -31,10 +33,10 @@ func TestResolveEffectsTarget(t *testing.T) {
 		}
 	})
 
-	t.Run("two args: file fails to parse", func(t *testing.T) {
-		doc, endpoint, err := resolveEffectsTarget([]string{"does-not-exist.md", "transfer"}, ".")
+	t.Run("two args: file fails to load", func(t *testing.T) {
+		doc, endpoint, err := resolveEffectsTarget([]string{"does-not-exist.tangeul", "transfer"}, ".")
 		if err == nil {
-			t.Fatal("expected a parse error, got nil")
+			t.Fatal("expected a load error, got nil")
 		}
 		if doc != nil {
 			t.Errorf("doc = %v, want nil", doc)
@@ -45,7 +47,7 @@ func TestResolveEffectsTarget(t *testing.T) {
 	})
 
 	t.Run("one arg: missing dot fails to split", func(t *testing.T) {
-		doc, endpoint, err := resolveEffectsTarget([]string{"noDotHere"}, transferFixtureDir)
+		doc, endpoint, err := resolveEffectsTarget([]string{"noDotHere"}, dir)
 		if err == nil {
 			t.Fatal("expected a split error, got nil")
 		}
@@ -58,7 +60,7 @@ func TestResolveEffectsTarget(t *testing.T) {
 	})
 
 	t.Run("one arg: subject not found under dir", func(t *testing.T) {
-		doc, endpoint, err := resolveEffectsTarget([]string{"nonexistent-subject.endpoint"}, transferFixtureDir)
+		doc, endpoint, err := resolveEffectsTarget([]string{"nonexistent-subject.endpoint"}, dir)
 		if err == nil {
 			t.Fatal("expected a not-found error, got nil")
 		}
@@ -74,7 +76,7 @@ func TestResolveEffectsTarget(t *testing.T) {
 	})
 
 	t.Run("one arg: subject found under dir", func(t *testing.T) {
-		doc, endpoint, err := resolveEffectsTarget([]string{"transfer.`transfer`"}, transferFixtureDir)
+		doc, endpoint, err := resolveEffectsTarget([]string{"transfer.`transfer`"}, dir)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

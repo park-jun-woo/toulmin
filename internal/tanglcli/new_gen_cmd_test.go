@@ -5,7 +5,7 @@ package tanglcli
 import "testing"
 
 // TestNewGenCmd covers the single branch of NewGenCmd: it always returns a
-// *cobra.Command populated with the "gen <file.md>" use string, short
+// *cobra.Command populated with the "gen <file.tangeul>" use string, short
 // description, an exact-one-arg validator, the runGen handler wired as RunE,
 // and an "out"/"o" flag defaulting to "".
 func TestNewGenCmd(t *testing.T) {
@@ -13,10 +13,10 @@ func TestNewGenCmd(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("NewGenCmd() returned nil")
 	}
-	if got, want := cmd.Use, "gen <file.md>"; got != want {
+	if got, want := cmd.Use, "gen <file.tangeul>"; got != want {
 		t.Errorf("Use = %q, want %q", got, want)
 	}
-	if got, want := cmd.Short, "Generate Go source code for a TANGL v0.3 markdown file"; got != want {
+	if got, want := cmd.Short, "Generate Go source code for a .tangeul file"; got != want {
 		t.Errorf("Short = %q, want %q", got, want)
 	}
 	if cmd.Args == nil {

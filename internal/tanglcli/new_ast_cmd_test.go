@@ -5,7 +5,7 @@ package tanglcli
 import "testing"
 
 // TestNewAstCmd covers the single branch of NewAstCmd: it always returns a
-// *cobra.Command populated with the "ast <file.md>" use string, short
+// *cobra.Command populated with the "ast <file.tangeul>" use string, short
 // description, an exact-one-arg validator, and the runAst handler wired as
 // RunE.
 func TestNewAstCmd(t *testing.T) {
@@ -13,10 +13,10 @@ func TestNewAstCmd(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("NewAstCmd() returned nil")
 	}
-	if got, want := cmd.Use, "ast <file.md>"; got != want {
+	if got, want := cmd.Use, "ast <file.tangeul>"; got != want {
 		t.Errorf("Use = %q, want %q", got, want)
 	}
-	if got, want := cmd.Short, "Parse a TANGL v0.3 markdown file and print its AST as JSON"; got != want {
+	if got, want := cmd.Short, "Load a .tangeul file and print its AST as JSON"; got != want {
 		t.Errorf("Short = %q, want %q", got, want)
 	}
 	if cmd.Args == nil {

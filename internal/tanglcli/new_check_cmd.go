@@ -4,13 +4,12 @@ package tanglcli
 
 import "github.com/spf13/cobra"
 
-// NewCheckCmd returns the "check" subcommand: parse and validate a TANGL
-// v0.3 markdown file, printing lint warnings and reporting validation
-// errors.
+// NewCheckCmd returns the "check" subcommand: load and validate a .tangeul
+// file, printing lint warnings and reporting validation errors.
 func NewCheckCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "check <file.md>",
-		Short: "Parse and validate a TANGL v0.3 markdown file",
+		Use:   "check <file.tangeul>",
+		Short: "Load and validate a .tangeul file",
 		Args:  cobra.ExactArgs(1),
 		RunE:  runCheck,
 	}

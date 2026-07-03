@@ -1,31 +1,35 @@
 //ff:func feature=cli type=command control=sequence
-//ff:what TestRunAst — runAst parses a TANGL file and prints its AST as JSON, or propagates a parse error
+//ff:what TestRunAst — runAst loads a .tangeul and prints its AST as JSON, or propagates a load error
 package tanglcli
 
 import (
 	"bytes"
 	"encoding/json"
+	"path/filepath"
 	"testing"
 )
 
-// TestRunAst covers both branches of runAst: a parse error from
-// parser.Parse is propagated unchanged, and a successful parse is
-// JSON-encoded to the command's output.
+// TestRunAst covers both branches of runAst: a load error from loadExecutable is
+// propagated unchanged, and a successful load is JSON-encoded to the command's
+// output.
 func TestRunAst(t *testing.T) {
-	t.Run("parse error is propagated", func(t *testing.T) {
+	t.Run("load error is propagated", func(t *testing.T) {
 		cmd := NewAstCmd()
 		var out bytes.Buffer
 		cmd.SetOut(&out)
-		if err := runAst(cmd, []string{"does-not-exist.md"}); err == nil {
-			t.Fatal("expected a parse error, got nil")
+		if err := runAst(cmd, []string{"does-not-exist.tangeul"}); err == nil {
+			t.Fatal("expected a load error, got nil")
 		}
 	})
 
-	t.Run("successful parse is encoded as JSON", func(t *testing.T) {
+	t.Run("successful load is encoded as JSON", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "transfer.tangeul")
+		saveTangeul(t, path, buildTransferDoc())
+
 		cmd := NewAstCmd()
 		var out bytes.Buffer
 		cmd.SetOut(&out)
-		if err := runAst(cmd, []string{"../../pkg/tangl/parser/testdata/transfer.md"}); err != nil {
+		if err := runAst(cmd, []string{path}); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		var decoded struct {

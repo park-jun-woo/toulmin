@@ -1,40 +1,34 @@
 //ff:func feature=cli type=command control=sequence
-//ff:what findDocumentBySubject — recursively scans a directory for the TANGL document whose Subject matches
+//ff:what findDocumentBySubject — recursively scans a directory for the .tangeul document whose Subject matches
 package tanglcli
 
 import (
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/park-jun-woo/toulmin/pkg/tangeul"
 	"github.com/park-jun-woo/toulmin/pkg/tangl/ast"
-	"github.com/park-jun-woo/toulmin/pkg/tangl/parser"
 )
 
-// findDocumentBySubject recursively scans dir for ".md" files containing a
-// "## tangl:" section marker, parses each, and returns the one Document
-// whose Subject equals subject. It errors if none or more than one match.
+// findDocumentBySubject recursively scans dir for ".tangeul" files, loads each,
+// and returns the one Document whose Subject equals subject. It errors if none or
+// more than one match. Files that fail to load are skipped (not the target).
 func findDocumentBySubject(dir, subject string) (*ast.Document, error) {
 	var found *ast.Document
 	var foundPath string
-	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".md") {
+	walkErr := filepath.WalkDir(dir, func(path string, de fs.DirEntry, err error) error {
+		if err != nil || de.IsDir() || filepath.Ext(path) != ".tangeul" {
 			return err
 		}
-		data, err := os.ReadFile(path)
-		if err != nil || !strings.Contains(string(data), "## tangl:") {
-			return nil
-		}
-		doc, err := parser.ParseSource(string(data), path)
-		if err != nil || doc.Subject != subject {
+		d, err := tangeul.Load(path)
+		if err != nil || d.AST.Subject != subject {
 			return nil
 		}
 		if found != nil {
 			return fmt.Errorf("tangl: ambiguous subject %q: both %s and %s match", subject, foundPath, path)
 		}
-		found, foundPath = doc, path
+		found, foundPath = d.AST, path
 		return nil
 	})
 	if walkErr != nil {

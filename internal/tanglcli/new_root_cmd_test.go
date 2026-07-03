@@ -6,7 +6,7 @@ import "testing"
 
 // TestNewRootCmd covers the single branch of NewRootCmd: it always returns a
 // *cobra.Command populated with the "tangl" use string, short description,
-// and the check/ast/effects/gen subcommands registered as children.
+// and the check/ast/effects/gen/encode/decode subcommands registered as children.
 func TestNewRootCmd(t *testing.T) {
 	cmd := NewRootCmd()
 	if cmd == nil {
@@ -19,10 +19,12 @@ func TestNewRootCmd(t *testing.T) {
 		t.Errorf("Short = %q, want %q", got, want)
 	}
 	wantUses := map[string]bool{
-		"check <file.md>": false,
-		"ast <file.md>":   false,
-		"effects <file.md> <endpoint> | <subject>.<endpoint>": false,
-		"gen <file.md>": false,
+		"check <file.tangeul>": false,
+		"ast <file.tangeul>":   false,
+		"effects <file.tangeul> <endpoint> | <subject>.<endpoint>": false,
+		"gen <file.tangeul>":    false,
+		"encode <file.md>":      false,
+		"decode <file.tangeul>": false,
 	}
 	for _, c := range cmd.Commands() {
 		if _, ok := wantUses[c.Use]; ok {

@@ -1,20 +1,25 @@
 //ff:func feature=cli type=command control=sequence
-//ff:what TestAstCmdTransferHasSubjectField — ast on the transfer fixture prints JSON with a subject field
+//ff:what TestAstCmdTransferHasSubjectField — ast on the transfer .tangeul fixture prints JSON with a subject field
 package tanglcli
 
 import (
 	"bytes"
 	"encoding/json"
+	"path/filepath"
 	"testing"
 )
 
-// TestAstCmdTransferHasSubjectField runs "tangl ast" against transfer.md
-// and checks that the printed JSON decodes with subject == "transfer".
+// TestAstCmdTransferHasSubjectField saves the transfer fixture to a .tangeul file,
+// runs "tangl ast" against it, and checks that the printed JSON decodes with
+// subject == "transfer".
 func TestAstCmdTransferHasSubjectField(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "transfer.tangeul")
+	saveTangeul(t, path, buildTransferDoc())
+
 	cmd := NewRootCmd()
 	var out bytes.Buffer
 	cmd.SetOut(&out)
-	cmd.SetArgs([]string{"ast", "../../pkg/tangl/parser/testdata/transfer.md"})
+	cmd.SetArgs([]string{"ast", path})
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}

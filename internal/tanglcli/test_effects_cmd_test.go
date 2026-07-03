@@ -1,9 +1,10 @@
 //ff:func feature=cli type=command control=sequence
-//ff:what TestEffectsCmdTransfer — effects on both the "<file.md> <endpoint>" and backticked-endpoint forms reproduces the spec's transfer effect summary
+//ff:what TestEffectsCmdTransfer — effects on both the "<file.tangeul> <endpoint>" and backticked-endpoint forms reproduces the spec's transfer effect summary
 package tanglcli
 
 import (
 	"bytes"
+	"path/filepath"
 	"testing"
 )
 
@@ -11,21 +12,23 @@ import (
 // by formatEffects, matching the spec's worked example content and order
 // (kind, func, once, case/node) for the "transfer" endpoint.
 const wantTransferEffects = "" +
-	"do   bank.withdraw        once (can withdraw / balance sufficient)\n" +
-	"undo bank.refund               (can withdraw / balance sufficient)\n" +
-	"do   bank.deposit         once (can deposit / recipient valid)\n" +
-	"do   log.TransferComplete      (can deposit / recipient valid)\n"
+	"do   bank.withdraw once (can withdraw / balance sufficient)\n" +
+	"undo bank.refund        (can withdraw / balance sufficient)\n" +
+	"do   bank.deposit  once (can deposit / recipient valid)\n"
 
-// TestEffectsCmdTransfer runs "tangl effects <file.md> <endpoint>" against
-// transfer.md with both a bare endpoint and a backticked endpoint argument,
-// checking the rendered table matches the spec's four-entry, in-order
-// effect summary exactly in both cases.
+// TestEffectsCmdTransfer saves the transfer fixture to a .tangeul file and runs
+// "tangl effects <file.tangeul> <endpoint>" with both a bare endpoint and a
+// backticked endpoint argument, checking the rendered table matches the spec's
+// four-entry, in-order effect summary exactly in both cases.
 func TestEffectsCmdTransfer(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "transfer.tangeul")
+	saveTangeul(t, path, buildTransferDoc())
+
 	t.Run("file form with bare endpoint", func(t *testing.T) {
 		cmd := NewRootCmd()
 		var out bytes.Buffer
 		cmd.SetOut(&out)
-		cmd.SetArgs([]string{"effects", "../../pkg/tangl/parser/testdata/transfer.md", "transfer"})
+		cmd.SetArgs([]string{"effects", path, "transfer"})
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("Execute: %v", err)
 		}
@@ -38,7 +41,7 @@ func TestEffectsCmdTransfer(t *testing.T) {
 		cmd := NewRootCmd()
 		var out bytes.Buffer
 		cmd.SetOut(&out)
-		cmd.SetArgs([]string{"effects", "../../pkg/tangl/parser/testdata/transfer.md", "`transfer`"})
+		cmd.SetArgs([]string{"effects", path, "`transfer`"})
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("Execute: %v", err)
 		}

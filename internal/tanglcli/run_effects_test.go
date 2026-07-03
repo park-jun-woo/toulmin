@@ -4,6 +4,7 @@ package tanglcli
 
 import (
 	"bytes"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -15,6 +16,9 @@ import (
 // propagated, an unknown endpoint surfaces effects.Closure's error, and the
 // success path prints the formatted effect table.
 func TestRunEffects(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "transfer.tangeul")
+	saveTangeul(t, path, buildTransferDoc())
+
 	t.Run("missing dir flag surfaces GetString error", func(t *testing.T) {
 		cmd := &cobra.Command{}
 		var out bytes.Buffer
@@ -28,7 +32,7 @@ func TestRunEffects(t *testing.T) {
 		cmd := NewEffectsCmd()
 		var out bytes.Buffer
 		cmd.SetOut(&out)
-		if err := runEffects(cmd, []string{"does-not-exist.md", "transfer"}); err == nil {
+		if err := runEffects(cmd, []string{"does-not-exist.tangeul", "transfer"}); err == nil {
 			t.Fatal("expected a resolve error, got nil")
 		}
 	})
@@ -37,7 +41,7 @@ func TestRunEffects(t *testing.T) {
 		cmd := NewEffectsCmd()
 		var out bytes.Buffer
 		cmd.SetOut(&out)
-		err := runEffects(cmd, []string{"../../pkg/tangl/parser/testdata/transfer.md", "bogus"})
+		err := runEffects(cmd, []string{path, "bogus"})
 		if err == nil {
 			t.Fatal("expected an unknown-endpoint error, got nil")
 		}
@@ -50,7 +54,7 @@ func TestRunEffects(t *testing.T) {
 		cmd := NewEffectsCmd()
 		var out bytes.Buffer
 		cmd.SetOut(&out)
-		if err := runEffects(cmd, []string{"../../pkg/tangl/parser/testdata/transfer.md", "transfer"}); err != nil {
+		if err := runEffects(cmd, []string{path, "transfer"}); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if out.String() != wantTransferEffects {

@@ -4,20 +4,19 @@ package tanglcli
 
 import (
 	"github.com/park-jun-woo/toulmin/pkg/tangl/ast"
-	"github.com/park-jun-woo/toulmin/pkg/tangl/parser"
 )
 
-// resolveEffectsTarget resolves args into a parsed Document and an
-// endpoint name. Two args ("<file.md> <endpoint>") parse the file
+// resolveEffectsTarget resolves args into a loaded Document and an
+// endpoint name. Two args ("<file.tangeul> <endpoint>") load the file
 // directly; one arg ("<subject>.<endpoint>") scans dir for a document
 // whose Subject matches.
 func resolveEffectsTarget(args []string, dir string) (*ast.Document, string, error) {
 	if len(args) == 2 {
-		doc, err := parser.Parse(args[0])
+		d, err := loadExecutable(args[0])
 		if err != nil {
 			return nil, "", err
 		}
-		return doc, trimBackticks(args[1]), nil
+		return d.AST, trimBackticks(args[1]), nil
 	}
 	subject, endpoint, err := splitSubjectEndpoint(args[0])
 	if err != nil {

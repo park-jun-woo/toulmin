@@ -1,5 +1,5 @@
 //ff:func feature=cli type=command control=sequence
-//ff:what runGen — parses, validates, and generates Go source for a TANGL v0.3 file
+//ff:what runGen — loads, validates, and generates Go source for a .tangeul file
 package tanglcli
 
 import (
@@ -7,23 +7,22 @@ import (
 	"os"
 
 	"github.com/park-jun-woo/toulmin/pkg/tangl/gen"
-	"github.com/park-jun-woo/toulmin/pkg/tangl/parser"
 	"github.com/park-jun-woo/toulmin/pkg/tangl/validate"
 	"github.com/spf13/cobra"
 )
 
-// runGen parses args[0], validates the Document (aborting on error), and
-// generates its Go source. With no -o/--out flag the source is printed to
-// stdout; otherwise it is written to that path (mode 0644).
+// runGen loads the .tangeul at args[0], validates the Document (aborting on
+// error), and generates its Go source. With no -o/--out flag the source is
+// printed to stdout; otherwise it is written to that path (mode 0644).
 func runGen(cmd *cobra.Command, args []string) error {
-	doc, err := parser.Parse(args[0])
+	d, err := loadExecutable(args[0])
 	if err != nil {
 		return err
 	}
-	if err := validate.Validate(doc); err != nil {
+	if err := validate.Validate(d.AST); err != nil {
 		return err
 	}
-	src, err := gen.Generate(doc)
+	src, err := gen.Generate(d.AST)
 	if err != nil {
 		return err
 	}

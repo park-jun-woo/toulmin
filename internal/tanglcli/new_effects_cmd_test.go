@@ -13,7 +13,7 @@ func TestNewEffectsCmd(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("NewEffectsCmd() returned nil")
 	}
-	if got, want := cmd.Use, "effects <file.md> <endpoint> | <subject>.<endpoint>"; got != want {
+	if got, want := cmd.Use, "effects <file.tangeul> <endpoint> | <subject>.<endpoint>"; got != want {
 		t.Errorf("Use = %q, want %q", got, want)
 	}
 	if got, want := cmd.Short, "Print the static do/undo effect summary reachable from an endpoint"; got != want {

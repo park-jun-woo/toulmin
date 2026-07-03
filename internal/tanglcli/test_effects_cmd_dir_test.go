@@ -4,17 +4,22 @@ package tanglcli
 
 import (
 	"bytes"
+	"path/filepath"
 	"testing"
 )
 
-// TestEffectsCmdDirForm runs "tangl effects transfer.`transfer` --dir
-// <testdata>" and checks it locates transfer.md by its Subject and
-// reproduces the same effect summary as the direct file form.
+// TestEffectsCmdDirForm saves the transfer fixture into a directory, then runs
+// "tangl effects transfer.`transfer` --dir <d>" and checks it locates the
+// .tangeul by its Subject and reproduces the same effect summary as the direct
+// file form.
 func TestEffectsCmdDirForm(t *testing.T) {
+	dir := t.TempDir()
+	saveTangeul(t, filepath.Join(dir, "transfer.tangeul"), buildTransferDoc())
+
 	cmd := NewRootCmd()
 	var out bytes.Buffer
 	cmd.SetOut(&out)
-	cmd.SetArgs([]string{"effects", "transfer.`transfer`", "--dir", "../../pkg/tangl/parser/testdata"})
+	cmd.SetArgs([]string{"effects", "transfer.`transfer`", "--dir", dir})
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
