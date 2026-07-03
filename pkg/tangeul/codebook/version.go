@@ -8,7 +8,7 @@ package codebook
 // TANGL Free-area profile ID, and this codebook's own version.
 //
 // All values are Proposal placeholders per §11-1/§11-2; the codebook version is
-// v0.1 and is FROZEN append-only from here.
+// v0.2 and is FROZEN append-only from here.
 const (
 	// GEULVersionMajor is the targeted GEUL spec major version (GEUL v0.3.0).
 	GEULVersionMajor uint8 = 0
@@ -20,10 +20,10 @@ const (
 	// TANGLProfileID identifies the TANGL Free-area profile (Proposal).
 	TANGLProfileID uint16 = 0x0001
 
-	// CodebookVersionMajor is this codebook's major version (v0.1).
+	// CodebookVersionMajor is this codebook's major version (v0.2).
 	CodebookVersionMajor uint8 = 0
-	// CodebookVersionMinor is this codebook's minor version (v0.1).
-	CodebookVersionMinor uint8 = 1
+	// CodebookVersionMinor is this codebook's minor version (v0.2).
+	CodebookVersionMinor uint8 = 2
 )
 
 // Authoring locale codes stamped into the STREAM_HEADER (§11-11) so a mode-2

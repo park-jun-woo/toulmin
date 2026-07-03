@@ -16,4 +16,6 @@ type TraceEntry struct {
 	Ground    any           `json:"ground,omitempty"` // = Ground (ctx as-is)
 	Specs     Specs         `json:"specs,omitempty"`  // = Backing
 	Duration  time.Duration `json:"duration,omitempty"`
+	Excluded  bool          `json:"excluded,omitempty"`
+	Level     Level         `json:"level"` // no omitempty: Unset (0) is a meaningful "no level" report value
 }

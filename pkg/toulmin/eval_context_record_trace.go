@@ -45,5 +45,6 @@ func (ec *evalContext) recordTrace(id string, ctx Context, duration bool) {
 		Evidence:  ec.evidence[id],
 		Specs:     ec.specsMap[id],
 		Duration:  dur,
+		Level:     ec.effectiveLevel(id, role),
 	})
 }

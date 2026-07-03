@@ -11,9 +11,9 @@ import (
 )
 
 // TestNodeRoundTrip exercises Node packets across flag combinations — bare, a
-// full RuleNode (F_FUNC|F_CLAIM|F_VERDICT), a qualifier+check node, and a `with`
-// clause node — asserting decode(encode(p)) == p and that a flag whose field is
-// nil is rejected.
+// full RuleNode (F_FUNC|F_CLAIM|F_VERDICT), a qualifier+check node, a `with`
+// clause node, and header bits 10-9 Level fail/review nodes — asserting
+// decode(encode(p)) == p and that a flag whose field is nil is rejected.
 func TestNodeRoundTrip(t *testing.T) {
 	qual := word.VFix(8000)
 	verdict := word.VFix(0)
@@ -39,6 +39,17 @@ func TestNodeRoundTrip(t *testing.T) {
 			Flags: codebook.NodeFlagWith,
 			With:  []TID{0x0007, 0x0008},
 			Span:  word.Span{TID: 1, Off: 5, Len: 5},
+		},
+		{
+			TID: 0x0016, Type: codebook.NodeRule, Role: codebook.RoleCounter,
+			Level: codebook.LevelFail,
+			Span:  word.Span{TID: 1, Off: 7, Len: 4},
+		},
+		{
+			TID: 0x0017, Type: codebook.NodeRule, Role: codebook.RoleExcept,
+			Level: codebook.LevelReview,
+			Flags: codebook.NodeFlagQual, Qual: &qual,
+			Span: word.Span{TID: 1, Off: 11, Len: 4},
 		},
 	}
 	for i, in := range packets {

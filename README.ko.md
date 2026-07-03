@@ -126,7 +126,7 @@ const isInRole: RuleFunc = (ctx, specs) => {
 
 ### Defeats Graph
 
-세 종류의 노드, 한 종류의 엣지:
+세 종류의 노드, 두 종류의 엣지:
 
 | 노드 | 역할 |
 |---|---|
@@ -144,6 +144,8 @@ expunged.Attacks(criminal)  // 말소가 전과를 무력화
 ```
 
 **Except가 차별점이다.** "예외의 예외"를 if-else로는 구조적으로 표현할 수 없다. defeats graph에서는 엣지 한 줄이다.
+
+**Supersedes는 크리스프한 우선권이다.** `Attacks`는 h-Categoriser에 가중치로 반영되지만 `winner.Supersedes(loser)`는 그렇지 않다. `winner`가 Active면 `loser`는 verdict가 낮아지는 게 아니라 집계에서 통째로 배제된다 — trace에 `Excluded`로 표시되고 순회 자체에 들어가지 않는다. 한 규칙이 다른 규칙과 저울질하는 게 아니라 그냥 우선해야 할 때 쓴다.
 
 ### Verdict
 
@@ -167,6 +169,14 @@ verdict = 2 × raw - 1
 - 피처 플래그: `verdict > 0` → 활성
 
 규칙의 주장을 긍정형으로 설계하면 verdict가 직관에 부합한다 — "접근 허용"(+1 = 허용), "파일 구조 준수"(+1 = 준수).
+
+### Level
+
+연속값 verdict와 직교하는 축으로, 각 규칙은 크리스프한 리포팅 `Level`을 가진다 — `Unset` / `Fail` / `Review` — 하류 집계용이다(예: `Fail`이 하나라도 있으면 FAIL, 없고 `Review`가 있으면 REVIEW, 아니면 PASS). 기본값으로 `Counter`는 `Fail`, `Except`는 `Review`를 보고하며, `rule.Level(l)`로 이를 재정의한다(`Unset`으로 되돌리는 것도 가능). `TraceEntry.Level`로 노출된다.
+
+```go
+overdrawn := g.Counter(isOverdrawn).Level(toulmin.Fail)
+```
 
 ### 평가 옵션
 
@@ -209,10 +219,12 @@ spec이 `nil`이면 규칙에 판정 기준이 필요 없다는 뜻이다. Spec 
 ctx := toulmin.NewContext()
 results, _ := g.Evaluate(ctx, toulmin.EvalOption{Trace: true})
 for _, t := range results[0].Trace {
-    fmt.Printf("%s role=%s activated=%v evidence=%v\n",
-        t.Name, t.Role, t.Activated, t.Evidence)
+    fmt.Printf("%s role=%s activated=%v level=%v excluded=%v evidence=%v\n",
+        t.Name, t.Role, t.Activated, t.Level, t.Excluded, t.Evidence)
 }
 ```
+
+`Excluded`는 크리스프하게 배제(superseded)된 노드를 표시하고, `Level`은 그 크리스프 리포팅 레벨이다(위 참조). `Evidence`는 규칙 함수의 두 번째 반환값이다 — 위치·수량이 명시된 위반을 담으려면 `Fact{Where, Expected, Actual}`를 반환하고 하류에서 `t.Evidence.(toulmin.Fact)`로 회수한다.
 
 모더레이션 로그, 감사 추적, 디버깅 — 별도 로깅 없이 엔진이 제공한다.
 
@@ -282,6 +294,7 @@ TANGL v0.3은 코어 위에 바로 컴파일되는 마크다운 정책 언어다
 - **판정과 실행이 분리된다.** `Provides`/`Internal` 항목은 케이스를 `check`(순수 판정 — `Graph.Evaluate`로 컴파일)하거나 `run`(판정 후 `RunOn`을 통한 `do`/`undo` 부수효과 — `Graph.Run`으로 컴파일)한다.
 - **saga 보상이 내장되어 있다.** `do`가 성공하는 순간 짝을 이루는 `undo`가 보상 스택에 적재되고, 같은 패스 안에서 이후 단계가 실패하면 스택을 LIFO로 되돌린다. 복구 불가능한 실패는 원인과 보상 실패를 함께 담은 `*tangl.ReviewError`로 승격된다.
 - **effect summary로 감사한다.** `tangl effects`는 실행하지 않고도 한 엔드포인트가 일으킬 수 있는 모든 `do`/`undo`를 정적으로 나열한다.
+- **크리스프 우선권과 레벨도 표면에서.** `` `X` 면 `Y` 배제한다 ``는 `X`가 성립하면 `Y`를 집계에서 배제하고, 꼬리에 붙는 `, 수준 실패` / `, 수준 검토`는 케이스의 크리스프 리포팅 레벨을 표기한다. 둘 다 encode/decode를 거쳐 어느 로케일에서든 왕복 보존된다(영어: `` `X` supersedes `Y` ``, `, level fail` / `, level review`).
 - **하나의 이진 단일 진실(TANGEUL).** `tangl encode`는 저작한 `.md` 표면을 로케일 독립적인 컴팩트 `.tangeul` 스트림(AST + 원문 prose span)으로 흡수하며, 이후 모든 명령은 그 스트림 위에서 동작한다. `tangl decode`는 스트림을 다시 텍스트 표면으로 렌더링한다 — 모드 1에서는 바이트 항등, 모드 2에서는 다른 로케일로 재생성.
 - **영어·한국어 표면, 같은 AST.** `tangl encode`는 문서의 섹션 헤더로 en/ko를 자동 판별하고, `tangl decode --locale ko`는 임의의 `.tangeul`을 비개발자 감사자를 위한 한국어 감사 표면으로 렌더링한다(`files/TANGL문법v0.3-한국어.md` 참조).
 

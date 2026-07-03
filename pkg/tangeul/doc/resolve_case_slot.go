@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=util control=selection
-//ff:what resolveCaseSlot — resolve a case body slot (0 Require·1 Node·2 Attack·3 Exec)
+//ff:what resolveCaseSlot — resolve a case body slot (0 Require·1 Node·2 Attack·3 Exec·4 Supersede)
 package doc
 
 import (
@@ -9,8 +9,8 @@ import (
 )
 
 // resolveCaseSlot returns the slotIdx-th element of the case body slice selected
-// by slotKind (0 Require, 1 Node, 2 Attack, 3 Exec), restoring the document
-// order that ast.Case's split slices cannot (README contract §2).
+// by slotKind (0 Require, 1 Node, 2 Attack, 3 Exec, 4 Supersede), restoring the
+// document order that ast.Case's split slices cannot (README contract §2).
 func resolveCaseSlot(c *ast.Case, slotKind, slotIdx int) (any, error) {
 	switch slotKind {
 	case 0:
@@ -33,6 +33,11 @@ func resolveCaseSlot(c *ast.Case, slotKind, slotIdx int) (any, error) {
 			return nil, fmt.Errorf("tangeul/doc: Case Exec index %d out of range (%d)", slotIdx, len(c.Execs))
 		}
 		return c.Execs[slotIdx], nil
+	case 4:
+		if slotIdx < 0 || slotIdx >= len(c.Supersedes) {
+			return nil, fmt.Errorf("tangeul/doc: Case Supersede index %d out of range (%d)", slotIdx, len(c.Supersedes))
+		}
+		return c.Supersedes[slotIdx], nil
 	default:
 		return nil, fmt.Errorf("tangeul/doc: unknown Case slotKind %d", slotKind)
 	}

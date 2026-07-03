@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=parser control=iteration dimension=1
-//ff:what TestRenderNode — renderNode covers role/article, using+with+qualified, and checking
+//ff:what TestRenderNode — renderNode covers role/article, using+with+qualified, checking, and level
 package en
 
 import (
@@ -9,8 +9,9 @@ import (
 )
 
 // TestRenderNode checks the node variants: a bare general rule, a counter rule
-// using a function, an except rule (article "an") with `with`+`qualified`, and a
-// general rule composing another case via `checking`.
+// using a function, an except rule (article "an") with `with`+`qualified`, a
+// general rule composing another case via `checking`, and counter rules carrying
+// a `, level fail` / `, level review` clause.
 func TestRenderNode(t *testing.T) {
 	q := 0.8
 	cases := []struct {
@@ -25,6 +26,10 @@ func TestRenderNode(t *testing.T) {
 			"`low temp` is an except rule using `s`.`low` with `a` and `b` qualified 0.8"},
 		{ast.Node{Name: "renewal allowed", Role: ast.GeneralRule, Checking: "can renew loan"},
 			"`renewal allowed` is a general rule checking `can renew loan`"},
+		{ast.Node{Name: "overdrawn", Role: ast.CounterRule, Using: &ast.Ref{Alias: "policy", Name: "IsOverdrawn"}, Level: ast.LevelFail},
+			"`overdrawn` is a counter rule using `policy`.`IsOverdrawn`, level fail"},
+		{ast.Node{Name: "pending", Role: ast.CounterRule, Using: &ast.Ref{Alias: "policy", Name: "IsPending"}, Level: ast.LevelReview},
+			"`pending` is a counter rule using `policy`.`IsPending`, level review"},
 	}
 	for _, tc := range cases {
 		if got := renderNode(tc.n); got != tc.want {

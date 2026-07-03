@@ -26,5 +26,13 @@ func (r *Rule) With(spec Spec) *Rule {
 			r.graph.defeats[i].to = newID
 		}
 	}
+	for i := range r.graph.supersedes {
+		if r.graph.supersedes[i].from == oldID {
+			r.graph.supersedes[i].from = newID
+		}
+		if r.graph.supersedes[i].to == oldID {
+			r.graph.supersedes[i].to = newID
+		}
+	}
 	return r
 }

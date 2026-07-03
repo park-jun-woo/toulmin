@@ -15,7 +15,7 @@ import (
 // slot), each non-string AST element kind, and the propagated ResolveStmt error when
 // the Doc has no AST. The fixture doc assembles one ast.Document exercising every
 // StmtRef-addressable element kind: a Subject, a See, a struct Definition with one
-// Field, an InlineRule, one Case carrying a Require/Node/Attack/Exec, a Provides
+// Field, an InlineRule, one Case carrying a Require/Node/Attack/Supersede/Exec, a Provides
 // Endpoint with one Run and one Check string, and an Internal trigger with one Run
 // and one Check string.
 func TestRenderStmt(t *testing.T) {
@@ -31,11 +31,12 @@ func TestRenderStmt(t *testing.T) {
 			Cond: ast.Compare{Field: "신용점수", Op: "is at least", Value: "650"},
 		}},
 		Cases: []ast.Case{{
-			Name:     "환불 가능",
-			Requires: []ast.Require{{Field: "사용자"}},
-			Nodes:    []ast.Node{{Name: "인증", Role: ast.GeneralRule}},
-			Attacks:  []ast.Attack{{Target: "환불 가능", Attacker: "컵 없음"}},
-			Execs:    []ast.Exec{{Kind: ast.RunExec, Case: "입금 가능", Node: "잔액 충분"}},
+			Name:       "환불 가능",
+			Requires:   []ast.Require{{Field: "사용자"}},
+			Nodes:      []ast.Node{{Name: "인증", Role: ast.GeneralRule}},
+			Attacks:    []ast.Attack{{Target: "환불 가능", Attacker: "컵 없음"}},
+			Supersedes: []ast.Supersede{{Superseder: "컵 없음", Superseded: "환불 가능"}},
+			Execs:      []ast.Exec{{Kind: ast.RunExec, Case: "입금 가능", Node: "잔액 충분"}},
 		}},
 		Provides: []ast.Endpoint{{
 			Name: "환불", Runs: []string{"환불 가능"}, Checks: []string{"승인 가능"},
@@ -62,6 +63,7 @@ func TestRenderStmt(t *testing.T) {
 		{"Require", doc.StmtRef{Sec: codebook.SectionCases, Path: []int{0, 0, 0}}, "`사용자` 는 필수다"},
 		{"Node", doc.StmtRef{Sec: codebook.SectionCases, Path: []int{0, 1, 0}}, "`인증` 은 일반 규칙이다"},
 		{"Attack", doc.StmtRef{Sec: codebook.SectionCases, Path: []int{0, 2, 0}}, "`컵 없음` 이면 `환불 가능` 무효다"},
+		{"Supersede", doc.StmtRef{Sec: codebook.SectionCases, Path: []int{0, 4, 0}}, "`컵 없음` 이면 `환불 가능` 배제한다"},
 		{"Exec", doc.StmtRef{Sec: codebook.SectionCases, Path: []int{0, 3, 0}}, "`잔액 충분` 이면 `입금 가능` 진행한다"},
 		{"Endpoint", doc.StmtRef{Sec: codebook.SectionProvides, Path: []int{0}}, "`환불` 을 한다면"},
 		{"EndpointRun", doc.StmtRef{Sec: codebook.SectionProvides, Path: []int{0, 1, 0}}, "`환불 가능` 진행한다"},

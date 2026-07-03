@@ -11,8 +11,8 @@ import (
 )
 
 // TestEmitCaseSlot drives every emitCaseSlot switch arm: slotKind 0 (Require),
-// 1 (Node), 2 (Attack), 3 (Exec), and an unrecognized slotKind that falls to the
-// default hard error.
+// 1 (Node), 2 (Attack), 3 (Exec), 4 (Supersede), and an unrecognized slotKind
+// that falls to the default hard error.
 func TestEmitCaseSlot(t *testing.T) {
 	e := &enc{tt: &tidTable{
 		byRef: map[string]uint16{},
@@ -35,7 +35,8 @@ func TestEmitCaseSlot(t *testing.T) {
 		{"node", []int{0, 1, 0}, ast.Node{Name: "n", Role: ast.GeneralRule}, false},
 		{"attack", []int{0, 2, 0}, ast.Attack{Attacker: "atk-a", Target: "atk-b"}, false},
 		{"exec", []int{0, 3, 0}, ast.Exec{Kind: ast.RunExec, Node: "trig", Case: "target-case"}, false},
-		{"unknown slotKind", []int{0, 4, 0}, nil, true},
+		{"supersede", []int{0, 4, 0}, ast.Supersede{Superseder: "atk-a", Superseded: "atk-b"}, false},
+		{"unknown slotKind", []int{0, 5, 0}, nil, true},
 	}
 	for _, c := range cases {
 		ref := doc.StmtRef{Sec: 5, Path: c.path}

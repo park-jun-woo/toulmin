@@ -5,10 +5,11 @@ package ast
 // Case is a single "in case of `name`" block: a judgment graph with
 // nodes, defeat edges, and attached execution edges.
 type Case struct {
-	Name     string    `json:"name"`
-	Requires []Require `json:"requires,omitempty"`
-	Nodes    []Node    `json:"nodes"`
-	Attacks  []Attack  `json:"attacks,omitempty"`
-	Execs    []Exec    `json:"execs,omitempty"` // document declaration order (deterministic execution)
-	Line     int       `json:"line"`
+	Name       string      `json:"name"`
+	Requires   []Require   `json:"requires,omitempty"`
+	Nodes      []Node      `json:"nodes"`
+	Attacks    []Attack    `json:"attacks,omitempty"`
+	Supersedes []Supersede `json:"supersedes,omitempty"`
+	Execs      []Exec      `json:"execs,omitempty"` // document declaration order (deterministic execution)
+	Line       int         `json:"line"`
 }

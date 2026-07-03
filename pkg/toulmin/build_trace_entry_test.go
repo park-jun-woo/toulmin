@@ -20,7 +20,7 @@ func TestBuildTraceEntry(t *testing.T) {
 				evidence:     map[string]any{"WarrantA": "ev"},
 				specsMap:     map[string]Specs{"WarrantA": nil},
 			}
-			entry := g.buildTraceEntry(ec, "WarrantA", NewContext())
+			entry := g.buildTraceEntry(ec, "WarrantA", NewContext(), nil)
 			if entry.Name != "WarrantA" {
 				t.Errorf("Name = %q, want %q", entry.Name, "WarrantA")
 			}
@@ -51,7 +51,7 @@ func TestBuildTraceEntry(t *testing.T) {
 				evidence:     map[string]any{},
 				specsMap:     map[string]Specs{},
 			}
-			entry := g.buildTraceEntry(ec, "RebuttalB", NewContext())
+			entry := g.buildTraceEntry(ec, "RebuttalB", NewContext(), nil)
 			if entry.Name != "RebuttalB" {
 				t.Errorf("Name = %q, want %q", entry.Name, "RebuttalB")
 			}

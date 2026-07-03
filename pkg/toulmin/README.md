@@ -22,7 +22,9 @@ func(ctx Context, specs Specs) (bool, any)
 | `g.Counter(fn)` | graph_counter.go | Register counter, return `*Rule` (builder: `.With(spec)`, `.Qualifier(q)`) |
 | `g.Except(fn)` | graph_except.go | Register except, return `*Rule` (builder: `.With(spec)`, `.Qualifier(q)`) |
 | `rule.Attacks(target)` | rule_attacks.go | Declare defeat edge (method on `*Rule`) |
+| `rule.Supersedes(target)` | rule_supersedes.go | Declare supersede edge: when this rule is Active, target is crisply excluded from the tally (sets `TraceEntry.Excluded`); never enters the h-Categoriser traversal |
 | `rule.With(spec)` | rule_with.go | Attach a Spec to the rule (additive, supports chaining) |
+| `rule.Level(l)` | rule_level.go | Set the crisp reporting `Level` (`Unset`/`Fail`/`Review`); the explicit value (including `Unset`) overrides the role-based default (method on `*Rule`, chains) |
 | `g.Evaluate(ctx, opt ...EvalOption)` | graph_evaluate.go | Run evaluation, return verdicts (ctx is Context, opt controls Trace/Duration) |
 | `g.Run(ctx, opt ...EvalOption)` | graph_run.go | Pre-evaluate (full pass), fire each Active node's `RunOn` handler with the whole-graph `Trace`, and Run any Active node's sub-graph; returns `([]EvalResult, Trace, error)` |
 | `rule.RunOn(h)` | rule_run_on.go | Register the handler fired when this node is Active (func true && verdict > 0) |
@@ -100,8 +102,10 @@ two paths is legal), and a runtime depth guard (`runMaxDepth = 64`) backstops ru
 | `NodeHandler` | node_handler.go | Handler signature `func(self TraceEntry, t Trace) error` |
 | `Trace` | trace.go | Read-only view of one Run: all node entries + ctx (`All()`, `Get(name)`, `Ctx()`) |
 | `EvalResult` | eval_result.go | Verdict + trace |
-| `TraceEntry` | trace_entry.go | Single rule evaluation record (Name=Claim, Ground=ctx, Specs=Backing, Verdict) |
+| `TraceEntry` | trace_entry.go | Single rule evaluation record (Name=Claim, Ground=ctx, Specs=Backing, Verdict; `Excluded` = crisply superseded out of the tally; `Level` = crisp reporting level) |
 | `Strength` | strength.go | Defeasible / Strict / Defeater |
+| `Level` | level.go | Crisp reporting level: `Unset` / `Fail` / `Review` (see below) |
+| `Fact` | fact.go | Optional structured evidence convention `{Where, Expected, Actual any}` |
 | `TestCase` | test_case.go | Table-driven test case (Name, Context, Option, Expect) |
 | `Context` | context.go | Interface: `Get(key string) (any, bool)`, `Set(key string, value any)` |
 | `MapContext` | map_context.go | Default Context implementation |
@@ -115,6 +119,32 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 ```
 
 +1.0 confirmed, 0.0 undecided, -1.0 fully rebutted.
+
+## Level — crisp reporting
+
+`Level` (`level.go`) is a crisp per-rule label orthogonal to the `[-1, 1]` verdict, for
+downstream aggregation such as reins (any `Fail` → FAIL, else any `Review` → REVIEW, else PASS).
+Values: `Unset` (zero value, "no level to report"), `Fail`, `Review`.
+
+Each rule's **effective Level** — the value written to `TraceEntry.Level` on both the `Run` and
+`Evaluate`-with-`Trace` paths — is resolved as:
+
+- explicit `rule.Level(l)` was called → that value wins (even `Level(Unset)`, which opts out of the default);
+- otherwise → the role-based default (`default_level_for_role.go`): `counter` → `Fail`,
+  `except` → `Review`, everything else (including `rule`) → `Unset`.
+
+`TraceEntry.Level` is serialised **without** `omitempty`: `Unset` (0) is a meaningful "no level"
+report value, not an absent field.
+
+## Fact — structured evidence
+
+`Fact{Where, Expected, Actual any}` (`fact.go`) is an optional convention for the `any` evidence
+a rule function returns as its second value. The engine never requires or interprets it — it flows
+through unchanged into `TraceEntry.Evidence` / `EvalResult.Evidence`, and consumers type-assert
+`evidence.(Fact)` to recover a located, quantified violation. Recovery per rule ID is already
+provided by `Trace.All()` / `Trace.Get(name)` (whole graph) and `EvalResult.Name` + `.Evidence`
+(per warrant) — no new API is needed. Determinism of `(verdict, root-cause rule ID, Fact)` holds
+as long as each rule function is itself pure/deterministic (a documented precondition; not enforced).
 
 ## Internal Files
 
@@ -139,6 +169,8 @@ verdict(a) = 2 × raw(a) - 1                [-1, 1]
 | rule_id.go | Rule identifier (funcID + spec) |
 | short_name.go | Extract short name from full path |
 | infer_role.go | Infer rule role from graph position |
+| default_level_for_role.go | Default crisp Level per role (counter→Fail, except→Review, else Unset) |
+| eval_context_effective_level.go | Resolve a node's effective Level (explicit set wins over role default) |
 | is_warrant.go | Check if node is a warrant |
 | to_rule_func.go | Convert any to rule function |
 | safe_call.go | Panic-safe rule function invocation |

@@ -11,6 +11,9 @@ type RuleMeta struct {
 	Specs     Specs
 	Fn        func(ctx Context, specs Specs) (bool, any)
 
+	Level    Level // crisp reporting level (Unset unless set)
+	LevelSet bool  // true once Rule.Level was called; explicit value wins over role default
+
 	RunOn NodeHandler // run handler, fires on Active (nil allowed)
 
 	RunGraph *Graph // sub-graph to Run when this node is Active (nil allowed)

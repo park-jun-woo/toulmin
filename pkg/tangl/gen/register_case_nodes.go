@@ -24,6 +24,9 @@ func registerCaseNodes(w *strings.Builder, gc *genContext, c ast.Case) map[strin
 		if n.Qualified != nil {
 			fmt.Fprintf(w, ".Qualifier(%s)", formatFloat(*n.Qualified))
 		}
+		if n.Level != ast.LevelUnset {
+			fmt.Fprintf(w, ".Level(%s)", levelArg(n.Level))
+		}
 		fmt.Fprintln(w)
 		nodes[n.Name] = nodeInfo{Var: v, Node: n}
 	}

@@ -12,8 +12,8 @@ import (
 )
 
 // emitCaseSlot routes a case-body statement by slotKind (0 Require, 1 Node,
-// 2 Attack, 3 Exec) to its emitter, restoring the document order the split AST
-// slices lose.
+// 2 Attack, 3 Exec, 4 Supersede) to its emitter, restoring the document order the
+// split AST slices lose.
 func emitCaseSlot(e *enc, ref doc.StmtRef, elem any, span word.Span) ([]word.Word, error) {
 	switch ref.Path[1] {
 	case 0:
@@ -26,6 +26,8 @@ func emitCaseSlot(e *enc, ref doc.StmtRef, elem any, span word.Span) ([]word.Wor
 		return emitAttack(e, ref, elem.(ast.Attack), span)
 	case 3:
 		return emitExecStmt(e, ref, elem.(ast.Exec), span)
+	case 4:
+		return emitSupersede(e, ref, elem.(ast.Supersede), span)
 	default:
 		return nil, fmt.Errorf("tangeul/stream: unknown case slotKind %d", ref.Path[1])
 	}

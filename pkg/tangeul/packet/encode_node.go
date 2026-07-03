@@ -10,8 +10,8 @@ import (
 )
 
 // EncodeNode encodes p as a Node packet (§5.1). The body is TID, NodeType, the
-// header word (Role in bits 15-14, Claim object kind in bits 8-7, Flags in bits
-// 6-0), then the conditional slots emitted in flag order (F_FUNC, F_QUAL,
+// header word (Role in bits 15-14, Level in bits 10-9, Claim object kind in bits
+// 8-7, Flags in bits 6-0), then the conditional slots emitted in flag order (F_FUNC, F_QUAL,
 // F_CHECK, F_CLAIM, F_VERDICT, F_WITH; F_STRIKE has no slot), then a trailing
 // SPAN. A flag whose field is absent is a hard error so the stream never emits a
 // truncated slot.
@@ -20,7 +20,7 @@ func EncodeNode(p NodePacket) ([]word.Word, error) {
 	if p.Claim != nil {
 		objKind = p.Claim.Kind
 	}
-	header := word.Word(uint16(p.Role)<<14 | uint16(objKind)<<7 | uint16(p.Flags))
+	header := word.Word(uint16(p.Role)<<14 | uint16(p.Level)<<9 | uint16(objKind)<<7 | uint16(p.Flags))
 	body := []word.Word{word.Word(p.TID), word.Word(p.Type), header}
 
 	if p.Flags&codebook.NodeFlagFunc != 0 {

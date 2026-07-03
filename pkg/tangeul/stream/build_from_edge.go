@@ -13,9 +13,10 @@ import (
 )
 
 // buildFromEdge handles a statement whose only relation is a single edge (attack,
-// exec, endpoint run/check, internal run/check) and returns its StmtRef. Attacks
-// and execs belong to the open case; runs and checks route through their owner's
-// TID. Exec building (with its forward `run` fixup) is delegated to buildExecEdge.
+// supersede, exec, endpoint run/check, internal run/check) and returns its
+// StmtRef. Attacks, supersedes and execs belong to the open case; runs and checks
+// route through their owner's TID. Exec building (with its forward `run` fixup) is
+// delegated to buildExecEdge.
 func buildFromEdge(d *dec, rel []packet.EdgePacket) (doc.StmtRef, error) {
 	if len(rel) != 1 {
 		return doc.StmtRef{}, fmt.Errorf("tangeul/stream: edge statement must have exactly one relation edge, got %d", len(rel))
@@ -30,6 +31,14 @@ func buildFromEdge(d *dec, rel []packet.EdgePacket) (doc.StmtRef, error) {
 		ai := len(d.ast.Cases[d.curCase].Attacks)
 		d.ast.Cases[d.curCase].Attacks = append(d.ast.Cases[d.curCase].Attacks, a)
 		return doc.StmtRef{Sec: codebook.SectionCases, Path: []int{d.curCase, 2, ai}}, nil
+	case codebook.PropSupersedes:
+		if d.curCase < 0 {
+			return doc.StmtRef{}, errors.New("tangeul/stream: supersede outside any case")
+		}
+		s := ast.Supersede{Superseder: d.nodeName[uint16(e.Src)], Superseded: d.nodeName[uint16(e.DstTID)]}
+		si := len(d.ast.Cases[d.curCase].Supersedes)
+		d.ast.Cases[d.curCase].Supersedes = append(d.ast.Cases[d.curCase].Supersedes, s)
+		return doc.StmtRef{Sec: codebook.SectionCases, Path: []int{d.curCase, 4, si}}, nil
 	case codebook.PropDo, codebook.PropUndo, codebook.PropRun:
 		return buildExecEdge(d, e)
 	case codebook.PropRuns:

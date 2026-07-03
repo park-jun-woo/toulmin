@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=parser control=iteration dimension=1
-//ff:what TestFixtureParity — the 3 KO example docs encode, tile, and match their EN counterparts' AST
+//ff:what TestFixtureParity — the KO example docs encode, tile, and match their EN counterparts' AST
 package ko
 
 import (
@@ -13,13 +13,13 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/tangl/parser"
 )
 
-// TestFixtureParity encodes each of the three 문법 v0.3 §예시 documents
-// (아메리카노/접근 제어/계좌 이체) with KoCodec and checks: the Blocks pass VerifyTiling,
+// TestFixtureParity encodes each shared example document (아메리카노/접근 제어/계좌 이체
+// and the quest_gate supersede+level fixture) with KoCodec and checks: the Blocks pass VerifyTiling,
 // Doc.Locale is "ko", RenderVerbatim reproduces the source byte-for-byte (mode 1),
 // and the encoded AST equals its EN counterpart's parse (EqualIgnoringLine, with
 // Path aligned since each source stamps its own path).
 func TestFixtureParity(t *testing.T) {
-	for _, name := range []string{"americano", "access", "transfer"} {
+	for _, name := range []string{"americano", "access", "transfer", "quest_gate"} {
 		koPath := filepath.Join("testdata", name+"-ko.md")
 		enPath := filepath.Join("testdata", name+"-en.md")
 		src, err := os.ReadFile(koPath)

@@ -14,7 +14,7 @@ func TestNewEvalContext(t *testing.T) {
 				{Name: "WarrantA", Qualifier: 1.0, Strength: Strict, Fn: WarrantA},
 			}
 			roleMap := map[string]string{"WarrantA": "warrant"}
-			ec, err := newEvalContext(rules, nil, roleMap)
+			ec, err := newEvalContext(rules, nil, nil, roleMap)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -34,7 +34,7 @@ func TestNewEvalContext(t *testing.T) {
 				{Name: "RebuttalB", Qualifier: 0.5, Strength: Defeasible, Fn: RebuttalB},
 			}
 			edges := []defeatEdge{{from: "RebuttalB", to: "WarrantA"}}
-			ec, err := newEvalContext(rules, edges, map[string]string{})
+			ec, err := newEvalContext(rules, edges, nil, map[string]string{})
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -54,7 +54,7 @@ func TestNewEvalContext(t *testing.T) {
 				{from: "A", to: "B"},
 				{from: "B", to: "A"},
 			}
-			ec, err := newEvalContext(rules, edges, map[string]string{})
+			ec, err := newEvalContext(rules, edges, nil, map[string]string{})
 			if err == nil {
 				t.Fatalf("expected cycle error")
 			}

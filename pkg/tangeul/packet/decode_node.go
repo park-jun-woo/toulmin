@@ -12,8 +12,8 @@ import (
 
 // DecodeNode decodes a Node packet from the head of ws, returning the packet and
 // the total words consumed (frame header + body). The header word yields Role,
-// the Claim object kind and Flags; slots are read in flag order and the trailing
-// SPAN closes the body. A body whose slots do not consume exactly Len words
+// Level, the Claim object kind and Flags; slots are read in flag order and the
+// trailing SPAN closes the body. A body whose slots do not consume exactly Len words
 // (excluding the SPAN) is a hard error (self-contained framing check, §design 2).
 func DecodeNode(ws []word.Word) (NodePacket, int, error) {
 	f, head, err := word.DecodeFrame(ws)
@@ -36,6 +36,7 @@ func DecodeNode(ws []word.Word) (NodePacket, int, error) {
 		TID:   TID(body[0]),
 		Type:  codebook.NodeType(body[1]),
 		Role:  codebook.RoleCode(header >> 14),
+		Level: codebook.LevelCode((header >> 9) & 0x3),
 		Flags: codebook.NodeFlags(header & 0x7F),
 	}
 	objKind := ObjKind((header >> 7) & 0x3)

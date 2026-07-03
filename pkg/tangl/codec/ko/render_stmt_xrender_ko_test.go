@@ -18,7 +18,7 @@ import (
 // rendering must be re-absorbed to the same graph as the EN source, so d2's AST
 // equals d1's up to Line — EN authoring and KO reading share one AST.
 func TestRenderStmtXrenderKo(t *testing.T) {
-	for _, name := range []string{"americano", "access", "transfer", "rules"} {
+	for _, name := range []string{"americano", "access", "transfer", "rules", "quest_gate"} {
 		p := filepath.Join("testdata", name+"-en.md")
 		src, err := os.ReadFile(p)
 		if err != nil {

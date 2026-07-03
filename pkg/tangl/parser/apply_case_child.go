@@ -5,8 +5,8 @@ package parser
 import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 
 // applyCaseChild tries each case-body statement form in turn (required
-// field, node registration, don't attack edge, do/undo/run exec edge) and
-// appends the match onto c.
+// field, node registration, don't attack edge, supersede edge, do/undo/run
+// exec edge) and appends the match onto c.
 func applyCaseChild(c *ast.Case, child item, path string) error {
 	if req, ok, err := parseRequireItem(child, path); err != nil {
 		return err
@@ -24,6 +24,12 @@ func applyCaseChild(c *ast.Case, child item, path string) error {
 		return err
 	} else if ok {
 		c.Attacks = append(c.Attacks, atk)
+		return nil
+	}
+	if sup, ok, err := parseSupersedeItem(child, path); err != nil {
+		return err
+	} else if ok {
+		c.Supersedes = append(c.Supersedes, sup)
 		return nil
 	}
 	if exec, ok, err := parseExecItem(child, path); err != nil {

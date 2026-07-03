@@ -25,6 +25,7 @@ func TestPropCode(t *testing.T) {
 		{PropImportedFrom, 0x010E},
 		{PropLabel, 0x010F},
 		{PropProvenance, 0x0110},
+		{PropSupersedes, 0x0111},
 	}
 	for _, c := range cases {
 		if uint16(c.got) != c.want {

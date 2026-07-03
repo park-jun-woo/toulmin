@@ -26,6 +26,7 @@ func TestRenderStmtCorpus(t *testing.T) {
 	}
 	paths := []string{
 		td("americano.md"), td("access.md"), td("transfer.md"),
+		td("supersede_level.md"),
 		ex("library-renewal.md"), ex("newsletter-tick-warn.md"),
 		ex("newsletter-tick-fixed.md"), ex("order-saga.md"),
 		ex("factory-line-cascade.md"),

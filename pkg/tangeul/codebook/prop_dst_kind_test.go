@@ -29,6 +29,7 @@ func TestPropDstKind(t *testing.T) {
 		{PropTriggers, DstTID},
 		{PropUntil, DstTID},
 		{PropSameAs, DstTID},
+		{PropSupersedes, DstTID},
 	}
 	for _, c := range cases {
 		got, err := PropDstKind(c.prop)

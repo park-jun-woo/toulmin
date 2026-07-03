@@ -12,17 +12,21 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 )
 
-// emitRuleNode encodes a case rule node: its role, an F_FUNC warrant reference
-// materialized as a Func node, an F_CHECK checked case, F_WITH term Texts, an
-// F_QUAL qualifier, and its name label. An undeclared `checking` case is a hard
-// error.
+// emitRuleNode encodes a case rule node: its role, its crisp reporting level, an
+// F_FUNC warrant reference materialized as a Func node, an F_CHECK checked case,
+// F_WITH term Texts, an F_QUAL qualifier, and its name label. An undeclared
+// `checking` case is a hard error.
 func emitRuleNode(e *enc, ref doc.StmtRef, n ast.Node, span word.Span) ([]word.Word, error) {
 	self := e.tt.byRef[tidKey(ref)]
 	role, err := codebook.RoleFromAST(n.Role)
 	if err != nil {
 		return nil, err
 	}
-	p := packet.NodePacket{TID: packet.TID(self), Type: codebook.NodeRule, Role: role, Span: span}
+	level, err := codebook.LevelFromAST(n.Level)
+	if err != nil {
+		return nil, err
+	}
+	p := packet.NodePacket{TID: packet.TID(self), Type: codebook.NodeRule, Role: role, Level: level, Span: span}
 	var pre, body []word.Word
 	if n.Using != nil {
 		fTID, err := emitFuncRef(e, &pre, &body, *n.Using, span)

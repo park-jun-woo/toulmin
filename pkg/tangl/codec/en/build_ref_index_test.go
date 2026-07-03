@@ -32,6 +32,9 @@ func TestBuildRefIndex(t *testing.T) {
 			Nodes:    []ast.Node{{Name: "n", Line: 42}},
 			Attacks:  []ast.Attack{{Target: "n", Attacker: "n", Line: 43}},
 			Execs:    []ast.Exec{{Node: "n", Line: 44}},
+			Supersedes: []ast.Supersede{
+				{Superseder: "n", Superseded: "n", Line: 45},
+			},
 		}},
 		Provides: []ast.Endpoint{{
 			Name:     "ep",
@@ -53,6 +56,7 @@ func TestBuildRefIndex(t *testing.T) {
 		42: {Sec: codebook.SectionCases, Path: []int{0, 1, 0}},
 		43: {Sec: codebook.SectionCases, Path: []int{0, 2, 0}},
 		44: {Sec: codebook.SectionCases, Path: []int{0, 3, 0}},
+		45: {Sec: codebook.SectionCases, Path: []int{0, 4, 0}},
 		50: {Sec: codebook.SectionProvides, Path: []int{0}},
 		51: {Sec: codebook.SectionProvides, Path: []int{0, 0, 0}},
 		60: {Sec: codebook.SectionInternal, Path: []int{0}},

@@ -1,5 +1,5 @@
 //ff:type feature=tangl type=model
-//ff:what PropCode — the sixteen TANGL Edge-packet predicate codes (codebook §2.3)
+//ff:what PropCode — the seventeen TANGL Edge-packet predicate codes (codebook §2.3)
 package codebook
 
 // PropCode is the predicate code carried in word 2 of an Edge packet
@@ -7,7 +7,7 @@ package codebook
 // Free-area L1 codebook value, FROZEN append-only.
 type PropCode uint16
 
-// The sixteen TANGL PropCode codes (§2.3), assigned 0x0101..0x0110.
+// The seventeen TANGL PropCode codes (§2.3), assigned 0x0101..0x0111.
 const (
 	// PropAttacks is `don't X when Y` — RuleNode → RuleNode (0x0101).
 	PropAttacks PropCode = 0x0101
@@ -41,4 +41,6 @@ const (
 	PropLabel PropCode = 0x010F
 	// PropProvenance is rule origin/premises meta — Node → provenance block (0x0110).
 	PropProvenance PropCode = 0x0110
+	// PropSupersedes is `` `X` supersedes `Y` `` — RuleNode → RuleNode (0x0111).
+	PropSupersedes PropCode = 0x0111
 )

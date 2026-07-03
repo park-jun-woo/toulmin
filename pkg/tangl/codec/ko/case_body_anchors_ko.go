@@ -11,10 +11,10 @@ import (
 
 // caseBodyAnchorsKo walks a case's non-struck body children, dispatching each via
 // applyCaseChildKo (which appends onto c) and anchoring it as {Cases, [ci, slotKind,
-// slotIdx]} with per-kind counters (0 Require · 1 Node · 2 Attack · 3 Exec).
+// slotIdx]} with per-kind counters (0 Require · 1 Node · 2 Attack · 3 Exec · 4 Supersede).
 func caseBodyAnchorsKo(c *ast.Case, ci int, children []scan.Item, path string) ([]doc.Block, error) {
 	var anchors []doc.Block
-	counts := [4]int{}
+	counts := [5]int{}
 	for _, ch := range children {
 		if ch.Struck {
 			continue

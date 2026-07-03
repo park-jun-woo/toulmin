@@ -10,16 +10,21 @@ import (
 )
 
 // appendCaseNode rebuilds an ast.Node from a rule node packet inside the open
-// case: its role, an F_FUNC warrant resolved through the Func node, `with` term
-// names from the F_WITH Text TIDs, and an F_QUAL qualifier. An F_CHECK case
-// reference is deferred as a fixup (verdict composition may target a case
-// declared later). It appends to the case's Nodes and returns the StmtRef.
+// case: its role, its crisp reporting level, an F_FUNC warrant resolved through
+// the Func node, `with` term names from the F_WITH Text TIDs, and an F_QUAL
+// qualifier. An F_CHECK case reference is deferred as a fixup (verdict
+// composition may target a case declared later). It appends to the case's Nodes
+// and returns the StmtRef.
 func appendCaseNode(d *dec, p packet.NodePacket, name string, labels map[uint16][]string) (doc.StmtRef, error) {
 	role, err := codebook.RoleToAST(p.Role)
 	if err != nil {
 		return doc.StmtRef{}, err
 	}
-	n := ast.Node{Name: name, Role: role}
+	level, err := codebook.LevelToAST(p.Level)
+	if err != nil {
+		return doc.StmtRef{}, err
+	}
+	n := ast.Node{Name: name, Role: role, Level: level}
 	if p.Func != nil {
 		ref, err := resolveFuncRef(d, uint16(p.Func.Alias))
 		if err != nil {

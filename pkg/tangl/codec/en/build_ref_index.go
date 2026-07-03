@@ -43,6 +43,9 @@ func buildRefIndex(a *ast.Document) map[int]doc.StmtRef {
 		for si, ex := range c.Execs {
 			idx[ex.Line] = doc.StmtRef{Sec: codebook.SectionCases, Path: []int{ci, 3, si}}
 		}
+		for si, sp := range c.Supersedes {
+			idx[sp.Line] = doc.StmtRef{Sec: codebook.SectionCases, Path: []int{ci, 4, si}}
+		}
 	}
 	for ei, ep := range a.Provides {
 		idx[ep.Line] = doc.StmtRef{Sec: codebook.SectionProvides, Path: []int{ei}}

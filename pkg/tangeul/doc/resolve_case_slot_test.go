@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=util control=iteration dimension=1
-//ff:what TestResolveCaseSlot — all four slotKinds resolve valid indices and reject negative/out-of-range/unknown
+//ff:what TestResolveCaseSlot — all five slotKinds resolve valid indices and reject negative/out-of-range/unknown
 package doc
 
 import (
@@ -9,17 +9,18 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 )
 
-// TestResolveCaseSlot verifies resolveCaseSlot's four Case slot kinds
-// (Require=0, Node=1, Attack=2, Exec=3): each resolves a valid in-range index
-// and rejects both a negative index and an index at/past len; an unrecognized
-// slotKind hits the default branch.
+// TestResolveCaseSlot verifies resolveCaseSlot's five Case slot kinds
+// (Require=0, Node=1, Attack=2, Exec=3, Supersede=4): each resolves a valid
+// in-range index and rejects both a negative index and an index at/past len; an
+// unrecognized slotKind hits the default branch.
 func TestResolveCaseSlot(t *testing.T) {
 	c := &ast.Case{
-		Name:     "c0",
-		Requires: []ast.Require{{Field: "rq"}},
-		Nodes:    []ast.Node{{Name: "n0"}},
-		Attacks:  []ast.Attack{{Target: "t", Attacker: "u"}},
-		Execs:    []ast.Exec{{Node: "n0"}},
+		Name:       "c0",
+		Requires:   []ast.Require{{Field: "rq"}},
+		Nodes:      []ast.Node{{Name: "n0"}},
+		Attacks:    []ast.Attack{{Target: "t", Attacker: "u"}},
+		Execs:      []ast.Exec{{Node: "n0"}},
+		Supersedes: []ast.Supersede{{Superseder: "s", Superseded: "d"}},
 	}
 
 	cases := []struct {
@@ -41,7 +42,10 @@ func TestResolveCaseSlot(t *testing.T) {
 		{"exec valid", 3, 0, c.Execs[0], false},
 		{"exec negative", 3, -1, nil, true},
 		{"exec oob", 3, 1, nil, true},
-		{"unknown slotKind", 4, 0, nil, true},
+		{"supersede valid", 4, 0, c.Supersedes[0], false},
+		{"supersede negative", 4, -1, nil, true},
+		{"supersede oob", 4, 1, nil, true},
+		{"unknown slotKind", 5, 0, nil, true},
 	}
 
 	for _, tc := range cases {

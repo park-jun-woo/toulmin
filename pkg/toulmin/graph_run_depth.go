@@ -22,7 +22,8 @@ func (g *Graph) runDepth(ctx Context, opt EvalOption, depth int) ([]EvalResult, 
 	if err != nil {
 		return nil, Trace{}, err
 	}
-	entries := g.buildTraceEntries(ec, ctx)
+	excluded := ec.resolveSupersedes(ctx)
+	entries := g.buildTraceEntries(ec, ctx, excluded)
 	tr := Trace{nodes: entries, ctx: ctx}
 	for i := range g.rules {
 		self := entries[i]

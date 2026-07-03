@@ -9,7 +9,8 @@ import (
 )
 
 // applyNodeClause parses the optional trailing clause of a node declaration:
-// either "using FUNC_REF [with_clause] [qual_clause]" or "checking NAME".
+// either "using FUNC_REF [with_clause] [qual_clause]" or "checking NAME",
+// optionally followed by a level_clause (", level fail" / ", level review").
 func applyNodeClause(n *ast.Node, rest string, line int, path string) error {
 	if using, ok := takeKeyword(rest, "using"); ok {
 		ref, with, qual, tail, err := parseUsingClause(using, path, line)
@@ -27,6 +28,14 @@ func applyNodeClause(n *ast.Node, rest string, line int, path string) error {
 		rest = tail
 	} else {
 		return errAt(path, line, "unexpected trailing text: %q", rest)
+	}
+	rest = strings.TrimSpace(rest)
+	if r, ok := takeKeyword(rest, ","); ok {
+		lvl, tail, err := parseLevelClause(r, path, line)
+		if err != nil {
+			return err
+		}
+		n.Level, rest = lvl, tail
 	}
 	if strings.TrimSpace(rest) != "" {
 		return errAt(path, line, "unexpected trailing text: %q", rest)

@@ -10,5 +10,6 @@ type Node struct {
 	Checking  string   `json:"checking,omitempty"` // target case name for verdict composition
 	With      []string `json:"with,omitempty"`     // Definitions term names
 	Qualified *float64 `json:"qualified,omitempty"`
+	Level     Level    `json:"level,omitempty"`
 	Line      int      `json:"line"`
 }

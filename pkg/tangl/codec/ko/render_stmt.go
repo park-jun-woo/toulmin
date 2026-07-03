@@ -50,6 +50,8 @@ func (KoCodec) RenderStmt(d *doc.Doc, ref doc.StmtRef) (string, error) {
 		return renderNodeKo(v), nil
 	case ast.Attack:
 		return renderAttackKo(v), nil
+	case ast.Supersede:
+		return renderSupersedeKo(v), nil
 	case ast.Exec:
 		return renderExecKo(v)
 	case ast.Endpoint:

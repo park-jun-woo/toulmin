@@ -120,6 +120,28 @@ results, err = g.Evaluate(ctx, toulmin.EvalOption{Trace: true})                 
 results, err = g.Evaluate(ctx, toulmin.EvalOption{Duration: true})                        // with duration (trace auto-enabled)
 ```
 
+### Crisp Edges — Supersedes & Level
+
+Two crisp (non-gradual) methods on `*Rule` sit alongside `Attacks`, feeding downstream
+reins-style aggregation orthogonal to the `[-1, 1]` verdict.
+
+| Method | File | Effect |
+|---|---|---|
+| `rule.Supersedes(target)` | rule_supersedes.go | When this rule is **Active**, `target` is crisply **excluded** from the tally: `target`'s `TraceEntry.Excluded` is set and it never enters the h-Categoriser traversal (distinct from `Attacks`, which contributes a gradual defeat weight). |
+| `rule.Level(l)` | rule_level.go | Set the crisp reporting `Level` (`Unset`/`Fail`/`Review`). The explicit value — including `Level(Unset)` — overrides the role-based default. Chains. |
+
+```go
+r := g.Counter(IsOverdrawn)
+r.Level(toulmin.Fail)               // report Fail (already the counter default; explicit here)
+r.Supersedes(pending)               // when IsOverdrawn is Active, pending is excluded, not merely attacked
+g.Except(IsPending).Level(toulmin.Review)
+```
+
+**Effective Level** — the value written to `TraceEntry.Level` on both the `Run` and
+`Evaluate`-with-`Trace` paths — resolves as: an explicit `rule.Level(l)` wins (even
+`Level(Unset)`, which opts out of the default); otherwise the role-based default applies —
+`counter` → `Fail`, `except` → `Review`, everything else (incl. `rule`) → `Unset`.
+
 ### EvalOption
 
 ```go
@@ -155,6 +177,8 @@ type TraceEntry struct {
     Ground    any           `json:"ground,omitempty"` // = ctx as-is
     Specs     Specs         `json:"specs,omitempty"`  // = Backing
     Duration  time.Duration `json:"duration,omitempty"`
+    Excluded  bool          `json:"excluded,omitempty"` // crisply superseded out of the tally
+    Level     Level         `json:"level"`              // crisp reporting level (no omitempty: Unset is meaningful)
 }
 ```
 
@@ -167,9 +191,33 @@ A `TraceEntry` records, per node, *what* was judged and *on what basis*:
 | `Specs` | **Backing** | the fixed Specs attached at declaration |
 | `Verdict` | — | node verdict `[-1, 1]` (`> 0` prevailed, `<= 0` defeated) |
 | `Activated` | — | whether the rule function returned `true` |
+| `Excluded` | — | crisply superseded out of the tally by an Active `Supersedes(this)` rule (never entered the h-Categoriser) |
+| `Level` | — | crisp reporting level (`Unset`/`Fail`/`Review`); serialised without `omitempty` since `Unset` (0) means "no level to report", not absent |
 
 > ⚠️ `Ground = ctx` is stored verbatim. If you `json.Marshal` a trace, make sure `ctx`
 > holds only serialisable values, or marshalling will fail.
+
+### Fact — Structured Evidence
+
+`Fact{Where, Expected, Actual any}` (`fact.go`) is an optional convention for the `any`
+evidence a rule function returns as its second value:
+
+```go
+func CheckBalance(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
+    bal, _ := ctx.Get("balance")
+    if bal.(int) < 0 {
+        return true, toulmin.Fact{Where: "account.balance", Expected: ">= 0", Actual: bal}
+    }
+    return false, nil
+}
+```
+
+The engine never requires or interprets `Fact` — it flows through unchanged into
+`TraceEntry.Evidence` / `EvalResult.Evidence`, and consumers type-assert `evidence.(Fact)`
+to recover a located, quantified violation. Recovery **per rule ID** needs no new API:
+`Trace.All()` / `Trace.Get(name)` (whole graph) and `EvalResult.Name` + `.Evidence`
+(per warrant) already provide it. Determinism of `(verdict, root-cause rule ID, Fact)`
+holds as long as each rule function is itself pure/deterministic.
 
 ### Node Handler (Run)
 
@@ -317,7 +365,7 @@ summaries — see [TANGEUL.en.md](./TANGEUL.en.md).
 | `tangl:See` | imports (`see \`alias\` from \`pkg/path\``) |
 | `tangl:Definitions` | constants and struct-shaped types used by `with`/`using` |
 | `tangl:Rules` | named inline rule expressions reusable across cases |
-| `tangl:Cases` | judgment graphs: nodes (general/counter/except rules), `don't` attack edges, and attached `do`/`undo`/`run` execution edges |
+| `tangl:Cases` | judgment graphs: nodes (general/counter/except rules), `don't` attack edges, `X supersedes Y` crisp-exclusion edges, per-node `, level fail` / `, level review` reporting suffixes, and attached `do`/`undo`/`run` execution edges |
 | `tangl:Provides` | external entry points (endpoints) that `run` or `check` cases |
 | `tangl:Internal` | event/tick-driven triggers with no external caller |
 

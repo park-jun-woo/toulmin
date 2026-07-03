@@ -16,6 +16,7 @@ func Validate(doc *ast.Document) error {
 	errs = append(errs, checkDuplicateDefNames(doc)...)
 	errs = append(errs, checkDuplicateEndpointNames(doc)...)
 	errs = append(errs, checkAttackRefs(doc)...)
+	errs = append(errs, checkSupersedeRefs(doc)...)
 	errs = append(errs, checkExecNodeRefs(doc)...)
 	errs = append(errs, checkRunCaseRefs(doc)...)
 	errs = append(errs, checkCheckingRefs(doc)...)
@@ -28,5 +29,6 @@ func Validate(doc *ast.Document) error {
 	errs = append(errs, checkCheckingCycle(doc)...)
 	errs = append(errs, checkRunCycle(doc)...)
 	errs = append(errs, checkAttackCycle(doc)...)
+	errs = append(errs, checkSupersedeCycle(doc)...)
 	return newMultiError(errs)
 }

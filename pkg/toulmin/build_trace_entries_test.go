@@ -20,7 +20,7 @@ func TestBuildTraceEntries(t *testing.T) {
 				evidence:     map[string]any{},
 				specsMap:     map[string]Specs{},
 			}
-			entries := g.buildTraceEntries(ec, NewContext())
+			entries := g.buildTraceEntries(ec, NewContext(), nil)
 			if len(entries) != 0 {
 				t.Fatalf("expected 0 entries, got %d", len(entries))
 			}
@@ -43,7 +43,7 @@ func TestBuildTraceEntries(t *testing.T) {
 				evidence:     map[string]any{},
 				specsMap:     map[string]Specs{},
 			}
-			entries := g.buildTraceEntries(ec, NewContext())
+			entries := g.buildTraceEntries(ec, NewContext(), nil)
 			if len(entries) != 2 {
 				t.Fatalf("expected 2 entries, got %d", len(entries))
 			}

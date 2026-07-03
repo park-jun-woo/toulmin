@@ -17,4 +17,7 @@ type evalContext struct {
 	roleMap      map[string]string
 	err          error
 	verdictCache map[string]float64
+	supersedeBy  map[string][]string
+	levelMap     map[string]Level
+	levelSetMap  map[string]bool
 }

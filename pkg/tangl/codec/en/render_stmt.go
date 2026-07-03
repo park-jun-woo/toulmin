@@ -50,6 +50,8 @@ func (ENCodec) RenderStmt(d *doc.Doc, ref doc.StmtRef) (string, error) {
 		return renderNode(v), nil
 	case ast.Attack:
 		return renderAttack(v), nil
+	case ast.Supersede:
+		return renderSupersede(v), nil
 	case ast.Exec:
 		return renderExec(v)
 	case ast.Endpoint:

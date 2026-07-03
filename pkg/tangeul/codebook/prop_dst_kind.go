@@ -18,7 +18,7 @@ func PropDstKind(p PropCode) (DstKind, error) {
 	case PropProvenance:
 		return DstBlock, nil
 	case PropAttacks, PropRun, PropChecks, PropRequires, PropMeans, PropHas,
-		PropRuns, PropEvaluates, PropTriggers, PropUntil, PropSameAs:
+		PropRuns, PropEvaluates, PropTriggers, PropUntil, PropSameAs, PropSupersedes:
 		return DstTID, nil
 	default:
 		return 0, fmt.Errorf("tangeul/codebook: unknown PropCode 0x%04X", uint16(p))

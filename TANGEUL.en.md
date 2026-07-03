@@ -120,6 +120,8 @@ Case names conventionally follow the `can ...` question form. `is required` decl
 - `<name>` is an except rule using <func>
 - `<name>` is a general rule using <func> with <Spec> qualified <float>
 - `<name>` is a general rule checking <other-case>
+- `<name>` is a counter rule using <func>, level fail
+- `<name>` is an except rule using <func>, level review
 ```
 
 | Node | Engine | Meaning |
@@ -127,6 +129,13 @@ Case names conventionally follow the `can ...` question form. `is required` decl
 | `general rule` | Rule (Warrant) | claim |
 | `counter rule` | Counter (Rebuttal) | rebuttal (reverses verdict) |
 | `except rule` | Except (Defeater) | exception (attenuates verdict) |
+
+`, level fail` / `, level review` is an optional trailing modifier on a node
+(after `using`/`checking`) that pins the node's **crisp reporting level** for
+reins-style aggregation (any Fail → FAIL, else any Review → REVIEW, else PASS).
+It compiles to `.Level(toulmin.Fail)` / `.Level(toulmin.Review)`. When omitted,
+nothing is emitted and the engine's role-based default applies — so documents
+without the modifier are byte-for-byte unchanged.
 
 `checking <case>` is **judgment composition** — using another case's verdict as a rule. It **compiles to Evaluate** and fires no side effects. Circular references are forbidden.
 
@@ -138,6 +147,23 @@ Case names conventionally follow the `can ...` question form. `is required` decl
 - don't `<target>` when `<attacker>`
 ```
 If the attacker is Active, it attacks the target. `do not` is equivalent. → `attacker.Attacks(target)`
+
+### Supersede edges (supersedes)
+
+```
+- `<superseder>` supersedes `<superseded>`
+```
+If the superseder is Active, the superseded node is **crisply excluded from the
+tally** (it never enters the h-Categoriser traversal — only its trace is marked
+Excluded). → `superseder.Supersedes(superseded)`
+
+| Edge | Effect | Engine |
+|---|---|---|
+| `don't <y> when <x>` | attenuates `<y>`'s verdict (graded, enters the tally) | `x.Attacks(y)` |
+| `<x> supersedes <y>` | crisply excludes `<y>` from the tally (deterministic priority) | `x.Supersedes(y)` |
+
+Like defeat edges, supersede edges must reference nodes registered in the same
+case and must not form a cycle (validated independently of the Attacks graph).
 
 ### Execution edges (do / run)
 
@@ -502,8 +528,10 @@ section = subject_section | see_section | def_section | rules_section
 
 cases_stmt = case_decl | required_decl | node_decl | edge_decl | exec_decl
 case_decl  = "in" "case" "of" NAME
-node_decl  = NAME "is" ("a"|"an") ROLE_EXPR ["using" FUNC_REF [with_clause] [qual_clause] | "checking" NAME]
+node_decl  = NAME "is" ("a"|"an") ROLE_EXPR (["using" FUNC_REF [with_clause] [qual_clause] | "checking" NAME] [level_clause])
+level_clause = "," "level" ("fail" | "review")             # crisp reporting level
 edge_decl  = DONT NAME "when" NAME                          # defeat edge
+           | NAME "supersedes" NAME                         # supersede edge
 exec_decl  = do_edge | run_edge | undo_edge
 do_edge    = "do" FUNC_REF ["once"] "when" NAME [certainty_clause]
 undo_edge  = "undo" FUNC_REF "when" NAME                   # compensation edge
@@ -531,7 +559,7 @@ FUNC_REF = NAME | NAME "." NAME
 ```
 
 - The NAME node of an `undo_edge` must be preceded by at least one `do_edge` within the same case (parser-validated).
-- Keywords: `this`, `document`, `see`, `means`, `as`, `is`, `a`, `an`, `from`, `general`, `rule`, `counter`, `except`, `case`, `using`, `checking`, `with`, `qualified`, `provides`, `required`, `run`, `check`, `do`, `don't`, `not`, `when`, **`once`**, **`undo`**, `on`, `every`, `until`, `has`, `if`, `at`, `least`, `above`, `less`, `than`, `most`, `certain`, `and`, `or`, `either`, `empty`, `equals`, `in`, `greater`.
+- Keywords: `this`, `document`, `see`, `means`, `as`, `is`, `a`, `an`, `from`, `general`, `rule`, `counter`, `except`, `case`, `using`, `checking`, `with`, `qualified`, `provides`, `required`, `run`, `check`, `do`, `don't`, `not`, `when`, **`once`**, **`undo`**, **`supersedes`**, **`level`**, **`fail`**, **`review`**, `on`, `every`, `until`, `has`, `if`, `at`, `least`, `above`, `less`, `than`, `most`, `certain`, `and`, `or`, `either`, `empty`, `equals`, `in`, `greater`.
 
 ## Go API correspondence table
 
@@ -546,6 +574,8 @@ FUNC_REF = NAME | NAME "." NAME
 | `` `x` is a general rule checking `y` `` | `x := g.Rule(checkCase(y))` — **`y` is Evaluate (pure)** |
 | `` with `term` `` / `qualified 0.8` | `.With(defs["term"])` / `.Qualifier(0.8)` |
 | `` don't `x` when `y` `` | `y.Attacks(x)` |
+| `` `x` supersedes `y` `` | `x.Supersedes(y)` |
+| `` , level fail `` / `` , level review `` | `.Level(toulmin.Fail)` / `.Level(toulmin.Review)` |
 | `` do `fn` when `n` `` | `n.RunOn(func(self, t){ ...fn... })` |
 | `` do `fn` when `n` if at least 75% certain `` | `n.RunOn(func(self,t){ if self.Verdict >= 0.5 { fn } })` |
 | **`` do `fn` once when `n` ``** | **codegen ctx-guard handler — `n.RunOn(func(self,t){ if _,ok := t.Ctx().Get("once:subj.case.n#0"); !ok { if err := fn(); err != nil { return err }; t.Ctx().Set("once:subj.case.n#0", true) } })`** |

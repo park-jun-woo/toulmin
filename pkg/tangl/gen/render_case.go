@@ -10,8 +10,9 @@ import (
 )
 
 // renderCase writes one case's graph-builder function — node
-// registration, defeat edges, and do/undo/run execution attachment, in
-// that document order — followed by its package-level graph var.
+// registration, defeat edges, supersede edges, and do/undo/run execution
+// attachment, in that document order — followed by its package-level graph
+// var.
 func renderCase(w *strings.Builder, gc *genContext, c ast.Case) error {
 	subject := gc.Doc.Subject
 	fnName := "new" + goIdentExported(c.Name) + "Graph"
@@ -21,6 +22,7 @@ func renderCase(w *strings.Builder, gc *genContext, c ast.Case) error {
 	fmt.Fprintf(w, "\tg := toulmin.NewGraph(%s)\n", quoteGraphName(subject, c.Name))
 	nodes := registerCaseNodes(w, gc, c)
 	registerCaseAttacks(w, c, nodes)
+	registerCaseSupersedes(w, c, nodes)
 	if err := registerCaseExecs(w, subject, c, nodes); err != nil {
 		return err
 	}

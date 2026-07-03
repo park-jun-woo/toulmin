@@ -29,5 +29,12 @@ func renderNode(n ast.Node) string {
 	} else if n.Checking != "" {
 		s += " checking `" + n.Checking + "`"
 	}
+	if n.Level != ast.LevelUnset {
+		word := "fail"
+		if n.Level == ast.LevelReview {
+			word = "review"
+		}
+		s += ", level " + word
+	}
 	return s
 }

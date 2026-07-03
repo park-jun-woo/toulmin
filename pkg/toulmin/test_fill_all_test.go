@@ -8,7 +8,7 @@ func TestFillAll(t *testing.T) {
 	g := NewGraph("fill")
 	g.Rule(WarrantA)
 	g.Rule(InactiveR)
-	ec, err := newEvalContext(g.rules, g.defeats, g.roles)
+	ec, err := newEvalContext(g.rules, g.defeats, g.supersedes, g.roles)
 	if err != nil {
 		t.Fatalf("newEvalContext: %v", err)
 	}

@@ -186,7 +186,7 @@ const isInRole: RuleFunc = (ctx, specs) => {
 
 ### Defeats Graph
 
-Three node types, one edge type:
+Three node types, two edge kinds:
 
 | Node | Role |
 |---|---|
@@ -204,6 +204,8 @@ expunged.Attacks(criminal)  // expungement neutralizes criminal record
 ```
 
 **Except is the differentiator.** "Exceptions to exceptions" cannot be structurally expressed with if-else. In a defeats graph, it's one edge.
+
+**Supersedes is a crisp override.** `Attacks` weighs into the h-Categoriser; `winner.Supersedes(loser)` doesn't. When `winner` is Active, `loser` is dropped from the tally outright — marked `Excluded` in the trace, never traversed — instead of merely having its verdict lowered. Use it when one rule must flatly take precedence over another rather than weigh against it.
 
 ### Verdict
 
@@ -225,6 +227,14 @@ Not binary. **The framework interprets**:
 - Security: `verdict ≤ 0` → deny
 - Moderation: `verdict ≤ 0` → block, `0 < v ≤ 0.3` → flag, `> 0.3` → allow
 - Feature flags: `verdict > 0` → enabled
+
+### Level
+
+Orthogonal to the continuous verdict, each rule carries a crisp reporting `Level` — `Unset` / `Fail` / `Review` — for downstream aggregation (e.g. any `Fail` → FAIL, else any `Review` → REVIEW, else PASS). By default a `Counter` reports `Fail` and an `Except` reports `Review`; `rule.Level(l)` overrides that (even back to `Unset`). It surfaces as `TraceEntry.Level`.
+
+```go
+overdrawn := g.Counter(isOverdrawn).Level(toulmin.Fail)
+```
 
 ### Evaluation Options
 
@@ -267,10 +277,12 @@ editor := g.Rule(isInRole).With(&RoleSpec{Role: "editor"}).Qualifier(0.8)
 ctx := toulmin.NewContext()
 results, _ := g.Evaluate(ctx, toulmin.EvalOption{Trace: true})
 for _, t := range results[0].Trace {
-    fmt.Printf("%s role=%s activated=%v evidence=%v\n",
-        t.Name, t.Role, t.Activated, t.Evidence)
+    fmt.Printf("%s role=%s activated=%v level=%v excluded=%v evidence=%v\n",
+        t.Name, t.Role, t.Activated, t.Level, t.Excluded, t.Evidence)
 }
 ```
+
+`Excluded` marks a node crisply superseded out of the tally; `Level` is its crisp reporting level (above). `Evidence` is the rule function's second return value — return a `Fact{Where, Expected, Actual}` for a located, quantified violation and recover it downstream via `t.Evidence.(toulmin.Fact)`.
 
 Moderation logs, audit trails, debugging — built into the engine, no extra logging.
 
@@ -342,6 +354,7 @@ TANGL v0.3 is a markdown policy language that compiles directly onto the core: n
 - **Judgment and execution are separated.** A `Provides`/`Internal` entry either `check`s a case (compiles to `Graph.Evaluate` — pure) or `run`s one (compiles to `Graph.Run` — judgment then `do`/`undo` side effects via `RunOn`).
 - **Saga compensation, built in.** Each `do` arms its paired `undo` on a compensation stack the moment it succeeds; a later failure in the same pass replays the stack LIFO, and unrecoverable failures escalate to a `*tangl.ReviewError` carrying both the cause and the compensation error.
 - **Effect summary, for audit.** `tangl effects` statically lists every `do`/`undo` an endpoint can trigger — without running it.
+- **Crisp overrides and levels, in the surface too.** `` `X` supersedes `Y` `` excludes `Y` from the tally when `X` holds; a trailing `, level fail` / `, level review` tags a case's crisp reporting level. Both round-trip through encode/decode in either locale (Korean: `` `X` 면 `Y` 배제한다 ``, `, 수준 실패` / `, 수준 검토`).
 - **One binary source of truth (TANGEUL).** `tangl encode` absorbs an authored `.md` surface into a compact, locale-independent `.tangeul` stream (AST + verbatim prose spans); every other command runs on that stream. `tangl decode` renders it back to a text surface — byte-identically in mode 1, or regenerated into another locale in mode 2.
 - **English or Korean surface, same AST.** `tangl encode` auto-detects en/ko from the document's section headers; `tangl decode --locale ko` renders any `.tangeul` as a Korean audit surface for non-developer reviewers (see `files/TANGL문법v0.3-한국어.md`).
 

@@ -8,10 +8,11 @@ import (
 )
 
 // applyCaseChildKo tries each case-body statement form in turn — required field
-// (필수다), node registration (규칙이다), don't attack edge (무효다), then do/undo/run
-// exec edge (실행한다/되돌린다/진행한다) — appends the match onto c, and returns the
-// StmtRef slot kind (0 Require · 1 Node · 2 Attack · 3 Exec) so the encoder can
-// assign the body coordinate. It mirrors pkg/tangl/parser.applyCaseChild.
+// (필수다), node registration (규칙이다), don't attack edge (무효다), supersede edge
+// (배제한다), then do/undo/run exec edge (실행한다/되돌린다/진행한다) — appends the match
+// onto c, and returns the StmtRef slot kind (0 Require · 1 Node · 2 Attack · 3 Exec ·
+// 4 Supersede) so the encoder can assign the body coordinate. It mirrors
+// pkg/tangl/parser.applyCaseChild.
 func applyCaseChildKo(c *ast.Case, it scan.Item, path string) (int, error) {
 	if req, ok, err := parseRequireKo(it, path); err != nil {
 		return 0, err
@@ -30,6 +31,12 @@ func applyCaseChildKo(c *ast.Case, it scan.Item, path string) (int, error) {
 	} else if ok {
 		c.Attacks = append(c.Attacks, atk)
 		return 2, nil
+	}
+	if sup, ok, err := parseSupersedeKo(it, path); err != nil {
+		return 0, err
+	} else if ok {
+		c.Supersedes = append(c.Supersedes, sup)
+		return 4, nil
 	}
 	if exec, ok, err := parseExecKo(it, path); err != nil {
 		return 0, err
