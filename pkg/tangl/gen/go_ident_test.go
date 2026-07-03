@@ -16,6 +16,9 @@ func TestGoIdent(t *testing.T) {
 		{"all words empty after sanitize", "!!! ###", "_"},
 		{"empty input", "", "_"},
 		{"leading digit gets underscore prefix", "123abc", "_123abc"},
+		{"hangul multi word romanized camel", "출금 가능", "chulgeumGaneung"},
+		{"hangul deposit distinct from withdrawal", "입금 가능", "ipgeumGaneung"},
+		{"hangul balance sufficient", "잔액 충분", "janaekChungbun"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

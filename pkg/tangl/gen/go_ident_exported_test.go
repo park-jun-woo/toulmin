@@ -14,6 +14,7 @@ func TestGoIdentExported(t *testing.T) {
 		{"punctuation-only input yields underscore passthrough", "!!!", "_"},
 		{"single word gets uppercase first letter", "order", "Order"},
 		{"multi word gets uppercase first letter", "order received", "OrderReceived"},
+		{"hangul multi word exported pascal", "출금 가능", "ChulgeumGaneung"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

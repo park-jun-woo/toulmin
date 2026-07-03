@@ -14,6 +14,9 @@ func TestSanitizeWord(t *testing.T) {
 		{"all alnum kept", "abcXYZ123", "abcXYZ123"},
 		{"punctuation dropped", "a-b_c!d", "abcd"},
 		{"all punctuation dropped to empty", "!!!", ""},
+		{"hangul word romanized", "출금", "chulgeum"},
+		{"hangul romanized then punctuation stripped", "잔액!", "janaek"},
+		{"standalone jamo dropped like punctuation", "ㄱ", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
