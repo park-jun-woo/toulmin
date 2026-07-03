@@ -1,22 +1,10 @@
-# TANGL v0.3
+# TANGL
 
 **Toulmin Amgoud Nute Graph Language**
 
 An executable language written by AI and read by humans. A markdown file is the executable code itself.
 
-> Changes vs v0.2: **fills in the semantics of "repeated Run" and "failing Run."** The `once` modifier adds idempotency for tick re-execution to the language, and the `undo` edge adds compensation (saga) for partial failure. It codifies the temporal semantics of cascades and the firing order of execution, and locks in static enumeration of the execution surface (effect summary) as an implementer requirement. v0.2's "single Run" semantics (Evaluate/Run duality, node-attached execution) are carried forward unchanged.
-
-## v0.3 change summary
-
-| Area | v0.2 | v0.3 |
-|---|---|---|
-| Tick re-execution (repeated Run) | No semantics — `do` re-fires every tick the condition is true | **`do ... once when`** (at most once per ctx lifetime) + **idempotency requirement codified** |
-| Partial failure (failing Run) | Run aborts immediately on handler error, leaving half-executed state | **`undo ... when`** compensation edge — reverse-firing-order (LIFO) compensation, escalates to REVIEW on compensation failure |
-| Cascade temporal order | Implicit (described only as "judge-first, execute-after") | Codified that judge-first-execute-after applies **per level** — parent judge → parent execute → child judge → child execute |
-| Execution firing order | `- ` unordered = order-independent, parallelizable (across the board) | Order-independence applies **only to judgment statements** — execution firing is **deterministic by document declaration order**, parallelization forbidden |
-| Audit tooling | Trace (dynamic, post-execution) | **`tangl effects`** — static transitive closure of `do`/`undo` per endpoint (MUST) |
-
-Core principle: **repetition is only safe on top of idempotency, and failure is never silent — it is compensated or escalated to a human.** In this language's domain of use (autonomous RPA handling money, e.g. tax/banking), re-firing every tick becomes a double transfer, and a half-executed process is the most dangerous state. v0.3 blocks both of these at the language level.
+Core principle: **repetition is only safe on top of idempotency, and failure is never silent — it is compensated or escalated to a human.** In this language's domain of use (autonomous RPA handling money, e.g. tax/banking), re-firing every tick becomes a double transfer, and a half-executed process is the most dangerous state. TANGL blocks both of these at the language level.
 
 ## File format
 
@@ -57,7 +45,7 @@ Backticks visually separate variables from keywords. Backticked = user-defined n
 
 Order: Subject → See → Definitions → Rules → Cases → Provides → Internal. Each statement type belongs only to its designated section.
 
-## Separation of judgment and execution — the Evaluate / Run duality (carried over from v0.2)
+## Separation of judgment and execution — the Evaluate / Run duality
 
 The same case graph runs in **two modes**:
 
@@ -89,7 +77,7 @@ Rule functions and Spec factories of the referenced package are used as `` `alia
 
 ## Term definitions (tangl:Definitions)
 
-Same as v0.1. Constants (`means`), variables (`means ... as`), structs (`means` + `has`). Referenced in Cases as `` with `<term>` ``. Basic types (`Text`, `Integer`, `Number`, `Boolean`, `Email`, `Date`, `Time`, `URL`, `Currency`, `Quantity`) are provided by `tangl/types`.
+Constants (`means`), variables (`means ... as`), structs (`means` + `has`). Referenced in Cases as `` with `<term>` ``. Basic types (`Text`, `Integer`, `Number`, `Boolean`, `Email`, `Date`, `Time`, `URL`, `Currency`, `Quantity`) are provided by `tangl/types`.
 
 ```
 - `credit threshold` means 650 as `credit`.`Threshold`
@@ -100,7 +88,7 @@ Same as v0.1. Constants (`means`), variables (`means ... as`), structs (`means` 
 
 ## Rules (tangl:Rules)
 
-Same as v0.1. Inline condition definitions.
+Inline condition definitions.
 
 ```
 - `<name>` when <field> <operator> <value>
@@ -178,7 +166,7 @@ Execution is attached with **node Active as the trigger**. It is the execution c
 
 > **Implementation note (current engine constraint)**: a node has one RunOn handler and one RunGraph. If a `<node>` has multiple `do`s, they compose into **sequential execution in document order** within a single handler. If a `<node>` has multiple `run`s, a composite subgraph is needed (engine extension or wrapper). If fan-out is needed, split the trigger node.
 
-### The once modifier — tick idempotency (new in v0.3)
+### The once modifier — tick idempotency
 
 ```
 - do `<func>` once when `<node>`
@@ -193,7 +181,7 @@ Execution is attached with **node Active as the trigger**. It is the execution c
 
 Why `once` is needed: `every 30s` **re-Runs** a case wholesale every tick. `do arm.placeCup when order received` would **place a cup every tick** while the order stays active. In a coffee robot, sensors naturally update the world so the next stage's guard catches it, but in transfers or filings there is no such sensor — every tick becomes a duplicate transfer or duplicate filing. `once` blocks this accident with a single grammar word.
 
-### The undo edge — partial failure and compensation (new in v0.3)
+### The undo edge — partial failure and compensation
 
 ```
 - undo `<func>` when `<node>`
@@ -212,20 +200,20 @@ After the node's `do` **fires successfully**, if a handler error occurs at a lat
 
 - **Implementation (no engine changes needed)**: at the codegen level. Each `do` handler pushes a compensation closure onto **the compensation stack inside ctx** after success, and the Provides wrapper (`run` endpoint) executes the stack in reverse when `g.Run(ctx)` errors. Since ctx flows into subgraphs, **the entire cascade shares one stack** — a parent's withdrawal and a child's deposit form a single compensation unit.
 
-> **Distinction**: `do <func> when <counter-node>` (existing since v0.2) and `undo` are different things. The former is an action for **when a judgment is rejected** (e.g. a deny node becomes Active → `Deny`), while the latter is compensation for **when execution dies partway through**. Judgment rejection is one branch of the normal path; execution failure is an abnormal termination.
+> **Distinction**: `do <func> when <counter-node>` and `undo` are different things. The former is an action for **when a judgment is rejected** (e.g. a deny node becomes Active → `Deny`), while the latter is compensation for **when execution dies partway through**. Judgment rejection is one branch of the normal path; execution failure is an abnormal termination.
 
-### Execution order determinism (refined in v0.3)
+### Execution order determinism
 
-v0.2's claim that "`- ` unordered = order-independent, runtime may parallelize" is true only for **judgment statements** (node registration, `don't` edges). Since judgment is pure, the verdict is the same regardless of evaluation order.
+The rule that "`- ` unordered = order-independent, runtime may parallelize" holds only for **judgment statements** (node registration, `don't` edges). Since judgment is pure, the verdict is the same regardless of evaluation order.
 
 Execution is different:
 
 - **Execution firing order is deterministic by the node's document declaration (registration) order.** If two nodes are simultaneously Active, their `do`s fire in document order (engine: handlers fire in rule registration order).
 - **Parallelizing execution is forbidden.** If the order of side effects becomes nondeterministic, claims of determinism and auditability break — for reproducibility and auditability to hold, the same document and the same world must always produce the same execution sequence.
-- Multiple `do`s on the same node compose into sequential execution within a single handler, in document order (carried over from the v0.2 implementation note).
+- Multiple `do`s on the same node compose into sequential execution within a single handler, in document order.
 - **Execution sequences where order carries meaning are recommended to be made explicit via `1.` ordered lists** — this reveals to the reader that meaning is carried by declaration order.
 
-## Cascade temporal semantics — judge-first-execute-after is per level (codified in v0.3)
+## Cascade temporal semantics — judge-first-execute-after is per level
 
 "Judge-first, execute-after" is true **per level (graph)**, not globally. The actual temporal order of a `run <case> when <node>` cascade:
 
@@ -277,7 +265,7 @@ The **entry points** this Subject exposes externally. Judgment and execution liv
 
 `run` and `check` surface the Evaluate/Run duality on the endpoint face — an auditor can immediately read "does this endpoint execute, or only query?"
 
-### Go code generation — compensation wrapper (updated in v0.3)
+### Go code generation — compensation wrapper
 
 The `run` endpoint wrapper is the owner of the compensation stack: it initializes at pass start, runs the stack in reverse on `g.Run(ctx)` error, and discards it on success. Internal's generated tick runner performs the same cycle per tick (Init → Run → Compensate/Commit → Review on compensation failure) — even in tick-driven processes that never pass through an endpoint, there is still an owner for triggering `undo`.
 
@@ -324,7 +312,7 @@ Event sources: referenced packages (`` `sensor`.`buttonPress` ``), completion of
 
 **Infinite state machine**: every tick is one Run pass of a finite, acyclic case (bounded latency, auditable via Trace). Infinity lives in the `every`/`on`/`until` loop, state lives in ctx, and judgment lives in a finite DAG — this separation simultaneously preserves real-time behavior, safety certifiability, and auditability.
 
-### Tick idempotency requirement (new in v0.3, MUST)
+### Tick idempotency requirement (MUST)
 
 **Every `do` of a case reachable from Internal** (either a direct `run` target or belonging to its cascade closure) **must be one of the following:**
 
@@ -340,7 +328,7 @@ Rationale: the tick loop re-Runs a case wholesale every tick. A node whose condi
 
 `% = (verdict + 1) × 50` — `+1.0` = 100%, `0.0` = 50%, `-1.0` = 0%. Used in the certainty gate (`if at least N% certain`).
 
-## Example: robotic action control (v0.3)
+## Example: robotic action control
 
 ```markdown
 # Americano preparation
@@ -395,7 +383,7 @@ is slow, the next tick picks it up — the arm motions are protected from tick r
 
 Read by an auditor: "Once the order is received — place a cup **once**, then move on to pouring water. If there's no cup, the reception is void. … If the temperature is low, don't accept brewing as complete. Retry every second until serving is done." `order received` is Active every tick while the order stays active, so without `once` a cup would be placed every tick. `log`.`CoffeeStatus` falls under idempotency requirement (a) — since it's log-like, it is left unguarded.
 
-## Example: access control (carried over from v0.2)
+## Example: access control
 
 ```markdown
 ## tangl:Subject
@@ -428,7 +416,7 @@ Read by an auditor: "Once the order is received — place a cup **once**, then m
 
 `` do `policy`.`Deny` when `block ip` `` is **an action taken on judgment rejection** (attached to a counter node) — it is not an `undo`. Since ctx is freshly created per request and Allow/Deny are idempotent, `once` is also unnecessary here.
 
-## Example: bank transfer (compensation) (new in v0.3)
+## Example: bank transfer (compensation)
 
 ```markdown
 # Bank transfer
@@ -483,7 +471,7 @@ Temporal order of the failure scenario:
 
 If even `refund` fails (an error at step 5): the remaining compensations are aborted and the whole thing is escalated to **REVIEW** — a half-executed transfer is not a state that can be automatically papered over. A human looks at the ledger and decides. Both errors (the original error and the compensation error) are logged.
 
-## Audit tooling — effect summary (new in v0.3, MUST)
+## Audit tooling — effect summary (MUST)
 
 Because of `run` cascades, "what can this endpoint execute" cannot be answered from a single document — you must follow `run` to read the **transitive closure**. What's more dangerous is silent expansion: if a `do` is added to a case that was being referenced via `checking`, the checker side remains pure (as intended by design), but **the execution surface of every upstream process that `run`s that case silently widens.**
 
@@ -516,9 +504,9 @@ cases_stmt = case_decl | required_decl | node_decl | edge_decl | exec_decl
 case_decl  = "in" "case" "of" NAME
 node_decl  = NAME "is" ("a"|"an") ROLE_EXPR ["using" FUNC_REF [with_clause] [qual_clause] | "checking" NAME]
 edge_decl  = DONT NAME "when" NAME                          # defeat edge
-exec_decl  = do_edge | run_edge | undo_edge                # v0.3: undo_edge added
-do_edge    = "do" FUNC_REF ["once"] "when" NAME [certainty_clause]   # v0.3: optional "once"
-undo_edge  = "undo" FUNC_REF "when" NAME                   # v0.3 compensation edge
+exec_decl  = do_edge | run_edge | undo_edge
+do_edge    = "do" FUNC_REF ["once"] "when" NAME [certainty_clause]
+undo_edge  = "undo" FUNC_REF "when" NAME                   # compensation edge
 run_edge   = "run" NAME "when" NAME                        # run <case> when <node>
 certainty_clause = "if" THRESHOLD_OP INT "%" "certain"
 with_clause = "with" with_arg [("and") with_arg]*
@@ -545,7 +533,7 @@ FUNC_REF = NAME | NAME "." NAME
 - The NAME node of an `undo_edge` must be preceded by at least one `do_edge` within the same case (parser-validated).
 - Keywords: `this`, `document`, `see`, `means`, `as`, `is`, `a`, `an`, `from`, `general`, `rule`, `counter`, `except`, `case`, `using`, `checking`, `with`, `qualified`, `provides`, `required`, `run`, `check`, `do`, `don't`, `not`, `when`, **`once`**, **`undo`**, `on`, `every`, `until`, `has`, `if`, `at`, `least`, `above`, `less`, `than`, `most`, `certain`, `and`, `or`, `either`, `empty`, `equals`, `in`, `greater`.
 
-## Go API correspondence table (v0.3)
+## Go API correspondence table
 
 | TANGL | Go |
 |---|---|
@@ -582,18 +570,6 @@ FUNC_REF = NAME | NAME "." NAME
 8. **No concealment** — all policy is open to the auditor.
 9. **1:1 Go API correspondence** — `run→Run`, `do→RunOn`, `run case→r.Run(subgraph)`, `checking→Evaluate`, `once→ctx guard`, `undo→compensation stack`. No ambiguity.
 10. **Written by AI, read by humans** — readability is maximized.
-11. **Repetition is only safe on top of idempotency** (v0.3) — every `do` reachable from Internal is either idempotent, `once`, or protected by a completion guard. The tick loop runs only on top of this contract.
-12. **Failure is never silent** (v0.3) — partial execution is compensated via `undo` or escalated to a human via REVIEW. Compensation failure is never automatically papered over. Logging always remains.
-13. **The execution surface must be statically enumerable** (v0.3) — the complete set of `do`/`undo` reachable from an endpoint (effect summary) can be listed without executing anything. Execution order is also deterministic by document order — same document, same world, same sequence.
-
-## v0.2 → v0.3 migration
-
-| v0.2 | v0.3 |
-|---|---|
-| Unguarded `do` on a case reachable from Internal (re-fires every tick) | If not idempotent, use `do ... once when` or a completion counter/sensor guard (subject to linter warning) |
-| "Execute only once" implicitly relied on world state | Explicit `do <func> once when <node>` |
-| Handler error during execution → Run aborts, half-executed state left in place | For every reversible side effect, `undo <func> when <node>` — the wrapper does LIFO compensation, compensation failure goes to REVIEW |
-| Both judgment-rejection actions and execution-failure responses routed around via `do ... when <counter-node>` | Rejection actions remain `do ... when <counter-node>`; **only execution-failure compensation moves to `undo`** |
-| "Judge-first, execute-after" could be misread as global | Per-level semantics codified (§Cascade Temporal Semantics) — check cascade interleaving during document review |
-| Unordered list interpreted as fully parallelizable | Order-independence applies only to judgment statements — recommend converting execution sequences where order matters to `1.` ordered lists |
-| Execution surface traced by hand | Static enumeration via `tangl effects <subject>.<endpoint>`, diff gate in CI recommended |
+11. **Repetition is only safe on top of idempotency** — every `do` reachable from Internal is either idempotent, `once`, or protected by a completion guard. The tick loop runs only on top of this contract.
+12. **Failure is never silent** — partial execution is compensated via `undo` or escalated to a human via REVIEW. Compensation failure is never automatically papered over. Logging always remains.
+13. **The execution surface must be statically enumerable** — the complete set of `do`/`undo` reachable from an endpoint (effect summary) can be listed without executing anything. Execution order is also deterministic by document order — same document, same world, same sequence.
