@@ -30,13 +30,13 @@ func TestNodeFn(t *testing.T) {
 		{
 			name: "checking wrapper found",
 			gc:   &genContext{CheckWrappers: map[string]string{"caseA": "check1"}},
-			n:    ast.Node{Name: "myNode", Checking: "caseA"},
+			n:    ast.Node{Name: "myNode", Checking: &ast.Ref{Name: "caseA"}},
 			want: "check1",
 		},
 		{
 			name: "checking set but wrapper missing falls back to goIdent",
 			gc:   &genContext{CheckWrappers: map[string]string{}},
-			n:    ast.Node{Name: "my node", Checking: "caseB"},
+			n:    ast.Node{Name: "my node", Checking: &ast.Ref{Name: "caseB"}},
 			want: "myNode",
 		},
 		{
@@ -48,7 +48,10 @@ func TestNodeFn(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := nodeFn(tt.gc, tt.n)
+			got, err := nodeFn(tt.gc, tt.n)
+			if err != nil {
+				t.Fatalf("nodeFn() unexpected error: %v", err)
+			}
 			if got != tt.want {
 				t.Errorf("nodeFn() = %q, want %q", got, tt.want)
 			}

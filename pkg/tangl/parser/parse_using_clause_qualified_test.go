@@ -9,7 +9,7 @@ import (
 
 func TestParseUsingClause_Qualified(t *testing.T) {
 	t.Run("QualifiedError", func(t *testing.T) {
-		_, _, _, _, err := parseUsingClause("`fn` qualified abc", "test.md", 5)
+		_, _, _, _, _, err := parseUsingClause("`fn` qualified abc", "test.md", 5)
 		if err == nil {
 			t.Fatal("expected an error from parseQualifiedClause")
 		}
@@ -19,7 +19,7 @@ func TestParseUsingClause_Qualified(t *testing.T) {
 	})
 
 	t.Run("QualifiedSuccess", func(t *testing.T) {
-		ref, with, qual, rest, err := parseUsingClause("`fn` qualified 0.5", "test.md", 6)
+		ref, with, qual, _, rest, err := parseUsingClause("`fn` qualified 0.5", "test.md", 6)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -38,7 +38,7 @@ func TestParseUsingClause_Qualified(t *testing.T) {
 	})
 
 	t.Run("WithAndQualified", func(t *testing.T) {
-		ref, with, qual, rest, err := parseUsingClause("`fn` with `term1` qualified 0.5", "test.md", 7)
+		ref, with, qual, _, rest, err := parseUsingClause("`fn` with `term1` qualified 0.5", "test.md", 7)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

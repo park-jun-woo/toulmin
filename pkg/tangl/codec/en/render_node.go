@@ -26,8 +26,8 @@ func renderNode(n ast.Node) string {
 		if n.Qualified != nil {
 			s += " qualified " + strconv.FormatFloat(*n.Qualified, 'g', -1, 64)
 		}
-	} else if n.Checking != "" {
-		s += " checking `" + n.Checking + "`"
+	} else if n.Checking != nil {
+		s += " checking `" + n.Checking.Name + "`"
 	}
 	if n.Level != ast.LevelUnset {
 		word := "fail"

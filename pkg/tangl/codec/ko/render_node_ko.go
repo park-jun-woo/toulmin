@@ -41,8 +41,8 @@ func renderNodeKo(n ast.Node) string {
 	}
 	if n.Using != nil {
 		s += renderRefKo(*n.Using) + " 쓰는 "
-	} else if n.Checking != "" {
-		s += "`" + n.Checking + "` 판정 쓰는 "
+	} else if n.Checking != nil {
+		s += "`" + n.Checking.Name + "` 판정 쓰는 "
 	}
 	return s + role + " 규칙이다"
 }

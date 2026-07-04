@@ -41,8 +41,8 @@ func TestApplyNodeClause_Level(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if n.Checking != "otherCase" || n.Level != ast.LevelFail {
-			t.Fatalf("expected Checking=otherCase Level=LevelFail, got %q / %v", n.Checking, n.Level)
+		if n.Checking == nil || n.Checking.Name != "otherCase" || n.Level != ast.LevelFail {
+			t.Fatalf("expected Checking=otherCase Level=LevelFail, got %+v / %v", n.Checking, n.Level)
 		}
 	})
 

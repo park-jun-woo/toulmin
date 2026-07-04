@@ -213,6 +213,8 @@ Nute's classification [2] controls attack edges:
 | Defeasible | Incoming attack edges allowed |
 | Defeater | Only outgoing attack edges; no verdict of its own |
 
+In addition to attack edges, the engine provides a **Supersedes** edge. Where Attacks is a continuous contest that lowers the target's verdict through the h-Categoriser, Supersedes crisply excludes the downstream node from the verdict tally whenever the upstream node is active — a deterministic priority that blocks participation in the tally without contesting truth. This distinction is not an invention but a restoration of theoretical counterparts. In Pollock's distinction between rebutting and undercutting defeaters [12], a rebut contests the truth of the conclusion (≈ Attacks) while an undercut states that the inference does not apply in the present situation (≈ Supersedes) — a distinction that gradual semantics flattens into uniform strength reduction. Raz's exclusionary reasons [13] — second-order reasons not to weigh a given reason at all, as opposed to first-order reasons that outweigh it on the scale — exhibit exactly the structure of tally exclusion. And where Dung-style labelling semantics [14] gives OUT-labelled arguments a crisp exit from the contest, which gradual semantics replaced with continuous weights, Supersedes is an engineering restoration of that crisp layer on top of gradual semantics.
+
 ### 4.4 Verdict Computation: h-Categoriser
 
 We adopt Amgoud's weighted h-Categoriser [3] with a linear transform to [-1, 1]:
@@ -461,4 +463,10 @@ The `toulmin` library is available under MIT License.
 [10] Gödel, K. "Über formal unentscheidbare Sätze der Principia Mathematica und verwandter Systeme I." *Monatshefte für Mathematik und Physik*, 38(1):173–198, 1931.
 
 [11] Kelsen, H. *Reine Rechtslehre (Pure Theory of Law)*. Franz Deuticke, Wien, 1934.
+
+[12] Pollock, J.L. "Defeasible Reasoning." *Cognitive Science*, 11(4):481–518, 1987.
+
+[13] Raz, J. *Practical Reason and Norms*. Hutchinson, London, 1975. (2nd ed. Oxford University Press, 1999.)
+
+[14] Caminada, M. "On the Issue of Reinstatement in Argumentation." *JELIA 2006*, LNCS 4160, Springer, 2006.
 

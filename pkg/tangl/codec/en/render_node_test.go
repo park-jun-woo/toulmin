@@ -24,7 +24,7 @@ func TestRenderNode(t *testing.T) {
 			"`block ip` is a counter rule using `policy`.`IsIPBlocked`"},
 		{ast.Node{Name: "low temp", Role: ast.ExceptRule, Using: &ast.Ref{Alias: "s", Name: "low"}, With: []string{"a", "b"}, Qualified: &q},
 			"`low temp` is an except rule using `s`.`low` with `a` and `b` qualified 0.8"},
-		{ast.Node{Name: "renewal allowed", Role: ast.GeneralRule, Checking: "can renew loan"},
+		{ast.Node{Name: "renewal allowed", Role: ast.GeneralRule, Checking: &ast.Ref{Name: "can renew loan"}},
 			"`renewal allowed` is a general rule checking `can renew loan`"},
 		{ast.Node{Name: "overdrawn", Role: ast.CounterRule, Using: &ast.Ref{Alias: "policy", Name: "IsOverdrawn"}, Level: ast.LevelFail},
 			"`overdrawn` is a counter rule using `policy`.`IsOverdrawn`, level fail"},

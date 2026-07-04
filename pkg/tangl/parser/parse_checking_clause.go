@@ -1,13 +1,17 @@
 //ff:func feature=tangl type=parser control=sequence
-//ff:what parseCheckingClause — parse the target case name of a "checking" clause
+//ff:what parseCheckingClause — parse the CASE_REF of a "checking" clause
 package parser
 
-// parseCheckingClause parses the backtick-quoted case name following
-// "checking" (verdict composition, compiled to Evaluate).
-func parseCheckingClause(s string, path string, line int) (string, string, error) {
-	caseName, rest, ok := takeBacktick(s)
+import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
+
+// parseCheckingClause parses the CASE_REF following "checking": either a
+// qualified `alias`.`case` reference or a bare local `case` reference.
+// It reuses parseRef (the same grammar as FUNC_REF) since CASE_REF and
+// FUNC_REF are structurally identical.
+func parseCheckingClause(s string, path string, line int) (ast.Ref, string, error) {
+	ref, rest, ok := parseRef(s)
 	if !ok {
-		return "", "", errAt(path, line, "expected backtick-quoted case name after 'checking'")
+		return ast.Ref{}, "", errAt(path, line, "expected backtick-quoted case name after 'checking'")
 	}
-	return caseName, rest, nil
+	return ref, rest, nil
 }

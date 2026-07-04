@@ -9,7 +9,7 @@ import (
 
 func TestParseUsingClause(t *testing.T) {
 	t.Run("BadRef", func(t *testing.T) {
-		_, _, _, _, err := parseUsingClause("not-a-ref", "test.md", 1)
+		_, _, _, _, _, err := parseUsingClause("not-a-ref", "test.md", 1)
 		if err == nil {
 			t.Fatal("expected an error for a missing function reference")
 		}
@@ -19,7 +19,7 @@ func TestParseUsingClause(t *testing.T) {
 	})
 
 	t.Run("Bare", func(t *testing.T) {
-		ref, with, qual, rest, err := parseUsingClause("`fn`", "test.md", 2)
+		ref, with, qual, grounds, rest, err := parseUsingClause("`fn`", "test.md", 2)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -32,13 +32,16 @@ func TestParseUsingClause(t *testing.T) {
 		if qual != nil {
 			t.Errorf("expected nil qual, got %v", qual)
 		}
+		if grounds != nil {
+			t.Errorf("expected nil grounds, got %v", grounds)
+		}
 		if rest != "" {
 			t.Errorf("expected empty rest, got %q", rest)
 		}
 	})
 
 	t.Run("WithError", func(t *testing.T) {
-		_, _, _, _, err := parseUsingClause("`fn` with notbacktick", "test.md", 3)
+		_, _, _, _, _, err := parseUsingClause("`fn` with notbacktick", "test.md", 3)
 		if err == nil {
 			t.Fatal("expected an error from parseWithClause")
 		}
@@ -48,7 +51,7 @@ func TestParseUsingClause(t *testing.T) {
 	})
 
 	t.Run("WithSuccess", func(t *testing.T) {
-		ref, with, qual, rest, err := parseUsingClause("`fn` with `term1`", "test.md", 4)
+		ref, with, qual, grounds, rest, err := parseUsingClause("`fn` with `term1`", "test.md", 4)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -60,6 +63,9 @@ func TestParseUsingClause(t *testing.T) {
 		}
 		if qual != nil {
 			t.Errorf("expected nil qual, got %v", qual)
+		}
+		if grounds != nil {
+			t.Errorf("expected nil grounds, got %v", grounds)
 		}
 		if rest != "" {
 			t.Errorf("expected empty rest, got %q", rest)

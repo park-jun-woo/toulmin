@@ -218,6 +218,8 @@ Nute의 분류[2]가 공격 간선을 제어한다:
 | Defeasible | 들어오는 공격 간선 허용 |
 | Defeater | 나가는 공격 간선만 존재, 자체 verdict 없음 |
 
+공격 간선(Attacks) 외에 엔진은 **Supersedes(배제)** 간선을 제공한다. Attacks가 h-Categoriser를 통해 대상의 verdict를 연속적으로 낮추는 경합인 반면, Supersedes는 상류 노드가 활성이면 하류 노드를 판정 집계에서 크리스프하게 제외한다 — 진위를 다투지 않고 집계 참여 자체를 막는 결정론적 우선순위다. 이 구분은 발명이 아니라 이론적 대응물의 복원이다. Pollock의 rebutting/undercutting defeater 구분[12]에서 rebut은 결론의 진위를 다투고(≈Attacks), undercut은 추론이 이 상황에 적용되지 않음을 지적하는데(≈Supersedes), 점진적 의미론에서는 둘 다 강도 하강으로 뭉개져 구분이 사라진다. Raz의 배제적 이유(exclusionary reason)[13] — 저울에서 상대를 눌러 이기는 1차 이유가 아니라 특정 이유를 저울에 올리지 말라는 2차 이유 — 가 정확히 이 집계 배제의 구조이며, Dung 계열 라벨링 의미론[14]에서 OUT 라벨된 논증이 공격력을 잃는 크리스프 퇴장을 점진적 의미론이 연속 가중치로 대체했다면, Supersedes는 그 크리스프 층위를 점진적 의미론 위에 공학적으로 되살린 것이다.
+
 ### 4.4 Verdict 연산: h-Categoriser
 
 Amgoud의 가중 h-Categoriser[3]를 [-1, 1]로 선형 변환하여 적용한다:
@@ -466,4 +468,10 @@ d.Attacks(w)
 [10] Gödel, K. "Über formal unentscheidbare Sätze der Principia Mathematica und verwandter Systeme I." *Monatshefte für Mathematik und Physik*, 38(1):173–198, 1931.
 
 [11] Kelsen, H. *Reine Rechtslehre (Pure Theory of Law)*. Franz Deuticke, Wien, 1934.
+
+[12] Pollock, J.L. "Defeasible Reasoning." *Cognitive Science*, 11(4):481–518, 1987.
+
+[13] Raz, J. *Practical Reason and Norms*. Hutchinson, London, 1975. (2nd ed. Oxford University Press, 1999.)
+
+[14] Caminada, M. "On the Issue of Reinstatement in Argumentation." *JELIA 2006*, LNCS 4160, Springer, 2006.
 

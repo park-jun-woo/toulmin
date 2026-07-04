@@ -17,7 +17,7 @@ func TestCheckCheckingCycle(t *testing.T) {
 					Name: "x",
 					Line: 1,
 					Nodes: []ast.Node{
-						{Name: "a", Checking: "y"},
+						{Name: "a", Checking: &ast.Ref{Name: "y"}},
 					},
 				},
 				{
@@ -39,14 +39,14 @@ func TestCheckCheckingCycle(t *testing.T) {
 					Name: "x",
 					Line: 1,
 					Nodes: []ast.Node{
-						{Name: "a", Checking: "y"},
+						{Name: "a", Checking: &ast.Ref{Name: "y"}},
 					},
 				},
 				{
 					Name: "y",
 					Line: 2,
 					Nodes: []ast.Node{
-						{Name: "b", Checking: "x"},
+						{Name: "b", Checking: &ast.Ref{Name: "x"}},
 					},
 				},
 			},

@@ -24,7 +24,7 @@ func TestBuildCheckingEdges(t *testing.T) {
 				{
 					Name: "x",
 					Nodes: []ast.Node{
-						{Name: "a", Checking: ""},
+						{Name: "a", Checking: nil},
 					},
 				},
 			},
@@ -41,15 +41,15 @@ func TestBuildCheckingEdges(t *testing.T) {
 				{
 					Name: "x",
 					Nodes: []ast.Node{
-						{Name: "a", Checking: "y"},
-						{Name: "b", Checking: ""},
-						{Name: "c", Checking: "z"},
+						{Name: "a", Checking: &ast.Ref{Name: "y"}},
+						{Name: "b", Checking: nil},
+						{Name: "c", Checking: &ast.Ref{Name: "z"}},
 					},
 				},
 				{
 					Name: "y",
 					Nodes: []ast.Node{
-						{Name: "d", Checking: "x"},
+						{Name: "d", Checking: &ast.Ref{Name: "x"}},
 					},
 				},
 			},

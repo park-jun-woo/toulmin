@@ -14,7 +14,10 @@ func TestRegisterCaseNodes(t *testing.T) {
 		var w strings.Builder
 		gc := &genContext{Defs: map[string]defInfo{}}
 		c := ast.Case{Nodes: []ast.Node{{Name: "nodeOne", Role: ast.GeneralRule}}}
-		nodes := registerCaseNodes(&w, gc, c)
+		nodes, err := registerCaseNodes(&w, gc, c)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		want := "\tnodeOne := g.Rule(nodeOne)\n"
 		if w.String() != want {
 			t.Errorf("got %q, want %q", w.String(), want)
@@ -84,7 +87,10 @@ func TestRegisterCaseNodes(t *testing.T) {
 			{Name: "one", Role: ast.GeneralRule},
 			{Name: "two", Role: ast.GeneralRule},
 		}}
-		nodes := registerCaseNodes(&w, gc, c)
+		nodes, err := registerCaseNodes(&w, gc, c)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if len(nodes) != 2 {
 			t.Fatalf("expected 2 nodes, got %d", len(nodes))
 		}

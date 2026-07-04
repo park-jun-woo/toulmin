@@ -20,7 +20,10 @@ func renderCase(w *strings.Builder, gc *genContext, c ast.Case) error {
 	writeCaseDoc(w, c)
 	fmt.Fprintf(w, "func %s() *toulmin.Graph {\n", fnName)
 	fmt.Fprintf(w, "\tg := toulmin.NewGraph(%s)\n", quoteGraphName(subject, c.Name))
-	nodes := registerCaseNodes(w, gc, c)
+	nodes, err := registerCaseNodes(w, gc, c)
+	if err != nil {
+		return err
+	}
 	registerCaseAttacks(w, c, nodes)
 	registerCaseSupersedes(w, c, nodes)
 	if err := registerCaseExecs(w, subject, c, nodes); err != nil {

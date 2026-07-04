@@ -36,10 +36,13 @@ func emitRuleNode(e *enc, ref doc.StmtRef, n ast.Node, span word.Span) ([]word.W
 		p.Flags |= codebook.NodeFlagFunc
 		p.Func = &packet.FuncRef{Alias: packet.TID(fTID)}
 	}
-	if n.Checking != "" {
-		dst, ok := e.tt.caseByName[n.Checking]
+	if n.Checking != nil {
+		if n.Checking.Alias != "" {
+			return nil, fmt.Errorf("tangeul/stream: alias-qualified checking is not yet supported (see plans/tangeul/ follow-up phase)")
+		}
+		dst, ok := e.tt.caseByName[n.Checking.Name]
 		if !ok {
-			return nil, fmt.Errorf("tangeul/stream: `checking` references undeclared case %q", n.Checking)
+			return nil, fmt.Errorf("tangeul/stream: `checking` references undeclared case %q", n.Checking.Name)
 		}
 		p.Flags |= codebook.NodeFlagCheck
 		ct := packet.TID(dst)

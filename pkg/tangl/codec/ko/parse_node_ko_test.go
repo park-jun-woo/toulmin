@@ -22,7 +22,7 @@ func TestParseNodeKo(t *testing.T) {
 		{"`수동 심사` 는 검토를 보고하는 `심사`.`NeedsReview` 쓰는 반박 규칙이다", ast.Node{Name: "수동 심사", Role: ast.CounterRule, Level: ast.LevelReview, Using: &ast.Ref{Alias: "심사", Name: "NeedsReview"}, Line: 1}},
 		{"`IP 차단` 은 `차단 목록` 을 기준으로 하는, 가중치 0.8 의, 실패를 보고하는 `정책`.`IsIPBlocked` 쓰는 반박 규칙이다", ast.Node{Name: "IP 차단", Role: ast.CounterRule, With: []string{"차단 목록"}, Qualified: &q08, Level: ast.LevelFail, Using: &ast.Ref{Alias: "정책", Name: "IsIPBlocked"}, Line: 1}},
 		{"`복합 심사` 는 `신용 기준` 그리고 `연체 이력` 을 기준으로 하는 `심사`.`Evaluate` 쓰는 일반 규칙이다", ast.Node{Name: "복합 심사", Role: ast.GeneralRule, With: []string{"신용 기준", "연체 이력"}, Using: &ast.Ref{Alias: "심사", Name: "Evaluate"}, Line: 1}},
-		{"`중복 결제` 는 가중치 0.9 의 `결제 이력` 판정 쓰는 반박 규칙이다", ast.Node{Name: "중복 결제", Role: ast.CounterRule, Qualified: &q09, Checking: "결제 이력", Line: 1}},
+		{"`중복 결제` 는 가중치 0.9 의 `결제 이력` 판정 쓰는 반박 규칙이다", ast.Node{Name: "중복 결제", Role: ast.CounterRule, Qualified: &q09, Checking: &ast.Ref{Name: "결제 이력"}, Line: 1}},
 		{"`기본 승인` 은 `승인 기준` 을 기준으로 하는 일반 규칙이다", ast.Node{Name: "기본 승인", Role: ast.GeneralRule, With: []string{"승인 기준"}, Line: 1}},
 		{"`인증` 은 일반 규칙이다", ast.Node{Name: "인증", Role: ast.GeneralRule, Line: 1}},
 	}

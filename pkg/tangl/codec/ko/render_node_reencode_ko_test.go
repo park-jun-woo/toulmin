@@ -21,7 +21,7 @@ func TestRenderNodeReencodeKo(t *testing.T) {
 		{Name: "수동 심사", Role: ast.CounterRule, Level: ast.LevelReview, Using: &ast.Ref{Alias: "심사", Name: "NeedsReview"}},
 		{Name: "IP 차단", Role: ast.CounterRule, With: []string{"차단 목록"}, Qualified: &q08, Level: ast.LevelFail, Using: &ast.Ref{Alias: "정책", Name: "IsIPBlocked"}},
 		{Name: "복합 심사", Role: ast.GeneralRule, With: []string{"신용 기준", "연체 이력"}, Using: &ast.Ref{Alias: "심사", Name: "Evaluate"}},
-		{Name: "중복 결제", Role: ast.CounterRule, Qualified: &q09, Checking: "결제 이력"},
+		{Name: "중복 결제", Role: ast.CounterRule, Qualified: &q09, Checking: &ast.Ref{Name: "결제 이력"}},
 		{Name: "기본 승인", Role: ast.GeneralRule, With: []string{"승인 기준"}},
 	}
 	for _, want := range seeds {

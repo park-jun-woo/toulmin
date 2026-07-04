@@ -7,9 +7,10 @@ type Node struct {
 	Name      string   `json:"name"`
 	Role      Role     `json:"role"`
 	Using     *Ref     `json:"using,omitempty"`    // nil implies a same-package function of the same name
-	Checking  string   `json:"checking,omitempty"` // target case name for verdict composition
+	Checking  *Ref     `json:"checking,omitempty"` // target case, optionally alias-qualified; nil means "no checking clause"
 	With      []string `json:"with,omitempty"`     // Definitions term names
 	Qualified *float64 `json:"qualified,omitempty"`
+	Grounds   []string `json:"grounds,omitempty"` // ground fact names (evaluation-time external facts); distinct axis from With (declaration-time spec)
 	Level     Level    `json:"level,omitempty"`
 	Line      int      `json:"line"`
 }

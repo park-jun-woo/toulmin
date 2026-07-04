@@ -14,7 +14,7 @@ func TestApplyNodeUsingKo(t *testing.T) {
 		if err := applyNodeUsingKo(n, "`판정케이스` 판정", 1, "t.md"); err != nil {
 			t.Fatalf("err=%v", err)
 		}
-		if n.Checking != "판정케이스" || n.Using != nil {
+		if n.Checking == nil || n.Checking.Name != "판정케이스" || n.Using != nil {
 			t.Fatalf("got %+v", n)
 		}
 	})
@@ -38,7 +38,7 @@ func TestApplyNodeUsingKo(t *testing.T) {
 		if err := applyNodeUsingKo(n, "`fn`", 1, "t.md"); err != nil {
 			t.Fatalf("err=%v", err)
 		}
-		if n.Using == nil || n.Using.Name != "fn" || n.Checking != "" {
+		if n.Using == nil || n.Using.Name != "fn" || n.Checking != nil {
 			t.Fatalf("got %+v", n)
 		}
 	})

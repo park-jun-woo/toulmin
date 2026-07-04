@@ -22,16 +22,14 @@ func TestBuildCheckingWrappers(t *testing.T) {
 		}
 	})
 
-	t.Run("non-empty sorted", func(t *testing.T) {
+	t.Run("one exported wrapper per case, sorted", func(t *testing.T) {
+		// Every case gets an exported wrapper regardless of whether this
+		// document checks it — a case referenced only cross-document must
+		// still be externally callable.
 		doc := &ast.Document{
 			Cases: []ast.Case{
-				{
-					Nodes: []ast.Node{
-						{Name: "n1", Checking: "zebra case"},
-						{Name: "n2", Checking: "alpha case"},
-						{Name: "n3"}, // no checking clause: not a target
-					},
-				},
+				{Name: "zebra case", Nodes: []ast.Node{{Name: "n1"}}},
+				{Name: "alpha case", Nodes: []ast.Node{{Name: "n2"}}},
 			},
 		}
 		var w strings.Builder
@@ -46,6 +44,10 @@ func TestBuildCheckingWrappers(t *testing.T) {
 		alphaFn, ok := wrappers["alpha case"]
 		if !ok {
 			t.Fatal("expected wrapper for 'alpha case'")
+		}
+		// Wrapper names must be exported (ASCII "Checking" prefix).
+		if !strings.HasPrefix(zebraFn, "Checking") || !strings.HasPrefix(alphaFn, "Checking") {
+			t.Errorf("expected exported Checking-prefixed wrappers, got %q and %q", zebraFn, alphaFn)
 		}
 		out := w.String()
 		if !strings.Contains(out, "func "+alphaFn) || !strings.Contains(out, "func "+zebraFn) {

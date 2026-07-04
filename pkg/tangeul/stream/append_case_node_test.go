@@ -57,7 +57,7 @@ func TestAppendCaseNode(t *testing.T) {
 				if n.Name != "bare" || n.Role != ast.GeneralRule {
 					t.Errorf("node = %+v", n)
 				}
-				if n.Using != nil || n.With != nil || n.Qualified != nil || n.Checking != "" {
+				if n.Using != nil || n.With != nil || n.Qualified != nil || n.Checking != nil {
 					t.Errorf("expected all optional fields empty, got %+v", n)
 				}
 				wantRef := doc.StmtRef{Sec: codebook.SectionCases, Path: []int{0, 1, 0}}

@@ -21,7 +21,7 @@ func applyNodeUsingKo(n *ast.Node, usingPart string, line int, path string) erro
 		if strings.TrimSpace(skipParticlesKo(rest)) != "" {
 			return errAtKo(path, line, "unexpected text before '판정': %q", before)
 		}
-		n.Checking = name
+		n.Checking = &ast.Ref{Name: name}
 		return nil
 	}
 	ref, rest, ok := parseRefKo(usingPart)

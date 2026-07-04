@@ -21,6 +21,23 @@ func TestApplyNodeClause(t *testing.T) {
 		}
 	})
 
+	t.Run("UsingGroundedAndLevel", func(t *testing.T) {
+		n := &ast.Node{}
+		err := applyNodeClause(n, "using `fn` grounded on `source-body` and `mx`, level fail", 1, "test.md")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if n.Using == nil || n.Using.Name != "fn" {
+			t.Fatalf("expected Using to be set to fn, got %+v", n.Using)
+		}
+		if len(n.Grounds) != 2 || n.Grounds[0] != "source-body" || n.Grounds[1] != "mx" {
+			t.Errorf("expected Grounds=[source-body mx], got %v", n.Grounds)
+		}
+		if n.Level != ast.LevelFail {
+			t.Errorf("expected Level=fail, got %v", n.Level)
+		}
+	})
+
 	t.Run("UsingError", func(t *testing.T) {
 		n := &ast.Node{}
 		err := applyNodeClause(n, "using notabacktick", 2, "test.md")
@@ -49,8 +66,8 @@ func TestApplyNodeClause(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if n.Checking != "otherCase" {
-			t.Fatalf("expected Checking to be otherCase, got %q", n.Checking)
+		if n.Checking == nil || n.Checking.Name != "otherCase" {
+			t.Fatalf("expected Checking to be otherCase, got %+v", n.Checking)
 		}
 	})
 

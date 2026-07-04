@@ -11,11 +11,14 @@ func checkCheckingRefs(doc *ast.Document) []error {
 	var errs []error
 	for _, c := range doc.Cases {
 		for _, n := range c.Nodes {
-			if n.Checking == "" {
+			if n.Checking == nil {
 				continue
 			}
-			if !cases[n.Checking] {
-				errs = append(errs, errAt(doc.Path, n.Line, "case %q: node %q checking target case %q does not exist", c.Name, n.Name, n.Checking))
+			if n.Checking.Alias != "" {
+				continue // cross-document target — existence check deferred to Phase015's loader
+			}
+			if !cases[n.Checking.Name] {
+				errs = append(errs, errAt(doc.Path, n.Line, "case %q: node %q checking target case %q does not exist", c.Name, n.Name, n.Checking.Name))
 			}
 		}
 	}

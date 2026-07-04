@@ -33,7 +33,7 @@ func buildRichDoc() *doc.Doc {
 				{Name: "brewing complete", Role: ast.GeneralRule, Using: &ast.Ref{Alias: "sensor", Name: "isComplete"}},
 				{Name: "low temperature", Role: ast.ExceptRule, Using: &ast.Ref{Alias: "sensor", Name: "temperatureLow"}, With: []string{"serve temperature"}},
 				{Name: "authenticate", Role: ast.GeneralRule},
-				{Name: "composed", Role: ast.GeneralRule, Checking: "can check", Qualified: &qual},
+				{Name: "composed", Role: ast.GeneralRule, Checking: &ast.Ref{Name: "can check"}, Qualified: &qual},
 			},
 			Attacks: []ast.Attack{{Target: "brewing complete", Attacker: "low temperature"}},
 			Execs: []ast.Exec{

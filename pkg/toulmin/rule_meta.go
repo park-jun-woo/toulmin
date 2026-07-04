@@ -9,6 +9,7 @@ type RuleMeta struct {
 	Strength  Strength
 	Defeats   []string
 	Specs     Specs
+	Grounds   []string // ground fact names this rule's Fn resolves at eval time (audit metadata only; engine does not resolve/cache)
 	Fn        func(ctx Context, specs Specs) (bool, any)
 
 	Level    Level // crisp reporting level (Unset unless set)

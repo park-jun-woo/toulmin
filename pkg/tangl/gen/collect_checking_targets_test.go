@@ -9,23 +9,25 @@ import (
 )
 
 func TestCollectCheckingTargets(t *testing.T) {
-	t.Run("with and without checking", func(t *testing.T) {
+	t.Run("every case is a target", func(t *testing.T) {
 		doc := &ast.Document{
 			Cases: []ast.Case{
 				{
+					Name: "case one",
 					Nodes: []ast.Node{
-						{Name: "n1", Checking: "target one"},
+						{Name: "n1", Checking: &ast.Ref{Name: "case two"}},
 						{Name: "n2"},
 					},
 				},
 				{
+					Name:  "case two",
 					Nodes: []ast.Node{},
 				},
 			},
 		}
 		targets := collectCheckingTargets(doc)
-		if len(targets) != 1 || !targets["target one"] {
-			t.Errorf("expected only %q, got %+v", "target one", targets)
+		if len(targets) != 2 || !targets["case one"] || !targets["case two"] {
+			t.Errorf("expected every case name, got %+v", targets)
 		}
 	})
 

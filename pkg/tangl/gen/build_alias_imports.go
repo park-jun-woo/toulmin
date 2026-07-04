@@ -8,26 +8,37 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 )
 
-// buildAliasImports resolves every See alias the document's rules
-// actually reference into an importSpec, sorted by alias for
-// deterministic output. An alias with no matching tangl:See declaration
-// is not a gen-time error — that check belongs to validate — so it falls
-// back to a "tangl/<alias>" import path, the convention this module's own
-// runtime companion packages (e.g. tangl/log) follow.
+// buildAliasImports resolves every See alias the document's rules actually
+// reference into an importSpec, sorted by alias for deterministic output. The
+// resolution (resolveAliasImport) branches on how the alias is used: a
+// "checking" alias names a sibling TANGEUL document (import path derived from
+// its location), any other "using" alias is a Go import path. A checking alias
+// takes precedence when an alias is (unusually) used both ways, since the
+// derived sibling-package path is what the emitted cross-package call needs.
 func buildAliasImports(doc *ast.Document) ([]importSpec, error) {
-	used := collectUsedAliases(doc)
-	aliases := make([]string, 0, len(used))
-	for a := range used {
+	using := collectUsedAliases(doc)
+	checking := collectCheckingAliases(doc)
+	names := make(map[string]bool, len(using)+len(checking))
+	for a := range using {
+		names[a] = true
+	}
+	for a := range checking {
+		names[a] = true
+	}
+	aliases := make([]string, 0, len(names))
+	for a := range names {
 		aliases = append(aliases, a)
 	}
 	sort.Strings(aliases)
 	specs := make([]importSpec, 0, len(aliases))
 	for _, a := range aliases {
-		path := "tangl/" + a
-		if see, ok := findSee(doc, a); ok {
-			path = see.Package
+		spec, ok, err := resolveAliasImport(doc, a, checking[a])
+		if err != nil {
+			return nil, err
 		}
-		specs = append(specs, importSpec{Alias: a, Path: resolveSeePath(path)})
+		if ok {
+			specs = append(specs, spec)
+		}
 	}
 	return specs, nil
 }

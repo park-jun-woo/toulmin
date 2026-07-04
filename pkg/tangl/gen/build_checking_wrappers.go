@@ -9,11 +9,12 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 )
 
-// buildCheckingWrappers scans every case node's "checking" clause, and
-// for each unique target case name renders one pure wrapper function
-// (dedup'd so two nodes checking the same case share it), returning the
-// target case name -> generated function identifier map used by node
-// registration.
+// buildCheckingWrappers renders one exported pure wrapper function per case
+// (every case is externally addressable — see collectCheckingTargets),
+// returning the case name -> generated function identifier map used by node
+// registration. The wrapper name uses an ASCII "Checking" prefix so it is
+// exported even for a Hangul case name (whose runes have no upper case), which
+// is what lets another document call `alias.Checking<Case>` across packages.
 func buildCheckingWrappers(w *strings.Builder, doc *ast.Document) map[string]string {
 	targets := collectCheckingTargets(doc)
 	names := make([]string, 0, len(targets))
@@ -23,7 +24,7 @@ func buildCheckingWrappers(w *strings.Builder, doc *ast.Document) map[string]str
 	sort.Strings(names)
 	wrappers := make(map[string]string, len(names))
 	for _, t := range names {
-		fn := "checking" + goIdentExported(t)
+		fn := "Checking" + goIdentExported(t)
 		renderCheckingWrapper(w, fn, t)
 		wrappers[t] = fn
 	}

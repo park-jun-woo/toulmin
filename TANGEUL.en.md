@@ -66,7 +66,7 @@ This duality is **why it is safe to put execution inside Cases**:
 ```
 - this document is `<namespace>`
 ```
-The document's namespace. Case names are referenced externally as `` namespace.`caseName` ``.
+The document's namespace, used for human-readable graph labels. External case references do **not** use the target document's own namespace; instead a referring document reaches another document's cases through a See-declared **local alias**, `` `alias`.`caseName` `` (the same local-alias mechanism as `using`, analogous to Go's `import x "path"`). See §Cases (`checking`) and §References.
 
 ## References (tangl:See)
 
@@ -74,6 +74,10 @@ The document's namespace. Case names are referenced externally as `` namespace.`
 - see `<alias>` from `<package_path>`
 ```
 Rule functions and Spec factories of the referenced package are used as `` `alias`.`Name` ``.
+
+The **same** `see` declaration is read two ways, decided by where the alias is used:
+- In a **`using`** clause the alias is a **Go import path** — the referenced package's rule functions and Spec factories are called as `` `alias`.`Name` `` (the existing behavior, unchanged).
+- In a **`checking`** clause the alias names **another TANGEUL document**: `<package_path>` is resolved as a **sibling `.tangeul` file path relative to the declaring document's directory** (a missing `.tangeul` extension is appended), *not* as a Go import path. Cross-document composition is a Go **cross-package call fixed at `gen` time** (not a runtime dynamic loader): `gen` emits `` `alias`.`Checking<Case>` `` and derives that package's Go import path from where the sibling document lives (its nearest enclosing `go.mod`). See §Cases (`checking` · CASE_REF).
 
 ## Term definitions (tangl:Definitions)
 
@@ -119,7 +123,9 @@ Case names conventionally follow the `can ...` question form. `is required` decl
 - `<name>` is a counter rule using <func>
 - `<name>` is an except rule using <func>
 - `<name>` is a general rule using <func> with <Spec> qualified <float>
+- `<name>` is a counter rule using <func> grounded on <ground>
 - `<name>` is a general rule checking <other-case>
+- `<name>` is a general rule checking `<alias>`.`<other-case>`
 - `<name>` is a counter rule using <func>, level fail
 - `<name>` is an except rule using <func>, level review
 ```
@@ -137,7 +143,20 @@ It compiles to `.Level(toulmin.Fail)` / `.Level(toulmin.Review)`. When omitted,
 nothing is emitted and the engine's role-based default applies — so documents
 without the modifier are byte-for-byte unchanged.
 
-`checking <case>` is **judgment composition** — using another case's verdict as a rule. It **compiles to Evaluate** and fires no side effects. Circular references are forbidden.
+`grounded on <ground> [and <ground>]*` is an optional trailing modifier (after
+`using ... [with ...][qualified ...]`) that records the **external ground-fact
+names** this rule's function resolves at evaluation time — e.g. a network lookup
+behind a predicate. It compiles to `.Grounds("<ground>", ...)`. It is a
+**different axis** from `with`: `with` fixes a judgment-criteria spec at
+declaration time, whereas `grounded on` names an external fact resolved at
+evaluation time.
+
+| Clause | Nature | Timing |
+|---|---|---|
+| `with <Spec>` | judgment-criteria spec | fixed at declaration time |
+| `grounded on <ground>` | external fact resolved at evaluation time | evaluation time — a different axis |
+
+`checking <case>` is **judgment composition** — using another case's verdict as a rule. It **compiles to Evaluate** and fires no side effects. Circular references are forbidden. The target is a `CASE_REF` (the same grammar as `FUNC_REF`): a bare local `` `case` `` names a case in the same document, and an alias-qualified `` `alias`.`case` `` names a case reached through a See-declared local alias (cross-document). A cross-document reference **compiles to a Go cross-package call fixed at `gen` time**: `gen` emits `` `alias`.`Checking<Case>` `` — a call into the exported wrapper the referenced document's own `gen` output publishes for that case — and adds an import of the referenced document's generated package (its import path derived from the sibling `.tangeul`'s location; see §References). Every case is externally addressable, so a document exports a `Checking<Case>` wrapper for **each** of its cases, whether or not it checks them itself. Cross-document cycles (A's case checks B's case checks A's case) are rejected by the multi-document loader before `gen` runs.
 
 > **Implementation note (Active composition rule for case verdicts)**: a case may have multiple warrants (`general rule`). The "case's judgment" that `checking` references is composed by the following rule — among a case's Evaluate results, **if one or more warrants have verdict > 0, the case is considered established (active)**. `until` (§Internal) uses the same rule.
 
@@ -528,7 +547,7 @@ section = subject_section | see_section | def_section | rules_section
 
 cases_stmt = case_decl | required_decl | node_decl | edge_decl | exec_decl
 case_decl  = "in" "case" "of" NAME
-node_decl  = NAME "is" ("a"|"an") ROLE_EXPR (["using" FUNC_REF [with_clause] [qual_clause] | "checking" NAME] [level_clause])
+node_decl  = NAME "is" ("a"|"an") ROLE_EXPR (["using" FUNC_REF [with_clause] [qual_clause] [grounded_clause] | "checking" CASE_REF] [level_clause])
 level_clause = "," "level" ("fail" | "review")             # crisp reporting level
 edge_decl  = DONT NAME "when" NAME                          # defeat edge
            | NAME "supersedes" NAME                         # supersede edge
@@ -538,6 +557,7 @@ undo_edge  = "undo" FUNC_REF "when" NAME                   # compensation edge
 run_edge   = "run" NAME "when" NAME                        # run <case> when <node>
 certainty_clause = "if" THRESHOLD_OP INT "%" "certain"
 with_clause = "with" with_arg [("and") with_arg]*
+grounded_clause = "grounded" "on" with_arg [("and") with_arg]*
 qual_clause = "qualified" FLOAT
 ROLE_EXPR  = "general" "rule" | "counter" "rule" | "except" "rule"
 DONT       = "don't" | "do" "not"
@@ -556,10 +576,11 @@ internal_body = ("run" | "check") NAME
 THRESHOLD_OP = "at" "least" | "above" | "less" "than" | "at" "most"
 NAME = BACKTICK_STRING
 FUNC_REF = NAME | NAME "." NAME
+CASE_REF = NAME | NAME "." NAME        # same grammar as FUNC_REF: bare local case, or `alias`.`case`
 ```
 
 - The NAME node of an `undo_edge` must be preceded by at least one `do_edge` within the same case (parser-validated).
-- Keywords: `this`, `document`, `see`, `means`, `as`, `is`, `a`, `an`, `from`, `general`, `rule`, `counter`, `except`, `case`, `using`, `checking`, `with`, `qualified`, `provides`, `required`, `run`, `check`, `do`, `don't`, `not`, `when`, **`once`**, **`undo`**, **`supersedes`**, **`level`**, **`fail`**, **`review`**, `on`, `every`, `until`, `has`, `if`, `at`, `least`, `above`, `less`, `than`, `most`, `certain`, `and`, `or`, `either`, `empty`, `equals`, `in`, `greater`.
+- Keywords: `this`, `document`, `see`, `means`, `as`, `is`, `a`, `an`, `from`, `general`, `rule`, `counter`, `except`, `case`, `using`, `checking`, `with`, `qualified`, `provides`, `required`, `run`, `check`, `do`, `don't`, `not`, `when`, **`once`**, **`undo`**, **`supersedes`**, **`level`**, **`fail`**, **`review`**, **`grounded`**, `on`, `every`, `until`, `has`, `if`, `at`, `least`, `above`, `less`, `than`, `most`, `certain`, `and`, `or`, `either`, `empty`, `equals`, `in`, `greater`.
 
 ## Go API correspondence table
 
@@ -572,7 +593,9 @@ FUNC_REF = NAME | NAME "." NAME
 | `` `x` is a counter rule using fn `` | `x := g.Counter(fn)` |
 | `` `x` is an except rule using fn `` | `x := g.Except(fn)` |
 | `` `x` is a general rule checking `y` `` | `x := g.Rule(checkCase(y))` — **`y` is Evaluate (pure)** |
+| `` `x` is a general rule checking `alias`.`y` `` | `x := g.Rule(alias.CheckingY)` — cross-package call; `alias` resolves to a Go import path derived from the sibling `.tangeul`'s location, and `CheckingY` is the exported wrapper the referenced document emits for case `y` (Evaluate, pure) |
 | `` with `term` `` / `qualified 0.8` | `.With(defs["term"])` / `.Qualifier(0.8)` |
+| `` grounded on `source-body` `` | `.Grounds("source-body")` |
 | `` don't `x` when `y` `` | `y.Attacks(x)` |
 | `` `x` supersedes `y` `` | `x.Supersedes(y)` |
 | `` , level fail `` / `` , level review `` | `.Level(toulmin.Fail)` / `.Level(toulmin.Review)` |

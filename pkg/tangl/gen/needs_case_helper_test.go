@@ -20,11 +20,20 @@ func TestNeedsCaseHelper(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "node without checking and internal without until",
+			name: "any case triggers true (every case emits a wrapper)",
 			doc: &ast.Document{
 				Cases: []ast.Case{
 					{Nodes: []ast.Node{{Name: "a"}}},
 				},
+				Internals: []ast.Internal{
+					{Event: "start"},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "no cases and internal without until stays false",
+			doc: &ast.Document{
 				Internals: []ast.Internal{
 					{Event: "start"},
 				},
@@ -35,7 +44,7 @@ func TestNeedsCaseHelper(t *testing.T) {
 			name: "node with checking triggers true",
 			doc: &ast.Document{
 				Cases: []ast.Case{
-					{Nodes: []ast.Node{{Name: "a"}, {Name: "b", Checking: "otherCase"}}},
+					{Nodes: []ast.Node{{Name: "a"}, {Name: "b", Checking: &ast.Ref{Name: "otherCase"}}}},
 				},
 			},
 			want: true,

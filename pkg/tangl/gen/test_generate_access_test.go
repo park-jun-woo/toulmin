@@ -35,8 +35,15 @@ func TestGenerateAccess(t *testing.T) {
 	if !strings.Contains(src, "func Access(ctx toulmin.Context) error {") {
 		t.Errorf("missing the access endpoint function")
 	}
-	if strings.Contains(src, ".Evaluate(") {
-		t.Errorf("access.md has no checking/check case; got an unexpected Evaluate call:\n%s", src)
+	// The access endpoint itself is a pure run wrapper with no Evaluate call.
+	// (Every case now also emits an exported Checking<Case> wrapper that does
+	// call Evaluate, so the file-wide absence check no longer applies.)
+	access := src[strings.Index(src, "func Access("):]
+	if end := strings.Index(access, "\nfunc "); end >= 0 {
+		access = access[:end]
+	}
+	if strings.Contains(access, ".Evaluate(") {
+		t.Errorf("access endpoint should have no Evaluate call; got:\n%s", access)
 	}
 	if !strings.Contains(src, "blockIp.RunOn(func(self toulmin.TraceEntry, t toulmin.Trace) error {") {
 		t.Errorf("missing the counter-node deny action RunOn handler")

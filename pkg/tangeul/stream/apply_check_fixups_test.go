@@ -47,8 +47,15 @@ func TestApplyCheckFixups(t *testing.T) {
 		applyCheckFixups(d)
 
 		for j, want := range c.wantChecks {
-			if got := d.ast.Cases[0].Nodes[j].Checking; got != want {
-				t.Errorf("Nodes[%d].Checking = %q, want %q", j, got, want)
+			got := d.ast.Cases[0].Nodes[j].Checking
+			if want == "" {
+				if got != nil {
+					t.Errorf("Nodes[%d].Checking = %+v, want nil", j, got)
+				}
+				continue
+			}
+			if got == nil || got.Name != want {
+				t.Errorf("Nodes[%d].Checking = %+v, want %q", j, got, want)
 			}
 		}
 	}

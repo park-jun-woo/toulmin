@@ -13,18 +13,18 @@ import (
 // optionally followed by a level_clause (", level fail" / ", level review").
 func applyNodeClause(n *ast.Node, rest string, line int, path string) error {
 	if using, ok := takeKeyword(rest, "using"); ok {
-		ref, with, qual, tail, err := parseUsingClause(using, path, line)
+		ref, with, qual, grounds, tail, err := parseUsingClause(using, path, line)
 		if err != nil {
 			return err
 		}
-		n.Using, n.With, n.Qualified = &ref, with, qual
+		n.Using, n.With, n.Qualified, n.Grounds = &ref, with, qual, grounds
 		rest = tail
 	} else if checking, ok := takeKeyword(rest, "checking"); ok {
-		caseName, tail, err := parseCheckingClause(checking, path, line)
+		ref, tail, err := parseCheckingClause(checking, path, line)
 		if err != nil {
 			return err
 		}
-		n.Checking = caseName
+		n.Checking = &ref
 		rest = tail
 	} else {
 		return errAt(path, line, "unexpected trailing text: %q", rest)

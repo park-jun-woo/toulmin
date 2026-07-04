@@ -16,12 +16,25 @@ func TestParseCheckingClause(t *testing.T) {
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		name, rest, err := parseCheckingClause("`otherCase` extra", "test.md", 2)
+		ref, rest, err := parseCheckingClause("`otherCase` extra", "test.md", 2)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if name != "otherCase" {
-			t.Fatalf("expected name otherCase, got %q", name)
+		if ref.Alias != "" || ref.Name != "otherCase" {
+			t.Fatalf("expected local ref otherCase, got %+v", ref)
+		}
+		if rest != " extra" {
+			t.Fatalf("expected rest ' extra', got %q", rest)
+		}
+	})
+
+	t.Run("QualifiedAlias", func(t *testing.T) {
+		ref, rest, err := parseCheckingClause("`gate`.`can pass` extra", "test.md", 3)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if ref.Alias != "gate" || ref.Name != "can pass" {
+			t.Fatalf("expected alias-qualified ref gate.can pass, got %+v", ref)
 		}
 		if rest != " extra" {
 			t.Fatalf("expected rest ' extra', got %q", rest)

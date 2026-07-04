@@ -47,7 +47,7 @@ func TestParseNodeItem_Clause(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if n.Name != "node1" || n.Role != ast.GeneralRule || n.Checking != "case1" {
+		if n.Name != "node1" || n.Role != ast.GeneralRule || n.Checking == nil || n.Checking.Name != "case1" {
 			t.Errorf("unexpected node: %+v", n)
 		}
 	})

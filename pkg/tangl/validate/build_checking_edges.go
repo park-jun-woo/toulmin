@@ -10,10 +10,10 @@ func buildCheckingEdges(doc *ast.Document) map[string][]string {
 	edges := make(map[string][]string)
 	for _, c := range doc.Cases {
 		for _, n := range c.Nodes {
-			if n.Checking == "" {
-				continue
+			if n.Checking == nil || n.Checking.Alias != "" {
+				continue // alias'd targets are cross-document — out of this single-doc graph
 			}
-			edges[c.Name] = append(edges[c.Name], n.Checking)
+			edges[c.Name] = append(edges[c.Name], n.Checking.Name)
 		}
 	}
 	return edges

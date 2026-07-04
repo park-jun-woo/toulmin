@@ -24,7 +24,7 @@ func TestRenderNodeKo(t *testing.T) {
 			"`IP 차단` 은 `차단 목록` 을 기준으로 하는 `정책`.`IsIPBlocked` 쓰는 반박 규칙이다"},
 		{ast.Node{Name: "저온", Role: ast.ExceptRule, Using: &ast.Ref{Alias: "센서", Name: "low"}, With: []string{"a", "b"}, Qualified: &q08},
 			"`저온` 은 `a` 그리고 `b` 를 기준으로 하는, 가중치 0.8 의 `센서`.`low` 쓰는 예외 규칙이다"},
-		{ast.Node{Name: "승인", Role: ast.GeneralRule, Checking: "승인 가능"},
+		{ast.Node{Name: "승인", Role: ast.GeneralRule, Checking: &ast.Ref{Name: "승인 가능"}},
 			"`승인` 은 `승인 가능` 판정 쓰는 일반 규칙이다"},
 		{ast.Node{Name: "컵 없음", Role: ast.CounterRule, Using: &ast.Ref{Alias: "게이트", Name: "noCup"}, Level: ast.LevelFail},
 			"`컵 없음` 은 실패를 보고하는 `게이트`.`noCup` 쓰는 반박 규칙이다"},

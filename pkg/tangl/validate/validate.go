@@ -20,6 +20,7 @@ func Validate(doc *ast.Document) error {
 	errs = append(errs, checkExecNodeRefs(doc)...)
 	errs = append(errs, checkRunCaseRefs(doc)...)
 	errs = append(errs, checkCheckingRefs(doc)...)
+	errs = append(errs, checkCheckingAliasRefs(doc)...)
 	errs = append(errs, checkEndpointCaseRefs(doc)...)
 	errs = append(errs, checkInternalCaseRefs(doc)...)
 	errs = append(errs, checkWithRefs(doc)...)

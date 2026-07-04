@@ -24,7 +24,7 @@ func TestCheckCheckingRefs(t *testing.T) {
 				{
 					Name: "x",
 					Nodes: []ast.Node{
-						{Name: "a", Checking: ""},
+						{Name: "a", Checking: nil},
 					},
 				},
 			},
@@ -41,7 +41,7 @@ func TestCheckCheckingRefs(t *testing.T) {
 				{
 					Name: "x",
 					Nodes: []ast.Node{
-						{Name: "a", Checking: "y"},
+						{Name: "a", Checking: &ast.Ref{Name: "y"}},
 					},
 				},
 				{Name: "y"},
@@ -53,13 +53,33 @@ func TestCheckCheckingRefs(t *testing.T) {
 		}
 	})
 
+	t.Run("SkipsAliasQualified", func(t *testing.T) {
+		// An alias-qualified checking target lives in another document; its
+		// existence check is deferred to Phase015's loader, so checkCheckingRefs
+		// must NOT flag it even though no local case named "elsewhere" exists.
+		doc := &ast.Document{
+			Cases: []ast.Case{
+				{
+					Name: "x",
+					Nodes: []ast.Node{
+						{Name: "a", Checking: &ast.Ref{Alias: "gate", Name: "elsewhere"}, Line: 3},
+					},
+				},
+			},
+		}
+		errs := checkCheckingRefs(doc)
+		if len(errs) != 0 {
+			t.Fatalf("expected no errors for alias-qualified checking, got %v", errs)
+		}
+	})
+
 	t.Run("MissingTarget", func(t *testing.T) {
 		doc := &ast.Document{
 			Cases: []ast.Case{
 				{
 					Name: "x",
 					Nodes: []ast.Node{
-						{Name: "a", Checking: "missing", Line: 5},
+						{Name: "a", Checking: &ast.Ref{Name: "missing"}, Line: 5},
 					},
 				},
 			},

@@ -36,7 +36,7 @@ func TestParseCheckingQualified(t *testing.T) {
 		t.Errorf("b.Qualified = %v, want 0.8", b.Qualified)
 	}
 	c := outer.Nodes[1]
-	if c.Checking != "inner" || c.Role != ast.GeneralRule {
+	if c.Checking == nil || c.Checking.Name != "inner" || c.Role != ast.GeneralRule {
 		t.Errorf("c = %+v, want checking 'inner'", c)
 	}
 }
