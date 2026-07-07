@@ -1,0 +1,13 @@
+name: c
+on:
+  push: { paths: ["c/**"] }
+  pull_request: { paths: ["c/**"] }
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { cc: [gcc, clang] }
+    steps:
+      - uses: actions/checkout@v4
+      - run: make -C c clean test CC=${{ matrix.cc }}
+      - run: make -C c clean test CC=${{ matrix.cc }} CFLAGS="-std=c11 -Wall -Wextra -Werror -g -fsanitize=address,undefined -Iinclude"

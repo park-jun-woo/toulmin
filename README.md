@@ -9,7 +9,7 @@
 
 **Stop nesting if-else. Declare rules, declare relationships.**
 
-A rule engine for TypeScript, Python, and Go. Rules are functions. Exceptions are graph edges. No DSL. No sidecar. No new language.
+A rule engine for TypeScript, Python, Go, and C. Rules are functions. Exceptions are graph edges. No DSL. No sidecar. No new language.
 
 ### TypeScript
 
@@ -63,6 +63,20 @@ blocked.Attacks(auth)
 exempt.Attacks(blocked)
 
 results, _ := g.Evaluate(ctx)
+```
+
+### C
+
+```c
+rc_graph *g = rc_graph_create("api:access");
+rc_rule *auth    = rc_graph_rule(g, is_authenticated, NULL);
+rc_rule *blocked = rc_graph_counter(g, is_ip_blocked, NULL);
+rc_rule *exempt  = rc_graph_except(g, is_internal_ip, NULL);
+rc_rule_attacks(blocked, auth);
+rc_rule_attacks(exempt, blocked);
+
+rc_results *res = NULL;
+rc_graph_evaluate(g, ctx, NULL, &res);   // res[0].verdict > 0: allow
 ```
 
 Requirements evolve. Each day: 2 lines added, nothing else changes. Now the same evolution with if-else:
@@ -154,6 +168,7 @@ toulmin: **2 lines per requirement, structure never changes.** if-else: **restru
 npm install rulecat          # TypeScript
 pip install rulecat          # Python (planned)
 go get github.com/park-jun-woo/toulmin/pkg/toulmin  # Go
+make -C c build              # C — vendor the c/ dir, or `make -C c install` (see c/README.md)
 ```
 
 ## Core Concepts
@@ -327,7 +342,7 @@ order := g.Rule(orderPlaced)
 order.RunOn(logOrder).Run(notifyGraph)   // Active order → Run the notify graph
 ```
 
-The `RunOn` handler + `Run(g)` execution composition is available across the Go, TypeScript, and Python ports.
+The `RunOn` handler + `Run(g)` execution composition is available across the Go, TypeScript, Python, and C ports.
 
 ## Framework Packages
 
@@ -395,7 +410,7 @@ do   log.TransferComplete      (can deposit / recipient valid)
 
 | | toulmin | OPA | Casbin | Cedar |
 |---|---|---|---|---|
-| Rule language | **TS/Python/Go functions** | Rego (DSL) | PERM model (config) | Cedar (DSL) |
+| Rule language | **TS/Python/Go/C functions** | Rego (DSL) | PERM model (config) | Cedar (DSL) |
 | Exception handling | **defeats graph** | rule priority | policy priority | forbid/permit |
 | Exception of exception | **Except** | none | none | none |
 | Judgment | **continuous [-1,1]** | allow/deny | allow/deny | allow/deny |
