@@ -26,7 +26,7 @@ func TestRoundtripStream(t *testing.T) {
 		return filepath.Join("..", "..", "..", "..", "test", name)
 	}
 	paths := []string{
-		td("access.md"), td("transfer.md"),
+		td("access.md"), td("transfer.md"), td("rules_expr.md"),
 		ex("library-renewal.md"), ex("newsletter-tick-warn.md"),
 		ex("newsletter-tick-fixed.md"), ex("order-saga.md"),
 		ex("factory-line-cascade.md"),

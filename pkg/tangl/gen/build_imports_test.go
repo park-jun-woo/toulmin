@@ -24,31 +24,44 @@ func TestBuildImports(t *testing.T) {
 		gc := &genContext{
 			Doc: &ast.Document{},
 			Flags: genFlags{
-				NeedsTangl:   true,
-				NeedsTime:    true,
-				NeedsCompare: true,
+				NeedsTangl:      true,
+				NeedsTime:       true,
+				NeedsCompareVal: true,
+				NeedsWalk:       true,
+				NeedsItoa:       true,
 			},
 		}
 		specs, err := buildImports(gc)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		// toulmin, tangl, time, fmt, strconv, strings = 6 entries (no alias imports)
-		if len(specs) != 6 {
-			t.Fatalf("expected 6 import specs, got %+v", specs)
-		}
 		wantPaths := []string{
 			"github.com/park-jun-woo/toulmin/pkg/toulmin",
 			"github.com/park-jun-woo/toulmin/pkg/tangl",
 			"time",
 			"fmt",
+			"reflect",
 			"strconv",
 			"strings",
+		}
+		if len(specs) != len(wantPaths) {
+			t.Fatalf("expected %d import specs, got %+v", len(wantPaths), specs)
 		}
 		for i, p := range wantPaths {
 			if specs[i].Path != p {
 				t.Errorf("specs[%d].Path = %q, want %q", i, specs[i].Path, p)
 			}
+		}
+	})
+
+	t.Run("itoa alone gates strconv only", func(t *testing.T) {
+		gc := &genContext{Doc: &ast.Document{}, Flags: genFlags{NeedsItoa: true}}
+		specs, err := buildImports(gc)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(specs) != 2 || specs[1].Path != "strconv" {
+			t.Errorf("expected toulmin+strconv, got %+v", specs)
 		}
 	})
 }

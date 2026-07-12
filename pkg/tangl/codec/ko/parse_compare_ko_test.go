@@ -19,7 +19,7 @@ func TestParseCompareKo(t *testing.T) {
 			{"`f` 가 비어 있으면", "f", "is empty", ""},
 			{"`f` 가 비어 있지 않으면", "f", "is not empty", ""},
 			{"`등급` 이 \"VIP\" 와 같으면", "등급", "equals", `"VIP"`},
-			{"`f` 가 `목록` 중 하나면", "f", "is in", "`목록`"},
+			{"`f` 가 목록 중 하나면", "f", "is in", "목록"},
 			{"`나이` 가 20 보다 크면", "나이", "is greater than", "20"},
 			{"`나이` 가 20 보다 작으면", "나이", "is less than", "20"},
 			{"`신용점수` 가 650 이상이면", "신용점수", "is at least", "650"},

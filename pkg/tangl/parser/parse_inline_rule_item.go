@@ -20,13 +20,7 @@ func parseInlineRuleItem(it item, path string) (ast.InlineRule, error) {
 		return ast.InlineRule{}, errAt(path, it.Line, "expected 'when' after rule name")
 	}
 	rest = strings.TrimSpace(rest)
-	var cond ast.Expr
-	var err error
-	if rest == "" {
-		cond, err = parseCondList(it.Children, path)
-	} else {
-		cond, err = parseCompare(rest, it.Line, path)
-	}
+	cond, err := parseInlineRuleHead(rest, it, path)
 	if err != nil {
 		return ast.InlineRule{}, err
 	}

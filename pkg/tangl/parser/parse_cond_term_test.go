@@ -71,4 +71,5 @@ func TestParseCondTerm(t *testing.T) {
 			t.Fatal("expected an error for a malformed compare term")
 		}
 	})
+
 }

@@ -11,8 +11,11 @@ import (
 )
 
 // TestExprRoundTrip checks the EXPR codec is an exact ast.Expr identity across
-// Compare (NUM and Text values, empty-value ops), Logic, Not and Either — the
-// node kinds and shapes used by test/library-renewal.md's tangl:Rules.
+// Compare (NUM and Text values, empty-value ops), Logic, Not and Either plus the
+// Phase003 nodes — Exists (one-line, nested-logic Cond and nested Exists), the
+// operand-carrying CompareX (path lhs, spec lhs, operand rhs, NUM32 rhs and Text
+// rhs, and the field-lhs + operand-rhs case), and Call (aliased and local) — the
+// node kinds and shapes used by parser/testdata/rules_expr.md's tangl:Rules.
 func TestExprRoundTrip(t *testing.T) {
 	trees := []ast.Expr{
 		ast.Compare{Field: "overdue count", Op: "is at most", Value: "0"},
@@ -31,6 +34,36 @@ func TestExprRoundTrip(t *testing.T) {
 				}},
 			}},
 			ast.Compare{Field: "overdue count", Op: "is less than", Value: "2"},
+		}},
+		// CompareX: path lhs + Text value (trusted author).
+		ast.Compare{Op: "is at least", Value: "0.7", Lhs: ast.Path{Steps: []string{"author", "trustScore"}}},
+		// CompareX: path lhs + NUM32 value.
+		ast.Compare{Op: "equals", Value: "5", Lhs: ast.Path{Steps: []string{"order", "count"}}},
+		// CompareX: spec lhs + operand rhs (within budget).
+		ast.Compare{Op: "is at most", Lhs: ast.SpecRef{Steps: []string{"discount", "min price"}}, Rhs: ast.Path{Steps: []string{"basePrice"}}},
+		// CompareX: field lhs (single-step, Lhs nil) + operand rhs (ipInList inner).
+		ast.Compare{Field: "ip", Op: "equals", Rhs: ast.Path{Steps: []string{"clientIp"}}},
+		// CompareX: call lhs (value position) + Text value (high nlp).
+		ast.Compare{Op: "is at least", Value: "0.7", Lhs: ast.Call{Fn: ast.Ref{Alias: "nlp", Name: "score"}}},
+		// Call predicate: aliased (spam) and local (meta ok).
+		ast.Call{Fn: ast.Ref{Alias: "check", Name: "isSpam"}},
+		ast.Call{Fn: ast.Ref{Name: "credit ok"}},
+		// Exists one-line (hasCoupon).
+		ast.Exists{Source: ast.Path{Steps: []string{"coupons"}}, Binder: "c", Cond: ast.Compare{Op: "is at most", Lhs: ast.Path{Steps: []string{"c", "minPrice"}}, Rhs: ast.Path{Steps: []string{"basePrice"}}}},
+		// Exists with a nested-logic Cond (activePromotion).
+		ast.Exists{Source: ast.Path{Steps: []string{"promotions"}}, Binder: "p", Cond: ast.Logic{Op: "and", Terms: []ast.Expr{
+			ast.Compare{Op: "equals", Value: "true", Lhs: ast.Path{Steps: []string{"p", "active"}}},
+			ast.Compare{Op: "is at least", Value: "10", Lhs: ast.Path{Steps: []string{"p", "discount"}}},
+		}}},
+		// Nested Exists (exists inside an exists Cond).
+		ast.Exists{Source: ast.Path{Steps: []string{"orders"}}, Binder: "o", Cond: ast.Exists{
+			Source: ast.Path{Steps: []string{"o", "items"}}, Binder: "i",
+			Cond: ast.Compare{Op: "is at least", Value: "1", Lhs: ast.Path{Steps: []string{"i", "qty"}}},
+		}},
+		// Mixed tree: Logic combining an Exists and a Compare (combo).
+		ast.Logic{Op: "or", Terms: []ast.Expr{
+			ast.Exists{Source: ast.Path{Steps: []string{"coupons"}}, Binder: "c", Cond: ast.Compare{Op: "is at most", Lhs: ast.Path{Steps: []string{"c", "minPrice"}}, Rhs: ast.Path{Steps: []string{"basePrice"}}}},
+			ast.Compare{Field: "credit score", Op: "is at least", Value: "700"},
 		}},
 	}
 	for i, in := range trees {

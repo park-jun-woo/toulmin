@@ -22,7 +22,7 @@ func TestBuildRules(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		rules := []ast.InlineRule{
-			{Name: "my rule", Cond: ast.Compare{Field: "x", Op: "==", Value: "1"}},
+			{Name: "my rule", Cond: ast.Compare{Field: "x", Op: "equals", Value: "1"}},
 		}
 		var w strings.Builder
 		if err := buildRules(&w, rules); err != nil {

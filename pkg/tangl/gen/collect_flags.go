@@ -5,13 +5,14 @@ package gen
 import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 
 // collectFlags scans the Document once to decide which optional imports
-// and shared helper functions (tangl runtime, time, tanglCompare,
-// tanglCaseActive) the generated file needs.
+// and shared helper functions (tangl runtime, time, the tangl* rule
+// evaluation helpers, tanglCaseActive) the generated file needs.
 func collectFlags(doc *ast.Document) genFlags {
-	return genFlags{
+	f := genFlags{
 		NeedsTangl:      needsTangl(doc),
 		NeedsTime:       needsTime(doc),
-		NeedsCompare:    len(doc.Rules) > 0,
 		NeedsCaseHelper: needsCaseHelper(doc),
 	}
+	collectRuleFlags(doc.Rules, &f)
+	return f
 }

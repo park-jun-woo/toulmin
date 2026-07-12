@@ -5,8 +5,13 @@ package packet
 import "github.com/park-jun-woo/toulmin/pkg/tangeul/word"
 
 // exprRecHeader packs an EXPR record header word from an ExprKind and a child
-// count, matching parseExpr's bit layout (kind bits 15-14, child count bits
-// 13-0).
+// count via packExprHeader (kind split across bits 15-14 and bit 13, child count
+// bits 12-0). It panics on an out-of-range count since fixtures are always
+// well-formed.
 func exprRecHeader(kind ExprKind, childCount int) word.Word {
-	return word.Word(uint16(kind)<<14 | uint16(childCount))
+	w, err := packExprHeader(kind, childCount)
+	if err != nil {
+		panic(err)
+	}
+	return w
 }

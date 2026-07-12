@@ -48,4 +48,15 @@ func TestValidateFixtures(t *testing.T) {
 	if err := Validate(doc); err == nil || !strings.Contains(err.Error(), `undefined term "blocklist"`) {
 		t.Errorf("Validate(access.md) = %v, want exactly the known undefined 'blocklist' term gap", err)
 	}
+
+	// rules_expr.md exercises every extended-expression form (exists, field
+	// path, spec ref, host call) with declared aliases, unique rule names, and
+	// distinct binders, so the three new checks must report zero violations.
+	doc, err = parser.Parse("../parser/testdata/rules_expr.md")
+	if err != nil {
+		t.Fatalf("Parse(rules_expr.md): %v", err)
+	}
+	if err := Validate(doc); err != nil {
+		t.Errorf("Validate(rules_expr.md): %v, want nil", err)
+	}
 }

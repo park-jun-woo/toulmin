@@ -1,5 +1,5 @@
-//ff:func feature=tangl type=parser control=sequence
-//ff:what renderRule — render an inline Rules entry (one-line single compare or multi-line nested tree)
+//ff:func feature=tangl type=parser control=selection
+//ff:what renderRule — render an inline Rules entry (one-line lone compare/exists/call or multi-line nested tree)
 package en
 
 import (
@@ -8,16 +8,22 @@ import (
 	"github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 )
 
-// renderRule renders a tangl:Rules entry. A single leaf Compare uses the one-line
-// form "`name` when <compare>"; every other condition (a Logic and/or chain, an
-// either group, or a not) uses the multi-line form — a "`name` when" head plus the
-// nested condition list. Only a lone Compare round-trips one-line, since the
-// parser's inline branch (parseCompare) parses exactly one comparison; and/or
-// chains, either, and not must be nested list items to re-parse to the same tree.
+// renderRule renders a tangl:Rules entry. A lone Compare, a lone Exists with a
+// lone-compare body, or a lone predicate Call round-trips one-line ("`name` when
+// <compare>" / "`name` when any of ... satisfies <compare>" / "`name` when `f`
+// holds"); and/or chains, either, not, and nested-body exists use the multi-line
+// head + nested list. This mirrors the parser's rule-head dispatch (inline_term =
+// exists_term | call_term | compare), so the canonical form re-parses to the same
+// tree from its minimal shape.
 func renderRule(r ast.InlineRule) string {
 	head := "`" + r.Name + "` when"
-	if cmp, ok := r.Cond.(ast.Compare); ok {
-		return head + " " + renderCompare(cmp)
+	switch c := r.Cond.(type) {
+	case ast.Compare:
+		return head + " " + renderCompare(c)
+	case ast.Exists:
+		return strings.Join(renderExists(head+" ", c, 0), "\n")
+	case ast.Call:
+		return head + " " + renderRef(c.Fn) + " holds"
 	}
 	lines := renderCondList(r.Cond, 1)
 	return head + "\n" + strings.Join(lines, "\n")

@@ -41,4 +41,5 @@ func TestParseCompare(t *testing.T) {
 			t.Fatalf("expected unrecognized operator error, got %v", err)
 		}
 	})
+
 }

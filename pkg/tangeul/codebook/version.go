@@ -8,7 +8,13 @@ package codebook
 // TANGEUL Free-area profile ID, and this codebook's own version.
 //
 // All values are Proposal placeholders per §11-1/§11-2; the codebook version is
-// v0.2 and is FROZEN append-only from here.
+// v0.3 and is FROZEN append-only from here.
+//
+// Minor bumped 2→3 for the Phase003 judgment-expression extension (EXPR record
+// kind widened to 3 bits with the existing bit patterns preserved, plus the new
+// QuantOp code) — a minor, not major, because every existing stream's bit
+// interpretation is unchanged and the change is purely additive (checkVersion
+// rejects only a major mismatch, so old readers keep loading old streams).
 const (
 	// GEULVersionMajor is the targeted GEUL spec major version (GEUL v0.3.0).
 	GEULVersionMajor uint8 = 0
@@ -22,8 +28,8 @@ const (
 
 	// CodebookVersionMajor is this codebook's major version (v0.2).
 	CodebookVersionMajor uint8 = 0
-	// CodebookVersionMinor is this codebook's minor version (v0.2).
-	CodebookVersionMinor uint8 = 2
+	// CodebookVersionMinor is this codebook's minor version (v0.3).
+	CodebookVersionMinor uint8 = 3
 )
 
 // Authoring locale codes stamped into the STREAM_HEADER (§11-11) so a mode-2

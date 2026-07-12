@@ -219,6 +219,14 @@ to recover a located, quantified violation. Recovery **per rule ID** needs no ne
 (per warrant) already provide it. Determinism of `(verdict, root-cause rule ID, Fact)`
 holds as long as each rule function is itself pure/deterministic.
 
+TANGEUL judgment expressions (`tangl:Rules`) **auto-generate** these witness Facts rather
+than have the author hand-build them: the rule compiles to a `(bool, any)` function whose
+evidence is the located/quantified Fact of the leaf where short-circuit evaluation stopped
+(the witness), flowing through the same `TraceEntry.Evidence` channel as a hand-written
+Fact. The reference evaluator (`pkg/tangl/eval`) and the code generator (`pkg/tangl/gen`)
+produce it identically, so the engine sees no difference between an authored and an
+auto-generated Fact.
+
 ### Node Handler (Run)
 
 `Run` is a pre-judge → post-act variant of `Evaluate`. It evaluates the whole graph

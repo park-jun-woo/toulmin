@@ -12,16 +12,15 @@ import (
 
 // parseExpr rebuilds one ast.Expr subtree from the record words recs starting at
 // *pos, advancing *pos past the subtree and resolving Text references through
-// labels. It returns the node count of the subtree. The header word's ExprKind
-// and child count drive the recursion, so the prefix stream reconstructs the
-// tree uniquely (§design 4).
+// labels. It returns the node count of the subtree. The header word's 3-bit
+// ExprKind and 13-bit child count (unpackExprHeader) drive the recursion, so the
+// prefix stream reconstructs the tree uniquely (§design 1). Exists, Call and
+// CompareX records dispatch to their own parsers.
 func parseExpr(recs []word.Word, pos *int, labels []string) (ast.Expr, int, error) {
 	if len(recs) < *pos+1 {
 		return nil, 0, errors.New("tangeul/packet: EXPR record header missing")
 	}
-	header := uint16(recs[*pos])
-	kind := ExprKind(header >> 14)
-	childCount := int(header & 0x3FFF)
+	kind, childCount := unpackExprHeader(recs[*pos])
 	*pos++
 
 	switch kind {
@@ -73,6 +72,12 @@ func parseExpr(recs []word.Word, pos *int, labels []string) (ast.Expr, int, erro
 			return nil, 0, err
 		}
 		return ast.Either{Terms: terms}, 1 + count, nil
+	case ExprExists:
+		return parseExists(recs, pos, labels, childCount)
+	case ExprCall:
+		return parseCall(recs, pos, labels)
+	case ExprCompareX:
+		return parseCompareX(recs, pos, labels)
 	default:
 		return nil, 0, errors.New("tangeul/packet: unknown ExprKind")
 	}

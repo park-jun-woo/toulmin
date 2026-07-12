@@ -6,10 +6,11 @@ import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 
 // collectUsedAliases scans the whole Document for every See alias
 // actually referenced — by a Definitions SpecRef, a case node's "using"
-// clause, or a do/undo Ref — so buildImports only imports aliases the
-// generated code really calls.
+// clause, a do/undo Ref, or a host Call inside a tangl:Rules condition —
+// so buildImports only imports aliases the generated code really calls.
 func collectUsedAliases(doc *ast.Document) map[string]bool {
 	used := make(map[string]bool)
+	collectRuleCallAliases(doc.Rules, used)
 	for _, def := range doc.Defs {
 		if def.SpecRef != nil && def.SpecRef.Alias != "" {
 			used[def.SpecRef.Alias] = true

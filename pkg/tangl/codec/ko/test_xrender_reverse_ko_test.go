@@ -19,7 +19,7 @@ import (
 // d1's up to Line — KO authoring and EN reading share one AST. This complements
 // TestRenderStmtXrenderKo (the EN→KO forward direction).
 func TestXrenderReverseKo(t *testing.T) {
-	for _, name := range []string{"americano", "access", "transfer", "rules", "quest_gate"} {
+	for _, name := range []string{"americano", "access", "transfer", "rules", "rules_expr", "quest_gate"} {
 		p := filepath.Join("testdata", name+"-ko.md")
 		src, err := os.ReadFile(p)
 		if err != nil {

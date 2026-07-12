@@ -95,4 +95,5 @@ func TestParseInlineRuleItem(t *testing.T) {
 			t.Errorf("unexpected compare: %+v", cmp)
 		}
 	})
+
 }

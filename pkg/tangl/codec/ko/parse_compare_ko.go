@@ -9,10 +9,12 @@ import (
 )
 
 // parseCompareKo parses a KO leaf comparison. The SOV operator is the trailing
-// phrase, so compareOpsKo (longest first) drives the match: the phrase is peeled
-// off the end, the field backtick is read from the front, and the middle (minus
-// its trailing 와/과 object particle) is the verbatim value. A negated phrase
-// yields ast.Not{Compare}; 비어 있지 않으면 yields the direct "is not empty" operator.
+// phrase, so compareOpsKo (longest first) drives the match: the 서술형 phrase (o.Ko)
+// is peeled off the end, the left operand is read from the front by parseCompareLhsKo
+// (a single-step backtick path is demoted to Field for AST back-compat), and the
+// middle is attached by parseCompareRhsKo as an operand Rhs or a verbatim Value. A
+// negated phrase yields ast.Not{Compare}; 비어 있지 않으면 yields the direct "is not
+// empty" operator.
 func parseCompareKo(cond string, line int, path string) (ast.Expr, error) {
 	cond = strings.TrimSpace(cond)
 	for _, o := range compareOpsKo {
@@ -20,12 +22,18 @@ func parseCompareKo(cond string, line int, path string) (ast.Expr, error) {
 		if !ok {
 			continue
 		}
-		field, rest, ok := takeBacktick(before)
+		cmp, rest, ok, err := parseCompareLhsKo(before, line, path)
+		if err != nil {
+			return nil, err
+		}
 		if !ok {
 			return nil, errAtKo(path, line, "expected backtick-quoted field in %q", cond)
 		}
-		value := trimTrailingParticleKo(strings.TrimSpace(skipParticlesKo(rest)))
-		cmp := ast.Compare{Field: field, Op: o.Op, Value: value}
+		cmp.Op = o.Op
+		cmp, err = parseCompareRhsKo(cmp, rest, line, path)
+		if err != nil {
+			return nil, err
+		}
 		if o.Negated {
 			return ast.Not{Term: cmp}, nil
 		}

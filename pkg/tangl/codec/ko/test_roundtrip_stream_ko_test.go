@@ -20,7 +20,7 @@ import (
 // stream Writer rejects at Save (the same reason the EN suite excludes americano);
 // it stays an in-memory-only fixture covered by TestFixtureParity.
 func TestRoundtripStreamKo(t *testing.T) {
-	for _, name := range []string{"access", "transfer", "rules"} {
+	for _, name := range []string{"access", "transfer", "rules", "rules_expr"} {
 		p := filepath.Join("testdata", name+"-ko.md")
 		src, err := os.ReadFile(p)
 		if err != nil {

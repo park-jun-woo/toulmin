@@ -14,8 +14,17 @@ func buildImports(gc *genContext) ([]importSpec, error) {
 	if gc.Flags.NeedsTime {
 		specs = append(specs, importSpec{Path: "time"})
 	}
-	if gc.Flags.NeedsCompare {
-		specs = append(specs, importSpec{Path: "fmt"}, importSpec{Path: "strconv"}, importSpec{Path: "strings"})
+	if gc.Flags.NeedsCompareVal {
+		specs = append(specs, importSpec{Path: "fmt"})
+	}
+	if gc.Flags.NeedsWalk || gc.Flags.NeedsAny {
+		specs = append(specs, importSpec{Path: "reflect"})
+	}
+	if gc.Flags.NeedsCompareVal || gc.Flags.NeedsItoa {
+		specs = append(specs, importSpec{Path: "strconv"})
+	}
+	if gc.Flags.NeedsCompareVal || gc.Flags.NeedsWalk {
+		specs = append(specs, importSpec{Path: "strings"})
 	}
 	aliasSpecs, err := buildAliasImports(gc.Doc)
 	if err != nil {

@@ -105,6 +105,76 @@ Inline condition definitions.
 
 Operators: `is empty`, `is not empty`, `equals`, `is in`, `is greater than`, `is less than`, `is at most`, `is at least`. Logic: `and`, `or`, `not`, `either` (grouping).
 
+### Operands
+
+Beyond a plain `` `field` ``, either side of a comparison may be an **operand**:
+
+```
+- `trusted author` when `author`.`trustScore` is at least 0.7
+- `is internal` when `attributes`.`internal` equals true
+- `within budget` when spec `discount`.`min price` is at most `basePrice`
+- `high confidence` when result of `nlp`.`score` is at least 0.7
+- `flagged` when `check`.`isSpam` holds
+- `has coupon` when any of `coupons` as `c` satisfies `c`.`minPrice` is at most `basePrice`
+1. `active promotion` when any of `promotions` as `p` satisfies
+    - `p`.`active` equals true
+    - and `p`.`discount` is at least 10
+```
+
+- **Data path** — a backtick name chain joined by dots (`` `author`.`trustScore` ``) walks struct fields and map keys of the judgment context. A **bare backtick dot-chain is always a data path**; it is never a function call. Host calls must carry an explicit marker (`result of` or `holds`), so an operand can be classified locally without a symbol table.
+- **Spec reference** — `` spec `<term>` `` (optionally path-extended, `` spec `discount`.`min price` ``) reads an argument injected by a node's `with` clause.
+- **Host value call** — `` result of `<func>` `` calls a host function and uses its return value as the operand (either side of a comparison).
+- **Host predicate call** — `` `<func>` holds `` is a condition term that is true when the host predicate returns true.
+- **Existential quantifier** — `` any of `<source>` as `<binder>` satisfies <condition> `` holds when at least one element of the source collection satisfies the condition. The binder (`` as `c` ``) names the current element and is referenced as the first step of a data path inside the body (`` `c`.`minPrice` ``); it lexically shadows a context key of the same name (the binder wins). A binder must not reuse the name of an enclosing binder in a nested `any of` (load error). When the text after `satisfies` is empty, the body is the item's nested `and`/`or`/`either` condition list; otherwise it is a one-line comparison. An `any of` head may also stand alone as a rule head (`` `has coupon` when any of ... ``).
+- **Right side** — a comparison right side that begins with a backtick, `spec`, or `result` is parsed as an operand; anything else (`650`, `"VIP"`, `a, b, c`) stays a literal value. Consequently a **backtick right side denotes a data path**, not a literal — writing a name in backticks to mean a literal string is not supported.
+- **Reserved quantifiers** — `all of ...`, `count of ...`, and `sum of ...` are reserved words; the parser rejects them with a clear "reserved" error until a later version implements them.
+- **Two-stage name lookup** — a bare `` `name` `` reference resolves **document-local `tangl:Rules` first, then externally** (a Go symbol or a consumer registry). The code generator detects a document/host name collision as a Go duplicate-identifier compile error; a runtime loader follows the same document-local-first rule and may additionally escalate a collision to an error.
+- **Scope of application** — the condition grammar is **predicate-only**: it produces a boolean judgment and has no execution/action statements. Effects live in `tangl:Cases` (`do`/`run`/`undo`), never inside a rule condition.
+- **Determinism** — the expression grammar itself has no clock, randomness, or I/O. A clock-dependent predicate is kept pure by injecting the current time as a context key (`now`); a host call is the deliberate escape hatch whose determinism the host owns.
+
+#### Execution binding
+
+- **Execution binding** — the implementation exposes the condition AST and provides a **reference evaluator** (`pkg/tangl/eval`); predicate execution is **not built into the engine** (`pkg/toulmin`). A consumer loads a document, injects a host-function resolver, and compiles each `tangl:Rules` entry to a `func(toulmin.Context, toulmin.Specs) (bool, any)`. The code generator (`pkg/tangl/gen`) is the other path; both produce the same `(bool, evidence)` for the same document and context.
+
+#### Evidence determinism (the witness leaf)
+
+- **Evidence determinism** — evaluation is strict, document-order, left-to-right short-circuit (`and` stops at the first false; `or`/`either` at the first true; `not` inverts; `any of` stops at the first satisfying element). The **leaf where evaluation stopped** — the leaf whose truth value settled the whole result — is the **witness**, and its auto-generated `toulmin.Fact` is returned as the evidence. This makes the evidence deterministic: same (document, context) ⇒ same `(bool, Fact)` down to the byte.
+
+The witness leaf's `toulmin.Fact` is populated per leaf kind:
+
+| Leaf | Where | Expected | Actual |
+|---|---|---|---|
+| Compare (flat / path / spec) | left-side notation — the `Field`, or the path/spec steps joined by `.` (an `any of` element includes its index, e.g. `coupons[2].minPrice`) | `"<op> <right-side notation>"` (e.g. `is at least 0.7`) | the measured left value (nil when there is no value; when the left side is a host value call that returned an error, that error value) |
+| Host predicate call (`holds`) | `alias.name` (or bare `name`) | `holds` | the boolean result — **except** when the host returns a non-nil evidence, which passes through unchanged (the auto-Fact never overwrites what the host already reported) |
+| `any of` — no element satisfies (false) | the source notation | `any of <source> as <binder> satisfies` | the number of elements examined |
+| `any of` — an element satisfies (true) | the satisfying element's inner witness, propagated upward | 〃 | 〃 |
+| `not` | the inner witness, unchanged (the verdict conveys the negation; Expected is not transformed) | | |
+
+#### Comparison & path semantics
+
+- **No-value handling** — a missing ctx key / missing struct field / missing map key / nil intermediate yields "no value"; under the eight operators this behaves exactly as the pre-existing flat comparison did — `is empty` is true on no-value, every other operator is false on no-value.
+- **Numeric comparison** — `is greater than` / `is less than` / `is at most` / `is at least` stringify both sides (`fmt.Sprintf("%v", …)`) and parse them as `float64`; if either fails to parse the comparison is false. `equals` / `is in` compare stringified forms.
+- **Binder scope** — inside `` any of ... as `c` satisfies ... ``, a data path whose first step is `c` resolves to the bound element; the binder shadows a same-named ctx key.
+- **`any of` source** — must be a slice or array (iterated in index order — deterministic); a map or non-collection source is treated as zero elements (Go map iteration order is nondeterministic and therefore unsupported).
+- **Determinism (evaluator)** — extending the grammar-level **Determinism** bullet above: the evaluator carries no clock, randomness, or I/O, so a clock-dependent predicate is purified by injecting `now` as a context key, and host calls remain the deliberate escape hatch whose determinism the host owns.
+
+#### Canonical rendering (mode 2)
+
+Mode-2 (normalized) rendering re-emits a rule in its **minimal** shape, the contrapositive of the parser's one-line rule-head dispatch (`inline_term = exists_term | call_term | compare`):
+
+- **Rule head** — a rule whose condition is a **lone comparison** (operand comparisons included), a **lone `any of`** with a lone-comparison body, or a **lone predicate call** renders on one line (`` `name` when <compare> `` / `` `name` when any of ... satisfies <compare> `` / `` `name` when `f` holds ``). An `and`/`or` chain, an `either`, a `not`, or an `any of` with a nested body renders as the `` `name` when `` head plus a nested list.
+- **`any of`** — a lone-comparison body follows `satisfies` on the same line; any other body is the head line plus a nested list.
+- **Predicate call (`holds`)** — always a one-line term, both as a condition term and as a rule head.
+
+For example, a lone-body `any of` stays one line while a nested body expands:
+
+```
+- `has coupon` when any of `coupons` as `c` satisfies `c`.`minPrice` is at most `basePrice`
+- `active promotion` when any of `promotions` as `p` satisfies
+  - `p`.`active` equals true
+  - and `p`.`discount` is at least 10
+```
+
 ## Cases (tangl:Cases) — judgment + execution
 
 ### Case declaration
@@ -545,6 +615,20 @@ file = section*
 section = subject_section | see_section | def_section | rules_section
         | cases_section | provides_section | internal_section | doc_section
 
+rules_stmt = NAME "when" (inline_term | NEWLINE INDENT cond_list)
+inline_term = exists_term | call_term | compare      # rule-head one-line dispatch (either/not are nested-only)
+cond_list  = cond_term (NEWLINE ("and" | "or") cond_term)*
+cond_term  = exists_term | either_term | not_term | call_term | compare
+either_term = "either" NEWLINE INDENT cond_list
+not_term   = "not" (compare | NEWLINE INDENT cond_list)
+exists_term = "any" "of" operand "as" NAME "satisfies" (compare | NEWLINE INDENT cond_list)
+call_term  = FUNC_REF "holds"
+compare    = operand COMPARE_OP [literal | operand]
+operand    = path | "spec" path | "result" "of" FUNC_REF
+path       = NAME ("." NAME)*
+COMPARE_OP = "is" "empty" | "is" "not" "empty" | "equals" | "is" "in"
+           | "is" "greater" "than" | "is" "less" "than" | "is" "at" "most" | "is" "at" "least"
+
 cases_stmt = case_decl | required_decl | node_decl | edge_decl | exec_decl
 case_decl  = "in" "case" "of" NAME
 node_decl  = NAME "is" ("a"|"an") ROLE_EXPR (["using" FUNC_REF [with_clause] [qual_clause] [grounded_clause] | "checking" CASE_REF] [level_clause])
@@ -580,7 +664,7 @@ CASE_REF = NAME | NAME "." NAME        # same grammar as FUNC_REF: bare local ca
 ```
 
 - The NAME node of an `undo_edge` must be preceded by at least one `do_edge` within the same case (parser-validated).
-- Keywords: `this`, `document`, `see`, `means`, `as`, `is`, `a`, `an`, `from`, `general`, `rule`, `counter`, `except`, `case`, `using`, `checking`, `with`, `qualified`, `provides`, `required`, `run`, `check`, `do`, `don't`, `not`, `when`, **`once`**, **`undo`**, **`supersedes`**, **`level`**, **`fail`**, **`review`**, **`grounded`**, `on`, `every`, `until`, `has`, `if`, `at`, `least`, `above`, `less`, `than`, `most`, `certain`, `and`, `or`, `either`, `empty`, `equals`, `in`, `greater`.
+- Keywords: `this`, `document`, `see`, `means`, `as`, `is`, `a`, `an`, `from`, `general`, `rule`, `counter`, `except`, `case`, `using`, `checking`, `with`, `qualified`, `provides`, `required`, `run`, `check`, `do`, `don't`, `not`, `when`, **`once`**, **`undo`**, **`supersedes`**, **`level`**, **`fail`**, **`review`**, **`grounded`**, `on`, `every`, `until`, `has`, `if`, `at`, `least`, `above`, `less`, `than`, `most`, `certain`, `and`, `or`, `either`, `empty`, `equals`, `in`, `greater`, **`any`**, **`of`**, **`satisfies`**, **`holds`**, **`result`**, **`spec`**. Reserved (parsed but not yet implemented): **`all`**, **`count`**, **`sum`**.
 
 ## Go API correspondence table
 
@@ -594,6 +678,9 @@ CASE_REF = NAME | NAME "." NAME        # same grammar as FUNC_REF: bare local ca
 | `` `x` is an except rule using fn `` | `x := g.Except(fn)` |
 | `` `x` is a general rule checking `y` `` | `x := g.Rule(checkCase(y))` — **`y` is Evaluate (pure)** |
 | `` `x` is a general rule checking `alias`.`y` `` | `x := g.Rule(alias.CheckingY)` — cross-package call; `alias` resolves to a Go import path derived from the sibling `.tangeul`'s location, and `CheckingY` is the exported wrapper the referenced document emits for case `y` (Evaluate, pure) |
+| `` `n` when <expr> `` (a `tangl:Rules` entry) | `func n(toulmin.Context, toulmin.Specs) (bool, any)` — the second return is an auto-generated witness `toulmin.Fact` |
+| `` result of `f` `` (host value call) | `func f(toulmin.Context, toulmin.Specs) (any, error)` |
+| `` `f` holds `` (host predicate call) | `func f(toulmin.Context, toulmin.Specs) (bool, any)` |
 | `` with `term` `` / `qualified 0.8` | `.With(defs["term"])` / `.Qualifier(0.8)` |
 | `` grounded on `source-body` `` | `.Grounds("source-body")` |
 | `` don't `x` when `y` `` | `y.Attacks(x)` |

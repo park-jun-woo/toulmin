@@ -20,9 +20,7 @@ func Generate(doc *ast.Document) (string, error) {
 	}
 	var body strings.Builder
 	gc.Defs = buildDefinitions(&body, doc.Defs)
-	if gc.Flags.NeedsCompare {
-		writeCompareHelper(&body)
-	}
+	writeRuleHelpers(&body, gc.Flags)
 	if gc.Flags.NeedsCaseHelper {
 		writeCaseHelper(&body)
 	}
