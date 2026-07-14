@@ -37,11 +37,11 @@ const equivDocSrc = "## tangl:Subject\n- this document is `equiv`\n\n" +
 	"  - not `notes` is not empty\n" +
 	"- `vip member` when\n" +
 	"  - either\n" +
-	"    - `grade` equals VIP\n" +
+	"    - `grade` equals \"VIP\"\n" +
 	"    - and `overdue` is empty\n" +
 	"  - or `staff` equals true\n" +
 	"- `meta ok` when `credit ok` holds\n" +
-	"- `grade listed` when `grade` is in VIP, GOLD\n\n" +
+	"- `grade listed` when `grade` is in \"VIP\", \"GOLD\"\n\n" +
 	"## tangl:Cases\n" +
 	"- in case of `gate`\n" +
 	"  - `credit ok` is a general rule\n"

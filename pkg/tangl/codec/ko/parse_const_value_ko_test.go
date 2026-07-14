@@ -12,6 +12,27 @@ func TestParseConstValueKo(t *testing.T) {
 		}
 	})
 
+	t.Run("QuotedString", func(t *testing.T) {
+		v, ref, err := parseConstValueKo(`"go build ./..." 를`, "", 1, "t.md")
+		if err != nil || v != "go build ./..." || ref != nil {
+			t.Fatalf("got v=%q ref=%v err=%v", v, ref, err)
+		}
+	})
+
+	t.Run("QuotedStringWithSpecRef", func(t *testing.T) {
+		v, ref, err := parseConstValueKo(`"./work" 를`, ", 타입 `설정`.`Path`", 1, "t.md")
+		if err != nil || v != "./work" || ref == nil {
+			t.Fatalf("got v=%q ref=%v err=%v", v, ref, err)
+		}
+	})
+
+	t.Run("UnmatchedQuoteIsLiteral", func(t *testing.T) {
+		v, _, err := parseConstValueKo(`"미완성 을`, "", 1, "t.md")
+		if err != nil || v != `"미완성` {
+			t.Fatalf("got v=%q err=%v", v, err)
+		}
+	})
+
 	t.Run("UnitValueWithSpecRef", func(t *testing.T) {
 		v, ref, err := parseConstValueKo("65°C 를", ", 타입 `센서`.`Temperature`", 1, "t.md")
 		if err != nil {

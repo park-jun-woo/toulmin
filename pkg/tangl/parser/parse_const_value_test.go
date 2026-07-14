@@ -21,6 +21,27 @@ func TestParseConstValue(t *testing.T) {
 		}
 	})
 
+	t.Run("QuotedString", func(t *testing.T) {
+		value, ref, err := parseConstValue(`  "go build ./..."  `, "test.md", 1)
+		if err != nil || ref != nil || value != "go build ./..." {
+			t.Fatalf("got value=%q ref=%v err=%v", value, ref, err)
+		}
+	})
+
+	t.Run("QuotedStringWithRef", func(t *testing.T) {
+		value, ref, err := parseConstValue("\"./work\" as `config`.`Path`", "test.md", 1)
+		if err != nil || value != "./work" || ref == nil {
+			t.Fatalf("got value=%q ref=%v err=%v", value, ref, err)
+		}
+	})
+
+	t.Run("UnmatchedQuoteIsLiteral", func(t *testing.T) {
+		value, _, err := parseConstValue(`"unfinished`, "test.md", 1)
+		if err != nil || value != `"unfinished` {
+			t.Fatalf("got value=%q err=%v", value, err)
+		}
+	})
+
 	t.Run("BadRef", func(t *testing.T) {
 		_, ref, err := parseConstValue("650 as `credit", "test.md", 2)
 		if err == nil {

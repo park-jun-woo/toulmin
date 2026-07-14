@@ -24,6 +24,17 @@ func TestParseCompareAdnKo(t *testing.T) {
 		}
 	})
 
+	t.Run("QuotedLiteral", func(t *testing.T) {
+		expr, err := parseCompareAdnKo("`f` 의 `이름` 이 \"main.go\" 과 같은", 1, "t.md")
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		cmp := expr.(ast.Compare)
+		if cmp.Value != "main.go" {
+			t.Fatalf("Value = %q, want %q", cmp.Value, "main.go")
+		}
+	})
+
 	t.Run("NegatedOperator", func(t *testing.T) {
 		expr, err := parseCompareAdnKo("`점수` 가 90 이하가 아닌", 1, "t.md")
 		if err != nil {

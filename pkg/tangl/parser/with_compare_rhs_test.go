@@ -20,6 +20,46 @@ func TestWithCompareRhs(t *testing.T) {
 		}
 	})
 
+	t.Run("QuotedLiteralValue", func(t *testing.T) {
+		cmp, err := withCompareRhs(ast.Compare{}, ` "VERY VIP" `, 1, "test.md")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cmp.Value != "VERY VIP" {
+			t.Fatalf("quoted literal Value = %q, want %q", cmp.Value, "VERY VIP")
+		}
+	})
+
+	t.Run("UnmatchedQuoteIsVerbatim", func(t *testing.T) {
+		cmp, err := withCompareRhs(ast.Compare{}, `"VIP`, 1, "test.md")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cmp.Value != `"VIP` {
+			t.Fatalf("unmatched literal Value = %q, want verbatim", cmp.Value)
+		}
+	})
+
+	t.Run("QuotedIsInItems", func(t *testing.T) {
+		cmp, err := withCompareRhs(ast.Compare{Op: "is in"}, ` "VIP", "GOLD" `, 1, "test.md")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cmp.Value != "VIP, GOLD" {
+			t.Fatalf("is-in Value = %q, want %q", cmp.Value, "VIP, GOLD")
+		}
+	})
+
+	t.Run("UnquotedIsInItems", func(t *testing.T) {
+		cmp, err := withCompareRhs(ast.Compare{Op: "is in"}, `VIP, GOLD`, 1, "test.md")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cmp.Value != "VIP, GOLD" {
+			t.Fatalf("is-in Value = %q, want backward-compatible list", cmp.Value)
+		}
+	})
+
 	t.Run("OperandRhs", func(t *testing.T) {
 		cmp, err := withCompareRhs(ast.Compare{Field: "min", Op: "is at most"}, "`basePrice`", 2, "test.md")
 		if err != nil {

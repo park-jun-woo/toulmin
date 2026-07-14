@@ -9,11 +9,11 @@ import (
 )
 
 // parseConstValueKo turns the value head "<값> 을" and the optional tail
-// ", 타입 <Ref>" of a 뜻한다 definition into the raw literal text and an optional
-// spec Ref. The value keeps its verbatim literal source (e.g. "650", "65°C"); the
-// trailing object particle (을/를) is dropped.
+// ", 타입 <Ref>" of a 뜻한다 definition into its literal value and an optional
+// spec Ref. The trailing object particle is dropped, as is one matching pair of
+// surrounding double quotes; unquoted literals retain their existing meaning.
 func parseConstValueKo(valuePart, tail string, line int, path string) (string, *ast.Ref, error) {
-	value := trimTrailingParticleKo(valuePart)
+	value := stripLiteralQuotesKo(trimTrailingParticleKo(valuePart))
 	if tail == "" {
 		return value, nil, nil
 	}

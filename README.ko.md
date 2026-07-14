@@ -4,7 +4,7 @@
   <img src="images/toulmin.webp" alt="toulmin" width="100%">
 </p>
 
-[![version](https://img.shields.io/badge/version-0.8.0-blue)](https://github.com/park-jun-woo/toulmin/releases)
+[![version](https://img.shields.io/badge/version-0.8.1-blue)](https://github.com/park-jun-woo/toulmin/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://opensource.org/licenses/MIT)
 
 **if-else를 그만 중첩하라. 규칙을 선언하고, 관계를 선언하라.**
