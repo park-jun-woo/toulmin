@@ -26,4 +26,10 @@ func TestRenderDefinition(t *testing.T) {
 	if strukt != "`applicant` means" {
 		t.Errorf("struct head = %q", strukt)
 	}
+	if got := renderDefinition(ast.Definition{Name: "domains", Kind: ast.StringListDef, Strings: []string{"a,b", "c"}}); got != "`domains` means [\"a,b\",\"c\"]" {
+		t.Errorf("string list: got %q", got)
+	}
+	if got := renderDefinition(ast.Definition{Name: "domains", Kind: ast.FileSpecDef, LoadType: "JSON list", FilePath: "./x.json"}); got != "`domains` reads `JSON list` from \"./x.json\"" {
+		t.Errorf("file spec: got %q", got)
+	}
 }

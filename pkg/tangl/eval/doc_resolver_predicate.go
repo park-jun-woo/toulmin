@@ -14,5 +14,8 @@ func (d docResolver) Predicate(alias, name string) (func(toulmin.Context, toulmi
 			return d.compiled[nm](newScope(ctx, specs))
 		}, true
 	}
+	if d.host == nil {
+		return nil, false
+	}
 	return d.host.Predicate(alias, name)
 }

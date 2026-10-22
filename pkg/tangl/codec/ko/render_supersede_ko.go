@@ -9,5 +9,15 @@ import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 // (mirroring the English "`X` supersedes `Y`"). The 면(면/이면) particle after the
 // superseder is 받침-selected.
 func renderSupersedeKo(s ast.Supersede) string {
+	if len(s.Chain) >= 3 {
+		text := ""
+		for i, name := range s.Chain {
+			if i > 0 {
+				text += " > "
+			}
+			text += "`" + name + "`"
+		}
+		return text + " 순서로 배제한다"
+	}
 	return "`" + s.Superseder + "` " + josaFor(s.Superseder, "이면", "면") + " `" + s.Superseded + "` 배제한다"
 }

@@ -9,6 +9,11 @@ import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 func checkUsingAliasRefs(doc *ast.Document) []error {
 	aliases := seeAliasSet(doc)
 	var errs []error
+	for _, rule := range doc.Rules {
+		if rule.Using != nil && rule.Using.Alias != "" && !aliases[rule.Using.Alias] {
+			errs = append(errs, errAt(doc.Path, rule.Line, "rule %q uses undeclared package alias %q", rule.Name, rule.Using.Alias))
+		}
+	}
 	for _, c := range doc.Cases {
 		for _, n := range c.Nodes {
 			if n.Using == nil || n.Using.Alias == "" {

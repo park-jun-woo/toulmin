@@ -9,6 +9,10 @@ func (k DefKind) String() string {
 		return "ConstDef"
 	case StructDef:
 		return "StructDef"
+	case StringListDef:
+		return "StringListDef"
+	case FileSpecDef:
+		return "FileSpecDef"
 	default:
 		return "DefKind(?)"
 	}

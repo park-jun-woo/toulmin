@@ -15,6 +15,12 @@ func parseDefinitionItem(it item, path string) (ast.Definition, error) {
 	if !ok {
 		return ast.Definition{}, errAt(path, it.Line, "expected backtick-quoted term name, got %q", it.Text)
 	}
+	if def, matched, err := parseFileDefinition(name, rest, path, it.Line); matched {
+		if len(it.Children) != 0 && err == nil {
+			return ast.Definition{}, errAt(path, it.Line, "file definition cannot have child fields")
+		}
+		return def, err
+	}
 	rest, ok = takeKeyword(rest, "means")
 	if !ok {
 		return ast.Definition{}, errAt(path, it.Line, "expected 'means' after term name")
@@ -26,6 +32,12 @@ func parseDefinitionItem(it item, path string) (ast.Definition, error) {
 			return ast.Definition{}, err
 		}
 		return ast.Definition{Name: name, Kind: ast.StructDef, Fields: fields, Line: it.Line}, nil
+	}
+	if def, matched, err := parseStringListDefinition(name, rest, path, it.Line); matched {
+		if len(it.Children) != 0 && err == nil {
+			return ast.Definition{}, errAt(path, it.Line, "string-list definition cannot have child fields")
+		}
+		return def, err
 	}
 	value, specRef, err := parseConstValue(rest, path, it.Line)
 	if err != nil {

@@ -2,7 +2,12 @@
 //ff:what renderDefinition — render a Definitions entry head (const `means <v> [as <ref>]` or struct `means`)
 package en
 
-import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
+import (
+	"encoding/json"
+	"strconv"
+
+	"github.com/park-jun-woo/toulmin/pkg/tangl/ast"
+)
 
 // renderDefinition renders a tangl:Definitions entry back to its head form: a
 // constant is "`x` means <value>" plus an optional "as <ref>" spec clause, while
@@ -11,6 +16,13 @@ import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 func renderDefinition(d ast.Definition) string {
 	if d.Kind == ast.StructDef {
 		return "`" + d.Name + "` means"
+	}
+	if d.Kind == ast.StringListDef {
+		b, _ := json.Marshal(d.Strings)
+		return "`" + d.Name + "` means " + string(b)
+	}
+	if d.Kind == ast.FileSpecDef {
+		return "`" + d.Name + "` reads `" + d.LoadType + "` from " + strconv.Quote(d.FilePath)
 	}
 	s := "`" + d.Name + "` means " + d.Value
 	if d.SpecRef != nil {

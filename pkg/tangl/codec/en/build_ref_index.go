@@ -44,7 +44,9 @@ func buildRefIndex(a *ast.Document) map[int]doc.StmtRef {
 			idx[ex.Line] = doc.StmtRef{Sec: codebook.SectionCases, Path: []int{ci, 3, si}}
 		}
 		for si, sp := range c.Supersedes {
-			idx[sp.Line] = doc.StmtRef{Sec: codebook.SectionCases, Path: []int{ci, 4, si}}
+			if _, exists := idx[sp.Line]; !exists || len(sp.Chain) >= 3 {
+				idx[sp.Line] = doc.StmtRef{Sec: codebook.SectionCases, Path: []int{ci, 4, si}}
+			}
 		}
 	}
 	for ei, ep := range a.Provides {

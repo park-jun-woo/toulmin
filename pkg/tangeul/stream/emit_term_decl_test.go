@@ -28,6 +28,8 @@ func TestEmitTermDecl(t *testing.T) {
 		wantErr bool
 	}{
 		{"struct def", ast.Definition{Name: "config", Kind: ast.StructDef}, false},
+		{"string list def", ast.Definition{Name: "domains", Kind: ast.StringListDef, Strings: []string{"a,b", "c"}}, false},
+		{"file spec def", ast.Definition{Name: "domains", Kind: ast.FileSpecDef, LoadType: "JSON list", FilePath: "./x.json"}, false},
 		{"const def, no spec ref", ast.Definition{Name: "threshold", Kind: ast.ConstDef, Value: "650"}, false},
 		{"const def, declared spec ref alias", ast.Definition{Name: "threshold", Kind: ast.ConstDef, Value: "650", SpecRef: &ast.Ref{Alias: "sensor", Name: "Threshold"}}, false},
 		{"const def, undeclared spec ref alias", ast.Definition{Name: "threshold", Kind: ast.ConstDef, Value: "650", SpecRef: &ast.Ref{Alias: "missing", Name: "Threshold"}}, true},

@@ -13,7 +13,7 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 | `pkg/price` | Price judgment (DiscountSpec, Pricer) | `pkg/price/README.md` |
 | `pkg/feature` | Feature flags (Flags, rollout, net/http Require/Inject) | `pkg/feature/README.md` |
 | `pkg/moderate` | Content moderation (Classifier, 3-level action) | `pkg/moderate/README.md` |
-| `pkg/tangl` | TANGEUL v0.3 markdown policy language: runtime, ast, parser, validate, effects, gen | see "TANGEUL — Markdown Policy Language" below |
+| `pkg/tangl` | TANGEUL markdown policy language: runtime, ast, en/ko codecs, validate, eval, effects, gen | see "TANGEUL — Markdown Policy Language" below |
 | `pkg/tangeul` | TANGEUL binary stream: the `.tangeul` SSOT the CLI operates on (load/save, AST+prose tiling, surface codecs) | `pkg/tangeul/README.md` |
 
 ## How to Navigate
@@ -43,6 +43,14 @@ type Spec interface {
 ```
 
 Spec structs must implement `SpecName()` (returns identifier for ruleID) and `Validate()` (validates fields at registration time). `nil` specs is allowed for rules that don't need criteria. Func fields in Spec structs are forbidden — `With()` rejects them via internal validation.
+
+Structured string-list criteria additionally implement `StringLister`:
+
+```go
+type StringLister interface { StringList() []string }
+```
+
+`toulmin.NewStringListSpec(name, items)` copies its input and returns a Spec whose `SpecName()` is the Definition name. TANGEUL `is in` uses exact, case- and whitespace-sensitive membership for this structured value; commas inside an item remain data. The legacy comma-separated literal right side remains supported.
 
 ### Ground vs Spec
 
@@ -357,7 +365,7 @@ Detected at evaluation time via DFS.
 
 ## TANGEUL — Markdown Policy Language
 
-TANGEUL v0.3 compiles a markdown document straight into a `toulmin` defeats
+TANGEUL compiles a markdown document straight into a `toulmin` defeats
 graph plus saga-style execution. The old `pkg/tangl` prototype parser/validate
 has been fully replaced by the pipeline below (`pkg/tangl` is now the
 runtime; parsing/validation/codegen live in dedicated subpackages). For the
@@ -371,9 +379,9 @@ summaries — see [TANGEUL.en.md](./TANGEUL.en.md).
 |---|---|
 | `tangl:Subject` | names the document (`this document is \`name\``) |
 | `tangl:See` | imports (`see \`alias\` from \`pkg/path\``) |
-| `tangl:Definitions` | constants and struct-shaped types used by `with`/`using` |
-| `tangl:Rules` | named inline rule expressions reusable across cases |
-| `tangl:Cases` | judgment graphs: nodes (general/counter/except rules), `don't` attack edges, `X supersedes Y` crisp-exclusion edges, per-node `, level fail` / `, level review` reporting suffixes, and attached `do`/`undo`/`run` execution edges |
+| `tangl:Definitions` | constants, struct types, inline JSON string-list Specs, and registry-loaded file Specs |
+| `tangl:Rules` | named expression or host predicates; owns `with` criteria and `grounded on` fact contracts |
+| `tangl:Cases` | binds named Rules to general/counter/except graph roles and case-specific qualifier/level; also owns attacks, supersedes, checking, and `do`/`undo`/`run` edges |
 | `tangl:Provides` | external entry points (endpoints) that `run` or `check` cases |
 | `tangl:Internal` | event/tick-driven triggers with no external caller |
 
@@ -404,13 +412,49 @@ this endpoint actually do" without executing anything. `checking` edges
 | Package | Role | Key API |
 |---|---|---|
 | `pkg/tangl` | runtime used by generated code: saga compensation + once guards | `Required(ctx, fields...) error`, `ErrRequired`, `InitCompensation(ctx)`, `PushCompensation(ctx, fn)`, `Compensate(ctx) error`, `CommitCompensation(ctx)`, `OnceDone(ctx, key) bool`, `OnceMark(ctx, key)`, `Review(ctx, cause, comp) error`, `ReviewError{Cause, Compensate}` |
-| `pkg/tangl/ast` | v0.3 AST types | `Document`, `Case`, `Node`, `Exec`, `Endpoint`, `Internal`, `Attack`, `Definition`, `Ref`, `Role` (General/Counter/Except) |
+| `pkg/tangl/ast` | locale-independent AST types | `Document`, `Case`, `Node`, `InlineRule`, `Exec`, `Endpoint`, `Definition`, `Ref`, `Role` |
 | `pkg/tangl/parser` | markdown → AST | `Parse(path string) (*ast.Document, error)`, `ParseSource(src, path string) (*ast.Document, error)` |
-| `pkg/tangeul` | binary SSOT stream: `.tangeul` load/save + AST/prose tiling | `Load(path) (*doc.Doc, error)`, `Save(d *doc.Doc, path) error`, `EqualIgnoringLine(a, b *ast.Document) bool`; surface codecs (`doc.Codec`: `Locale`, `Encode`, `RenderStmt`) under `pkg/tangl/codec/en` (`ENCodec`, EN surface) and `pkg/tangl/codec/ko` (`KoCodec`, KO 서술어형 정규형 surface — see `files/TANGL문법v0.3-한국어.md`) |
+| `pkg/tangeul` | binary SSOT stream: `.tangeul` load/save + AST/prose tiling | `Load`, `Save`, `EqualIgnoringLine`; en/ko surface codecs implement `doc.Codec` (see `TANGEUL.en.md`, `TANGEUL.ko.md`) |
 | `pkg/tangl/validate` | structural checks + advisories | `Validate(doc *ast.Document) error` (duplicate names, dangling refs, undo-without-do, checking/run/attack cycles — collects all violations), `Lint(doc *ast.Document) []string` (warns on unguarded `do` reachable from `tangl:Internal`) |
 | `pkg/tangl/effects` | static effect-summary analyzer | `Closure(doc *ast.Document, endpoint string) ([]Entry, error)`; `Entry{Kind, Func, Once, Case, Node}` |
-| `pkg/tangl/gen` | AST → Go source | `Generate(doc *ast.Document) (string, error)` — definitions, inline rules, case graph builders (`toulmin.NewGraph` + `RunOn`/`Run`), provided endpoints, internal triggers, `gofmt`-ed |
+| `pkg/tangl/gen` | AST → Go source | `Generate`, `GenerateWithOptions` — definitions and materialized list Specs, rules, case graphs, endpoints, internal triggers, `gofmt`-ed |
+| `pkg/tangl/materialize` | eagerly snapshots file-backed Definitions | `DefinitionLoaderRegistry`, `DefinitionLoadRequest`, `DefinitionSnapshot`, `Lists` |
 | `pkg/tangl/types` | base field types for `Definitions` | `Valid(typeName string, v any) bool` — text/number/integer/boolean/date/time/currency/quantity/email/url |
+
+### Syntax-directed list Definitions
+
+An inline JSON string array is a built-in list Spec, not a plain constant:
+
+```markdown
+- `blocked domains` means ["spam.example", "mail.example"]
+```
+
+Only JSON `[]string` is accepted. An entry whose first non-space character is `[` is reserved for this form; malformed, numeric, mixed, nested, or trailing JSON is a load error rather than a silent constant downgrade.
+
+A file-backed list names a consumer registry loader and a string path:
+
+```markdown
+- `blocked domains` reads `JSON list` from "./blocked.json"
+```
+
+`CompileDocument` and `GenerateWithOptions` eagerly resolve every file Definition once. Relative paths are resolved against `Document.Path`; missing registry entries and loader/file/parse failures abort compilation or generation. The loader returns a portable string-list snapshot, so eval and generated Go use identical data. Generated code embeds the snapshot and performs no file IO or init-time panic.
+
+### Rule declarations, Case bindings, and priority chains
+
+New documents declare predicate properties in Rules:
+
+```markdown
+## tangl:Rules
+- `blocked` uses `policy`.`IsBlocked` with `blocked domains` grounded on `request`
+
+## tangl:Cases
+- in case of `access`
+  - `blocked` is a counter rule, level fail
+```
+
+Legacy Case-local `using`/`with`/`grounded on` remains readable only when no same-name Rules declaration exists. Repeating those properties in a same-name Case binding is an error.
+
+`` supersede in order: `A` > `B` > `C` `` is the compact form of `A→B`, `A→C`, and `B→C`. A chain requires at least three distinct registered names. Source declarations remain available for codec roundtrip; graph generation emits each same-direction pair once, while cycles remain errors.
 
 ### TANGEUL — the binary stream the CLI operates on
 

@@ -24,3 +24,5 @@ c/rulecat.pc
 py/.venv/
 py/.coverage
 ts/coverage/
+AGENTS.md
+gde/

@@ -38,4 +38,17 @@ func TestRegisterCaseSupersedes(t *testing.T) {
 			t.Errorf("got %q, want %q", w.String(), want)
 		}
 	})
+
+	t.Run("DuplicatePairEmittedOnce", func(t *testing.T) {
+		var w strings.Builder
+		c := ast.Case{Supersedes: []ast.Supersede{
+			{Superseder: "a", Superseded: "b"},
+			{Superseder: "a", Superseded: "b"},
+		}}
+		nodes := map[string]nodeInfo{"a": {Var: "nA"}, "b": {Var: "nB"}}
+		registerCaseSupersedes(&w, c, nodes)
+		if got, want := w.String(), "\tnA.Supersedes(nB)\n\n"; got != want {
+			t.Fatalf("got %q want %q", got, want)
+		}
+	})
 }

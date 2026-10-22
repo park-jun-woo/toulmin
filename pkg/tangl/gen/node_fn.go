@@ -23,5 +23,8 @@ func nodeFn(gc *genContext, n ast.Node) (string, error) {
 			return fn, nil
 		}
 	}
+	if rule, ok := gc.Rules[n.Name]; ok && rule.Using != nil {
+		return refSelector(rule.Using), nil
+	}
 	return goIdent(n.Name), nil
 }

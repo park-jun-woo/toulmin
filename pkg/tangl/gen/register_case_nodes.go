@@ -23,14 +23,21 @@ func registerCaseNodes(w *strings.Builder, gc *genContext, c ast.Case) (map[stri
 			return nil, err
 		}
 		fmt.Fprintf(w, "\t%s := g.%s(%s)", v, roleMethod(n.Role), fn)
-		for _, term := range n.With {
+		with := n.With
+		grounds := n.Grounds
+		if rule, ok := gc.Rules[n.Name]; ok {
+			with = appendUniqueStrings(with, rule.With...)
+			with = appendUniqueStrings(with, ast.RuleSpecNames(rule)...)
+			grounds = appendUniqueStrings(grounds, rule.Grounds...)
+		}
+		for _, term := range with {
 			fmt.Fprintf(w, ".With(%s)", withArg(gc, term))
 		}
 		if n.Qualified != nil {
 			fmt.Fprintf(w, ".Qualifier(%s)", formatFloat(*n.Qualified))
 		}
-		if len(n.Grounds) > 0 {
-			fmt.Fprintf(w, ".Grounds(%s)", groundsArg(n.Grounds))
+		if len(grounds) > 0 {
+			fmt.Fprintf(w, ".Grounds(%s)", groundsArg(grounds))
 		}
 		if n.Level != ast.LevelUnset {
 			fmt.Fprintf(w, ".Level(%s)", levelArg(n.Level))

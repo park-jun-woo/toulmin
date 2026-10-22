@@ -63,6 +63,24 @@ func TestBuildTerm(t *testing.T) {
 		}
 	})
 
+	t.Run("structured definition payloads", func(t *testing.T) {
+		for _, tc := range []struct {
+			kind    ast.DefKind
+			payload string
+			want    ast.Definition
+		}{
+			{ast.StringListDef, `["a,b","c"]`, ast.Definition{Name: "x", Kind: ast.StringListDef, Strings: []string{"a,b", "c"}}},
+			{ast.FileSpecDef, `{"loadType":"JSON list","filePath":"./x.json"}`, ast.Definition{Name: "x", Kind: ast.FileSpecDef, LoadType: "JSON list", FilePath: "./x.json"}},
+		} {
+			d := newDec()
+			d.texts[8] = tc.payload
+			_, err := buildTerm(d, 3, "x", codebook.RoleCode(tc.kind), []packet.EdgePacket{{Prop: codebook.PropMeans, DstTID: 8}})
+			if err != nil || !reflect.DeepEqual(d.ast.Defs[0], tc.want) {
+				t.Fatalf("kind %v: got %#v err=%v", tc.kind, d.ast.Defs[0], err)
+			}
+		}
+	})
+
 	t.Run("sameAs edge to unregistered Func node errors", func(t *testing.T) {
 		d := newDec()
 		rel := []packet.EdgePacket{{Prop: codebook.PropSameAs, DstTID: 9}}

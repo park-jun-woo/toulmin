@@ -26,6 +26,12 @@ func applyCaseChild(c *ast.Case, child item, path string) error {
 		c.Attacks = append(c.Attacks, atk)
 		return nil
 	}
+	if edges, ok, err := parseSupersedeChainItem(child, path); err != nil {
+		return err
+	} else if ok {
+		c.Supersedes = append(c.Supersedes, edges...)
+		return nil
+	}
 	if sup, ok, err := parseSupersedeItem(child, path); err != nil {
 		return err
 	} else if ok {

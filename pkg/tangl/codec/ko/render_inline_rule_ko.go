@@ -15,6 +15,17 @@ import (
 // inverse of parseInlineRuleKo, whose inline branch parses exactly one condition
 // term while chains and either groups must be nested list items.
 func renderInlineRuleKo(r ast.InlineRule) (string, error) {
+	if r.Using != nil {
+		s := "`" + r.Name + "` 은 "
+		if len(r.With) > 0 {
+			s += renderWithKo(r.With) + " "
+		}
+		if len(r.Grounds) > 0 {
+			s += renderGroundsKo(r.Grounds) + " "
+		}
+		s += renderRefKo(*r.Using) + " 쓰는 규칙이다"
+		return s, nil
+	}
 	if pred, ok, err := renderCondPredKo(r.Cond); err != nil {
 		return "", err
 	} else if ok {

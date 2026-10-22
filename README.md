@@ -357,21 +357,23 @@ Domain-specific frameworks built on the core. Pre-built rule functions and wrapp
 | `pkg/price` | Price judgment (coupons, membership) | `Pricer.Evaluate` |
 | `pkg/feature` | Feature flags (rollout, toggle) | `Flags.IsEnabled` |
 | `pkg/moderate` | Content moderation (hate speech, spam) | `Moderator.Review` |
-| `pkg/tangl` | Markdown policy language (TANGEUL v0.3): parser, validator, effect-summary analyzer, Go codegen, saga runtime | `parser.Parse`, `gen.Generate`, `effects.Closure` |
+| `pkg/tangl` | TANGEUL markdown policy language: en/ko codecs, validator, evaluator, Go codegen, effect analysis, saga runtime | `parser.Parse`, `eval.CompileDocument`, `gen.GenerateWithOptions` |
 
 You can use the core without any framework. Writing your own rule functions — like the killer example above — is the most flexible approach.
 
 ## TANGEUL
 
-TANGEUL v0.3 is a markdown policy language that compiles directly onto the core: no separate runtime, no hand-written glue.
+TANGEUL is a markdown policy language that compiles directly onto the core: no separate runtime, no hand-written glue.
 
 - **Markdown is the executable.** A `tangl:Cases` block — nodes, `don't` attack edges, `do`/`undo`/`run` execution edges — compiles straight to a `toulmin.Graph`. Nothing is hand-transcribed.
+- **Rules declare predicates; Cases bind graph roles.** `tangl:Rules` owns expression or host-function implementations plus `with` and `grounded on`; `tangl:Cases` cites the same name and adds only general/counter/except role, qualifier, and reporting level.
+- **List criteria stay in the document.** `` `domains` means ["a.com", "b.com"] `` creates a built-in exact-membership Spec. File-backed lists use `` `domains` reads `JSON list` from "./domains.json" ``; a consumer loader snapshots the file once relative to the document before eval or generation.
 - **Judgment and execution are separated.** A `Provides`/`Internal` entry either `check`s a case (compiles to `Graph.Evaluate` — pure) or `run`s one (compiles to `Graph.Run` — judgment then `do`/`undo` side effects via `RunOn`).
 - **Saga compensation, built in.** Each `do` arms its paired `undo` on a compensation stack the moment it succeeds; a later failure in the same pass replays the stack LIFO, and unrecoverable failures escalate to a `*tangl.ReviewError` carrying both the cause and the compensation error.
 - **Effect summary, for audit.** `tangl effects` statically lists every `do`/`undo` an endpoint can trigger — without running it.
-- **Crisp overrides and levels, in the surface too.** `` `X` supersedes `Y` `` excludes `Y` from the tally when `X` holds; a trailing `, level fail` / `, level review` tags a case's crisp reporting level. Both round-trip through encode/decode in either locale (Korean: `` `X` 면 `Y` 배제한다 ``, `실패를 보고하는` / `검토를 보고하는`).
+- **Crisp overrides and levels, in the surface too.** `` `X` supersedes `Y` `` excludes `Y` from the tally when `X` holds. `` supersede in order: `A` > `B` > `C` `` expands to every earlier→later priority edge. A trailing `, level fail` / `, level review` tags a case's crisp reporting level. All forms round-trip in either locale.
 - **One binary source of truth (TANGEUL).** `tangl encode` absorbs an authored `.md` surface into a compact, locale-independent `.tangeul` stream (AST + verbatim prose spans); every other command runs on that stream. `tangl decode` renders it back to a text surface — byte-identically in mode 1, or regenerated into another locale in mode 2.
-- **English or Korean surface, same AST.** `tangl encode` auto-detects en/ko from the document's section headers; `tangl decode --locale ko` renders any `.tangeul` as a Korean audit surface for non-developer reviewers (see `files/TANGL문법v0.3-한국어.md`).
+- **English or Korean surface, same AST.** `tangl encode` auto-detects en/ko from the document's section headers; `tangl decode --locale ko` renders any `.tangeul` as a Korean audit surface for non-developer reviewers (see `TANGEUL.ko.md`).
 
 ```bash
 go install github.com/park-jun-woo/toulmin/cmd/tangl@latest

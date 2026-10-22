@@ -9,7 +9,7 @@ import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 // can reference already-compiled siblings.
 func compileRules(order []string, byName map[string]ast.InlineRule, dr docResolver, compiled map[string]evalFunc) error {
 	for _, name := range order {
-		ef, err := compileExpr(byName[name].Cond, dr)
+		ef, err := compileRule(byName[name], dr)
 		if err != nil {
 			return err
 		}

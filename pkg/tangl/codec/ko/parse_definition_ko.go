@@ -19,6 +19,12 @@ func parseDefinitionKo(it scan.Item, path string) (ast.Definition, error) {
 		return ast.Definition{}, errAtKo(path, it.No, "expected backtick-quoted term name, got %q", it.Text)
 	}
 	rest = skipParticlesKo(rest)
+	if def, matched, err := parseFileDefinitionKo(name, rest, path, it.No); matched {
+		if len(it.Children) != 0 && err == nil {
+			return ast.Definition{}, errAtKo(path, it.No, "file definition cannot have child fields")
+		}
+		return def, err
+	}
 	idx := strings.Index(rest, "뜻한다")
 	if idx < 0 {
 		return ast.Definition{}, errAtKo(path, it.No, "expected '뜻한다' in definition, got %q", it.Text)
@@ -31,6 +37,11 @@ func parseDefinitionKo(it scan.Item, path string) (ast.Definition, error) {
 			return ast.Definition{}, err
 		}
 		return ast.Definition{Name: name, Kind: ast.StructDef, Fields: fields, Line: it.No}, nil
+	}
+	valuePart = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(valuePart), "을"))
+	valuePart = strings.TrimSpace(strings.TrimSuffix(valuePart, "를"))
+	if def, matched, err := parseStringListDefinitionKo(name, valuePart, path, it.No); matched {
+		return def, err
 	}
 	value, specRef, err := parseConstValueKo(valuePart, tail, it.No, path)
 	if err != nil {

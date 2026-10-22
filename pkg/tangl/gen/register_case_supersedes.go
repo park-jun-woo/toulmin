@@ -12,7 +12,13 @@ import (
 // registerCaseSupersedes writes one superseder.Supersedes(target) statement
 // per "`x` supersedes `y`" edge, in document order.
 func registerCaseSupersedes(w *strings.Builder, c ast.Case, nodes map[string]nodeInfo) {
+	seen := map[[2]string]bool{}
 	for _, s := range c.Supersedes {
+		key := [2]string{s.Superseder, s.Superseded}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
 		superseder := nodes[s.Superseder].Var
 		target := nodes[s.Superseded].Var
 		fmt.Fprintf(w, "\t%s.Supersedes(%s)\n", superseder, target)

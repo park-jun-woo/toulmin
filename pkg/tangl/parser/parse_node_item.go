@@ -33,6 +33,17 @@ func parseNodeItem(it item, path string) (ast.Node, bool, error) {
 	if rest == "" {
 		return n, true, nil
 	}
+	if level, ok := takeKeyword(rest, ","); ok {
+		lvl, tail, err := parseLevelClause(level, path, it.Line)
+		if err != nil {
+			return ast.Node{}, true, err
+		}
+		if strings.TrimSpace(tail) != "" {
+			return ast.Node{}, true, errAt(path, it.Line, "unexpected trailing text: %q", tail)
+		}
+		n.Level = lvl
+		return n, true, nil
+	}
 	if err := applyNodeClause(&n, rest, it.Line, path); err != nil {
 		return ast.Node{}, true, err
 	}

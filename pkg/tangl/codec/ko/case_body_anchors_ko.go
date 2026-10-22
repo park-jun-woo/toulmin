@@ -19,11 +19,15 @@ func caseBodyAnchorsKo(c *ast.Case, ci int, children []scan.Item, path string) (
 		if ch.Struck {
 			continue
 		}
+		supersedeStart := len(c.Supersedes)
 		sk, err := applyCaseChildKo(c, ch, path)
 		if err != nil {
 			return nil, err
 		}
 		si := counts[sk]
+		if sk == 4 {
+			si = supersedeStart
+		}
 		counts[sk]++
 		anchors = append(anchors, doc.Block{Kind: doc.StmtBlock, Span: ch.Span.Doc(), Ref: doc.StmtRef{Sec: codebook.SectionCases, Path: []int{ci, sk, si}}})
 	}

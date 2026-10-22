@@ -10,4 +10,8 @@ const (
 	ConstDef DefKind = iota
 	// StructDef is a `` `x` means `` + nested `` has `f` as <Type> `` definition.
 	StructDef
+	// StringListDef is a syntax-directed JSON string-array Spec definition.
+	StringListDef
+	// FileSpecDef is a registry-loaded file-backed Spec definition.
+	FileSpecDef
 )

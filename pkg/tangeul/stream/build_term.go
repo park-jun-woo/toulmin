@@ -3,6 +3,8 @@
 package stream
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/park-jun-woo/toulmin/pkg/tangeul/codebook"
 	"github.com/park-jun-woo/toulmin/pkg/tangeul/doc"
 	"github.com/park-jun-woo/toulmin/pkg/tangeul/packet"
@@ -15,7 +17,24 @@ import (
 func buildTerm(d *dec, tid uint16, name string, role codebook.RoleCode, rel []packet.EdgePacket) (doc.StmtRef, error) {
 	def := ast.Definition{Name: name, Kind: ast.DefKind(role)}
 	if e, ok := findRel(rel, codebook.PropMeans); ok {
-		def.Value = d.texts[uint16(e.DstTID)]
+		value := d.texts[uint16(e.DstTID)]
+		switch def.Kind {
+		case ast.StringListDef:
+			if err := json.Unmarshal([]byte(value), &def.Strings); err != nil {
+				return doc.StmtRef{}, fmt.Errorf("decode string-list definition %q: %w", name, err)
+			}
+		case ast.FileSpecDef:
+			var payload struct {
+				LoadType string `json:"loadType"`
+				FilePath string `json:"filePath"`
+			}
+			if err := json.Unmarshal([]byte(value), &payload); err != nil {
+				return doc.StmtRef{}, fmt.Errorf("decode file definition %q: %w", name, err)
+			}
+			def.LoadType, def.FilePath = payload.LoadType, payload.FilePath
+		default:
+			def.Value = value
+		}
 	}
 	sp, err := termSpecRef(d, rel)
 	if err != nil {

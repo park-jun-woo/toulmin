@@ -12,6 +12,9 @@ import (
 // function matching the toulmin.Rule fn signature, in document order.
 func buildRules(w *strings.Builder, rules []ast.InlineRule) error {
 	for _, r := range rules {
+		if r.Using != nil {
+			continue
+		}
 		if err := renderInlineRule(w, r); err != nil {
 			return err
 		}

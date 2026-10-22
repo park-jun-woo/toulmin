@@ -2,10 +2,23 @@
 //ff:what parseRoleExpr — parse a ROLE_EXPR (general/counter/except rule)
 package parser
 
-import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
+import (
+	"strings"
+
+	"github.com/park-jun-woo/toulmin/pkg/tangl/ast"
+)
 
 // parseRoleExpr parses "general rule", "counter rule", or "except rule".
 func parseRoleExpr(s string) (ast.Role, string, bool) {
+	for _, candidate := range []struct {
+		text string
+		role ast.Role
+	}{{"general rule", ast.GeneralRule}, {"counter rule", ast.CounterRule}, {"except rule", ast.ExceptRule}} {
+		if strings.HasPrefix(strings.TrimSpace(s), candidate.text+",") {
+			trimmed := strings.TrimSpace(s)
+			return candidate.role, trimmed[len(candidate.text):], true
+		}
+	}
 	if r, ok := takeKeyword(s, "general rule"); ok {
 		return ast.GeneralRule, r, true
 	}

@@ -12,7 +12,7 @@ import (
 func TestBuildDefinitions(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		var w strings.Builder
-		index := buildDefinitions(&w, nil)
+		index := buildDefinitions(&w, nil, nil)
 		if len(index) != 0 {
 			t.Errorf("expected empty index, got %+v", index)
 		}
@@ -34,7 +34,7 @@ func TestBuildDefinitions(t *testing.T) {
 			},
 		}
 		var w strings.Builder
-		index := buildDefinitions(&w, defs)
+		index := buildDefinitions(&w, defs, nil)
 		if len(index) != 2 {
 			t.Fatalf("expected 2 entries, got %+v", index)
 		}

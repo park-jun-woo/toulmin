@@ -16,6 +16,14 @@ import (
 // exists_term | call_term | compare), so the canonical form re-parses to the same
 // tree from its minimal shape.
 func renderRule(r ast.InlineRule) string {
+	if r.Using != nil {
+		s := "`" + r.Name + "` uses " + renderRef(*r.Using)
+		s += renderWith(r.With)
+		if len(r.Grounds) > 0 {
+			s += " grounded on " + renderBacktickNames(r.Grounds)
+		}
+		return s
+	}
 	head := "`" + r.Name + "` when"
 	switch c := r.Cond.(type) {
 	case ast.Compare:
@@ -27,4 +35,12 @@ func renderRule(r ast.InlineRule) string {
 	}
 	lines := renderCondList(r.Cond, 1)
 	return head + "\n" + strings.Join(lines, "\n")
+}
+
+func renderBacktickNames(names []string) string {
+	parts := make([]string, len(names))
+	for i, name := range names {
+		parts[i] = "`" + name + "`"
+	}
+	return strings.Join(parts, " and ")
 }

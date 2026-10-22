@@ -11,6 +11,11 @@ import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 func collectUsedAliases(doc *ast.Document) map[string]bool {
 	used := make(map[string]bool)
 	collectRuleCallAliases(doc.Rules, used)
+	for _, rule := range doc.Rules {
+		if rule.Using != nil && rule.Using.Alias != "" {
+			used[rule.Using.Alias] = true
+		}
+	}
 	for _, def := range doc.Defs {
 		if def.SpecRef != nil && def.SpecRef.Alias != "" {
 			used[def.SpecRef.Alias] = true

@@ -12,6 +12,7 @@ import "github.com/park-jun-woo/toulmin/pkg/tangl/ast"
 type genContext struct {
 	Doc           *ast.Document
 	Defs          map[string]defInfo
+	Rules         map[string]ast.InlineRule
 	Flags         genFlags
 	CheckWrappers map[string]string
 }

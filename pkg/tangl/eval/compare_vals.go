@@ -20,6 +20,15 @@ func compareVals(lhs any, lhsOK bool, op string, rhs any) bool {
 		if !lhsOK {
 			return false
 		}
+		if list, ok := rhs.(interface{ StringList() []string }); ok {
+			want := fmt.Sprintf("%v", lhs)
+			for _, item := range list.StringList() {
+				if item == want {
+					return true
+				}
+			}
+			return false
+		}
 		return compareIn(fmt.Sprintf("%v", lhs), fmt.Sprintf("%v", rhs))
 	case "is greater than", "is less than", "is at most", "is at least":
 		if !lhsOK {

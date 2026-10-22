@@ -32,6 +32,12 @@ func applyCaseChildKo(c *ast.Case, it scan.Item, path string) (int, error) {
 		c.Attacks = append(c.Attacks, atk)
 		return 2, nil
 	}
+	if edges, ok, err := parseSupersedeChainKo(it, path); err != nil {
+		return 0, err
+	} else if ok {
+		c.Supersedes = append(c.Supersedes, edges...)
+		return 4, nil
+	}
 	if sup, ok, err := parseSupersedeKo(it, path); err != nil {
 		return 0, err
 	} else if ok {

@@ -39,8 +39,8 @@ Backticks visually separate variables from keywords. Backticked = user-defined n
 |---|---|---|---|
 | `tangl:Subject` | Subject declaration | required | `this document is` |
 | `tangl:See` | Reference declaration | optional | `see ... from` |
-| `tangl:Definitions` | Term definitions | optional | `means ... as`, `means`, `has ... as` |
-| `tangl:Rules` | Inline rules | optional | `"..." when`, `and`, `or`, `not`, `either` |
+| `tangl:Definitions` | Term and Spec definitions | optional | `means ... as`, JSON string arrays, `reads ... from`, `has ... as` |
+| `tangl:Rules` | Predicate declarations | optional | `` `name` when ``, `` `name` uses ``, `and`, `or`, `not`, `either` |
 | `tangl:Cases` | Judgment + execution | required | `in case of`, `is required`, `is a .../counter/except rule`, `checking`, `don't ... when`, `do ... when`, **`do ... once when`**, **`undo ... when`**, `run ... when` |
 | `tangl:Provides` | Endpoints | optional | `provides`, `is required`, `run`, `check` |
 | `tangl:Internal` | Internal work (ticks/events) | optional | `on`, `every`, `until`, `run`, `check` |
@@ -83,27 +83,41 @@ The **same** `see` declaration is read two ways, decided by where the alias is u
 
 ## Term definitions (tangl:Definitions)
 
-Constants (`means`), variables (`means ... as`), structs (`means` + `has`). Referenced in Cases as `` with `<term>` ``. Basic types (`Text`, `Integer`, `Number`, `Boolean`, `Email`, `Date`, `Time`, `URL`, `Currency`, `Quantity`) are provided by `tangl/types`.
+Constants (`means`), constructor-backed Specs (`means ... as`), structs (`means` + `has`), syntax-directed JSON string-list Specs, and registry-loaded file Specs. Predicate criteria are owned by Rules through explicit `with` or inferred `spec` operands. Basic types (`Text`, `Integer`, `Number`, `Boolean`, `Email`, `Date`, `Time`, `URL`, `Currency`, `Quantity`) are provided by `tangl/types`.
 
 ```
 - `credit threshold` means 650 as `credit`.`Threshold`
+- `premail domains` means ["gmail.com", "naver.com", "daum.net"]
+- `blacklist domains` reads `JSON list` from "./blacklist.json"
 - `applicant` means
   - has `annual income` as Currency
   - has `credit score` as Integer
 ```
 
+An inline list must be exactly one valid JSON `[]string`; `[]` is valid and source order and duplicates are preserved. If the first non-space character is `[`, the notation is reserved: malformed JSON, non-string or nested elements, and trailing tokens are load errors, never a fallback plain constant. Mode-2 rendering emits canonical compact JSON.
+
+In a file Definition the loader type is a backtick **name** and the path is a double-quoted **string value**. A consumer `DefinitionLoaderRegistry` resolves the type. Every file Definition is loaded exactly once before evaluation or generation; relative paths resolve against the directory of `Document.Path`. A missing registry/type/file or a loader parse failure aborts materialization. The loader returns a portable string-list snapshot: eval fixes it for the compiled session and gen embeds the same values into generated Go. The judgment engine and generated program perform no file IO during a verdict.
+
 ## Rules (tangl:Rules)
 
-Inline condition definitions.
+Rule declarations own the predicate implementation and its predicate inputs.
+An expression rule uses `when`; a host predicate rule uses `uses`. A rule may
+be bound into multiple Cases with different roles, levels, and qualifiers.
 
 ```
 - `<name>` when <field> <operator> <value>
+- `<name>` uses <func> [with <Spec>...] [grounded on <ground>...]
 1. `<name>` when
     - either
       - <condition1>
       - and <condition2>
     - or <condition3>
 ```
+
+`with` and `grounded on` are predicate properties and therefore belong to the
+Rules declaration. For an expression rule, the first step of every `spec`
+operand is also an inferred `with` binding. A Case that cites the rule does not
+repeat these properties.
 
 Operators: `is empty`, `is not empty`, `equals`, `is in`, `is greater than`, `is less than`, `is at most`, `is at least`. Logic: `and`, `or`, `not`, `either` (grouping).
 
@@ -128,7 +142,7 @@ Beyond a plain `` `field` ``, either side of a comparison may be an **operand**:
 - **Host value call** — `` result of `<func>` `` calls a host function and uses its return value as the operand (either side of a comparison).
 - **Host predicate call** — `` `<func>` holds `` is a condition term that is true when the host predicate returns true.
 - **Existential quantifier** — `` any of `<source>` as `<binder>` satisfies <condition> `` holds when at least one element of the source collection satisfies the condition. The binder (`` as `c` ``) names the current element and is referenced as the first step of a data path inside the body (`` `c`.`minPrice` ``); it lexically shadows a context key of the same name (the binder wins). A binder must not reuse the name of an enclosing binder in a nested `any of` (load error). When the text after `satisfies` is empty, the body is the item's nested `and`/`or`/`either` condition list; otherwise it is a one-line comparison. An `any of` head may also stand alone as a rule head (`` `has coupon` when any of ... ``).
-- **Right side** — a comparison right side that begins with a backtick, `spec`, or `result` is parsed as an operand; anything else (`650`, `"VIP"`, `a, b, c`) stays a literal value. One matching pair of surrounding double quotes is syntax and is removed (`"VIP"` becomes `VIP`); for `is in`, this normalization is applied to each comma-separated item (`"VIP", "GOLD"` becomes `VIP, GOLD`). Unquoted literals retain their existing meaning. Commas delimit items and are not supported inside an item. Consequently a **backtick right side denotes a data path**, not a literal — writing a name in backticks to mean a literal string is not supported.
+- **Right side** — a comparison right side that begins with a backtick, `spec`, or `result` is parsed as an operand; anything else (`650`, `"VIP"`, `a, b, c`) stays a literal value. One matching pair of surrounding double quotes is syntax and is removed (`"VIP"` becomes `VIP`); for a legacy literal `is in`, this normalization is applied to each comma-separated item (`"VIP", "GOLD"` becomes `VIP, GOLD`). A structured list Spec does not split its items, so `"a,b"` remains one member. Consequently a **backtick right side denotes a data path**, not a literal — writing a name in backticks to mean a literal string is not supported.
 - **Reserved quantifiers** — `all of ...`, `count of ...`, and `sum of ...` are reserved words; the parser rejects them with a clear "reserved" error until a later version implements them.
 - **Two-stage name lookup** — a bare `` `name` `` reference resolves **document-local `tangl:Rules` first, then externally** (a Go symbol or a consumer registry). The code generator detects a document/host name collision as a Go duplicate-identifier compile error; a runtime loader follows the same document-local-first rule and may additionally escalate a collision to an error.
 - **Scope of application** — the condition grammar is **predicate-only**: it produces a boolean judgment and has no execution/action statements. Effects live in `tangl:Cases` (`do`/`run`/`undo`), never inside a rule condition.
@@ -155,7 +169,7 @@ The witness leaf's `toulmin.Fact` is populated per leaf kind:
 #### Comparison & path semantics
 
 - **No-value handling** — a missing ctx key / missing struct field / missing map key / nil intermediate yields "no value"; under the eight operators this behaves exactly as the pre-existing flat comparison did — `is empty` is true on no-value, every other operator is false on no-value.
-- **Numeric comparison** — `is greater than` / `is less than` / `is at most` / `is at least` stringify both sides (`fmt.Sprintf("%v", …)`) and parse them as `float64`; if either fails to parse the comparison is false. `equals` / `is in` compare stringified forms.
+- **Numeric comparison** — `is greater than` / `is less than` / `is at most` / `is at least` stringify both sides (`fmt.Sprintf("%v", …)`) and parse them as `float64`; if either fails to parse the comparison is false. `equals` compares stringified forms. `is in` first recognizes a structured `StringLister` and performs exact, case- and whitespace-sensitive membership; otherwise it preserves the legacy comma-separated string comparison.
 - **Binder scope** — inside `` any of ... as `c` satisfies ... ``, a data path whose first step is `c` resolves to the bound element; the binder shadows a same-named ctx key.
 - **`any of` source** — must be a slice or array (iterated in index order — deterministic); a map or non-collection source is treated as zero elements (Go map iteration order is nondeterministic and therefore unsupported).
 - **Determinism (evaluator)** — extending the grammar-level **Determinism** bullet above: the evaluator carries no clock, randomness, or I/O, so a clock-dependent predicate is purified by injecting `now` as a context key, and host calls remain the deliberate escape hatch whose determinism the host owns.
@@ -200,6 +214,12 @@ Case names conventionally follow the `can ...` question form. `is required` decl
 - `<name>` is a general rule checking `<alias>`.`<other-case>`
 - `<name>` is a counter rule using <func>, level fail
 - `<name>` is an except rule using <func>, level review
+
+The `using`/`with`/`grounded on` node forms above are legacy input accepted for
+migration. New canonical documents declare those predicate properties in
+`tangl:Rules` and cite the same name here with only role, qualifier, and level.
+If a Rules declaration exists, repeating its predicate properties in a Case is
+a load error. `checking` remains a Case-owned composition form.
 ```
 
 | Node | Engine | Meaning |
@@ -243,6 +263,7 @@ If the attacker is Active, it attacks the target. `do not` is equivalent. → `a
 
 ```
 - `<superseder>` supersedes `<superseded>`
+- supersede in order: `<highest>` > `<next>` > `<lowest>`
 ```
 If the superseder is Active, the superseded node is **crisply excluded from the
 tally** (it never enters the h-Categoriser traversal — only its trace is marked
@@ -252,6 +273,14 @@ Excluded). → `superseder.Supersedes(superseded)`
 |---|---|---|
 | `don't <y> when <x>` | attenuates `<y>`'s verdict (graded, enters the tally) | `x.Attacks(y)` |
 | `<x> supersedes <y>` | crisply excludes `<y>` from the tally (deterministic priority) | `x.Supersedes(y)` |
+
+The priority-chain form requires at least three distinct names. It is parser
+syntax sugar: for names `N[0] ... N[n-1]`, it expands every pair `i < j` to
+`N[i] supersedes N[j]`, in that order. Duplicate same-direction edges are
+deduplicated with the first declaration retained; a repeated name in one chain
+is a load error. The first expanded edge retains source-sugar metadata so a
+codec can reproduce the chain statement; graph generation uses only the
+expanded pairs.
 
 Like defeat edges, supersede edges must reference nodes registered in the same
 case and must not form a cycle (validated independently of the Attacks graph).
@@ -464,27 +493,35 @@ is slow, the next tick picks it up — the arm motions are protected from tick r
 ## tangl:Definitions
 - `serve temperature` means 65°C as `sensor`.`Temperature`
 
+## tangl:Rules
+- `order received` uses `sensor`.`isOrdered`
+- `no cup` uses `sensor`.`noCupAvailable`
+- `cup placed` uses `sensor`.`cupIsPlaced`
+- `water poured` uses `sensor`.`waterIsPoured`
+- `brewing complete` uses `sensor`.`isComplete`
+- `low temperature` uses `sensor`.`temperatureLow` with `serve temperature`
+
 ## tangl:Cases
 - in case of `can place cup`
-  - `order received` is a general rule using `sensor`.`isOrdered`
-  - `no cup` is a counter rule using `sensor`.`noCupAvailable`
+  - `order received` is a general rule
+  - `no cup` is a counter rule
   - don't `order received` when `no cup`
   - do `arm`.`placeCup` once when `order received`
   - run `can pour water` when `order received`
 
 - in case of `can pour water`
-  - `cup placed` is a general rule using `sensor`.`cupIsPlaced`
+  - `cup placed` is a general rule
   - do `arm`.`pourWater` once when `cup placed`
   - run `can brew espresso` when `cup placed`
 
 - in case of `can brew espresso`
-  - `water poured` is a general rule using `sensor`.`waterIsPoured`
+  - `water poured` is a general rule
   - do `arm`.`extractShot` once when `water poured`
   - run `can serve coffee` when `water poured`
 
 - in case of `can serve coffee`
-  - `brewing complete` is a general rule using `sensor`.`isComplete`
-  - `low temperature` is an except rule using `sensor`.`temperatureLow` with `serve temperature`
+  - `brewing complete` is a general rule
+  - `low temperature` is an except rule
   - don't `brewing complete` when `low temperature`
   - do `arm`.`serve` once when `brewing complete`
   - do `log`.`CoffeeStatus` when `brewing complete`
@@ -511,14 +548,18 @@ Read by an auditor: "Once the order is received — place a cup **once**, then m
 - see `log` from `tangl/log`
 
 ## tangl:Definitions
-- `blocklist` means "blocklist" as `policy`.`IPList`
+- `blocklist` means ["203.0.113.7", "198.51.100.9"]
+
+## tangl:Rules
+- `block ip` uses `policy`.`IsIPBlocked` with `blocklist`
+- `exempt internal ip` uses `policy`.`IsInternalIP`
 
 ## tangl:Cases
 - in case of `can access`
   - `user` is required
   - `authenticate` is a general rule
-  - `block ip` is a counter rule using `policy`.`IsIPBlocked` with `blocklist`
-  - `exempt internal ip` is an except rule using `policy`.`IsInternalIP`
+  - `block ip` is a counter rule
+  - `exempt internal ip` is an except rule
   - don't `authenticate` when `block ip`
   - don't `block ip` when `exempt internal ip`
   - do `policy`.`Allow` when `authenticate`
@@ -548,12 +589,17 @@ No matter at which point failure occurs, the total across accounts is preserved,
 - see `bank` from `bank/core`
 - see `log` from `tangl/log`
 
+## tangl:Rules
+- `balance sufficient` uses `bank`.`hasBalance`
+- `account frozen` uses `bank`.`isFrozen`
+- `recipient valid` uses `bank`.`isValidAccount`
+
 ## tangl:Cases
 - in case of `can withdraw`
   - `from account` is required
   - `amount` is required
-  - `balance sufficient` is a general rule using `bank`.`hasBalance`
-  - `account frozen` is a counter rule using `bank`.`isFrozen`
+  - `balance sufficient` is a general rule
+  - `account frozen` is a counter rule
   - don't `balance sufficient` when `account frozen`
   - do `bank`.`withdraw` once when `balance sufficient`
   - undo `bank`.`refund` when `balance sufficient`
@@ -561,7 +607,7 @@ No matter at which point failure occurs, the total across accounts is preserved,
 
 - in case of `can deposit`
   - `to account` is required
-  - `recipient valid` is a general rule using `bank`.`isValidAccount`
+  - `recipient valid` is a general rule
   - do `bank`.`deposit` once when `recipient valid`
   - do `log`.`TransferComplete` when `recipient valid`
 
@@ -617,7 +663,10 @@ file = section*
 section = subject_section | see_section | def_section | rules_section
         | cases_section | provides_section | internal_section | doc_section
 
-rules_stmt = NAME "when" (inline_term | NEWLINE INDENT cond_list)
+def_stmt   = NAME "means" (JSON_STRING_ARRAY | literal ["as" FUNC_REF] | NEWLINE INDENT field_decl+)
+           | NAME "reads" NAME "from" QUOTED_STRING
+rules_stmt = NAME ("when" (inline_term | NEWLINE INDENT cond_list)
+           | "uses" FUNC_REF [with_clause] [grounded_clause])
 inline_term = exists_term | call_term | compare      # rule-head one-line dispatch (either/not are nested-only)
 cond_list  = cond_term (NEWLINE ("and" | "or") cond_term)*
 cond_term  = exists_term | either_term | not_term | call_term | compare
@@ -633,10 +682,11 @@ COMPARE_OP = "is" "empty" | "is" "not" "empty" | "equals" | "is" "in"
 
 cases_stmt = case_decl | required_decl | node_decl | edge_decl | exec_decl
 case_decl  = "in" "case" "of" NAME
-node_decl  = NAME "is" ("a"|"an") ROLE_EXPR (["using" FUNC_REF [with_clause] [qual_clause] [grounded_clause] | "checking" CASE_REF] [level_clause])
+node_decl  = NAME "is" ("a"|"an") ROLE_EXPR (["checking" CASE_REF] [qual_clause] [level_clause])
 level_clause = "," "level" ("fail" | "review")             # crisp reporting level
 edge_decl  = DONT NAME "when" NAME                          # defeat edge
            | NAME "supersedes" NAME                         # supersede edge
+           | "supersede" "in" "order" ":" NAME (">" NAME){2,} # desugared priority chain
 exec_decl  = do_edge | run_edge | undo_edge
 do_edge    = "do" FUNC_REF ["once"] "when" NAME [certainty_clause]
 undo_edge  = "undo" FUNC_REF "when" NAME                   # compensation edge
@@ -666,7 +716,7 @@ CASE_REF = NAME | NAME "." NAME        # same grammar as FUNC_REF: bare local ca
 ```
 
 - The NAME node of an `undo_edge` must be preceded by at least one `do_edge` within the same case (parser-validated).
-- Keywords: `this`, `document`, `see`, `means`, `as`, `is`, `a`, `an`, `from`, `general`, `rule`, `counter`, `except`, `case`, `using`, `checking`, `with`, `qualified`, `provides`, `required`, `run`, `check`, `do`, `don't`, `not`, `when`, **`once`**, **`undo`**, **`supersedes`**, **`level`**, **`fail`**, **`review`**, **`grounded`**, `on`, `every`, `until`, `has`, `if`, `at`, `least`, `above`, `less`, `than`, `most`, `certain`, `and`, `or`, `either`, `empty`, `equals`, `in`, `greater`, **`any`**, **`of`**, **`satisfies`**, **`holds`**, **`result`**, **`spec`**. Reserved (parsed but not yet implemented): **`all`**, **`count`**, **`sum`**.
+- Keywords: `this`, `document`, `see`, `means`, **`reads`**, `as`, `is`, `a`, `an`, `from`, `general`, `rule`, `counter`, `except`, `case`, `using`, **`uses`**, `checking`, `with`, `qualified`, `provides`, `required`, `run`, `check`, `do`, `don't`, `not`, `when`, **`once`**, **`undo`**, **`supersedes`**, **`level`**, **`fail`**, **`review`**, **`grounded`**, `on`, `every`, `until`, `has`, `if`, `at`, `least`, `above`, `less`, `than`, `most`, `certain`, `and`, `or`, `either`, `empty`, `equals`, `in`, `greater`, **`any`**, **`of`**, **`satisfies`**, **`holds`**, **`result`**, **`spec`**. Reserved (parsed but not yet implemented): **`all`**, **`count`**, **`sum`**.
 
 ## Go API correspondence table
 
@@ -674,6 +724,8 @@ CASE_REF = NAME | NAME "." NAME        # same grammar as FUNC_REF: bare local ca
 |---|---|
 | `` this document is `x` `` | `package x` |
 | `` see `p` from `path` `` | `import p "path"` |
+| `` `x` means ["a", "b"] `` | `toulmin.NewStringListSpec("x", []string{"a", "b"})` |
+| `` `x` reads `loader` from "./x.json" `` | loader snapshot at compile/generate time, then the same `NewStringListSpec` |
 | `` in case of `x` `` | `x := toulmin.NewGraph("subject.x")` |
 | `` `x` is a general rule using fn `` | `x := g.Rule(fn)` |
 | `` `x` is a counter rule using fn `` | `x := g.Counter(fn)` |
@@ -681,12 +733,14 @@ CASE_REF = NAME | NAME "." NAME        # same grammar as FUNC_REF: bare local ca
 | `` `x` is a general rule checking `y` `` | `x := g.Rule(checkCase(y))` — **`y` is Evaluate (pure)** |
 | `` `x` is a general rule checking `alias`.`y` `` | `x := g.Rule(alias.CheckingY)` — cross-package call; `alias` resolves to a Go import path derived from the sibling `.tangeul`'s location, and `CheckingY` is the exported wrapper the referenced document emits for case `y` (Evaluate, pure) |
 | `` `n` when <expr> `` (a `tangl:Rules` entry) | `func n(toulmin.Context, toulmin.Specs) (bool, any)` — the second return is an auto-generated witness `toulmin.Fact` |
+| `` `n` uses `p`.`fn` with `x` grounded on `body` `` | host predicate declaration; `x` is injected as a Spec and `body` is the ground contract |
 | `` result of `f` `` (host value call) | `func f(toulmin.Context, toulmin.Specs) (any, error)` |
 | `` `f` holds `` (host predicate call) | `func f(toulmin.Context, toulmin.Specs) (bool, any)` |
 | `` with `term` `` / `qualified 0.8` | `.With(defs["term"])` / `.Qualifier(0.8)` |
 | `` grounded on `source-body` `` | `.Grounds("source-body")` |
 | `` don't `x` when `y` `` | `y.Attacks(x)` |
 | `` `x` supersedes `y` `` | `x.Supersedes(y)` |
+| `` supersede in order: `A` > `B` > `C` `` | `A.Supersedes(B)`, `A.Supersedes(C)`, `B.Supersedes(C)` |
 | `` , level fail `` / `` , level review `` | `.Level(toulmin.Fail)` / `.Level(toulmin.Review)` |
 | `` do `fn` when `n` `` | `n.RunOn(func(self, t){ ...fn... })` |
 | `` do `fn` when `n` if at least 75% certain `` | `n.RunOn(func(self,t){ if self.Verdict >= 0.5 { fn } })` |

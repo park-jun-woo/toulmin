@@ -22,6 +22,15 @@ func writeCompareValHelper(w *strings.Builder) {
 		if !ok {
 			return false
 		}
+		if list, yes := rhs.(interface{ StringList() []string }); yes {
+			want := fmt.Sprintf("%v", lhs)
+			for _, item := range list.StringList() {
+				if item == want {
+					return true
+				}
+			}
+			return false
+		}
 		for _, item := range strings.Split(fmt.Sprintf("%v", rhs), ",") {
 			if strings.TrimSpace(item) == fmt.Sprintf("%v", lhs) {
 				return true

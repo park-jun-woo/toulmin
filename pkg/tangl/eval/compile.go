@@ -12,7 +12,7 @@ import (
 // time; an unresolved reference is returned as an error and never becomes a
 // runtime lookup.
 func Compile(r ast.InlineRule, res Resolver) (func(toulmin.Context, toulmin.Specs) (bool, any), error) {
-	ef, err := compileExpr(r.Cond, res)
+	ef, err := compileRule(r, res)
 	if err != nil {
 		return nil, err
 	}

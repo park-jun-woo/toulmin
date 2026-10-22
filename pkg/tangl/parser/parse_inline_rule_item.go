@@ -15,9 +15,22 @@ func parseInlineRuleItem(it item, path string) (ast.InlineRule, error) {
 	if !ok {
 		return ast.InlineRule{}, errAt(path, it.Line, "expected backtick-quoted rule name, got %q", it.Text)
 	}
+	if using, host := takeKeyword(rest, "uses"); host {
+		ref, with, qual, grounds, tail, err := parseUsingClause(using, path, it.Line)
+		if err != nil {
+			return ast.InlineRule{}, err
+		}
+		if qual != nil {
+			return ast.InlineRule{}, errAt(path, it.Line, "qualified belongs to a case binding, not a rule declaration")
+		}
+		if strings.TrimSpace(tail) != "" {
+			return ast.InlineRule{}, errAt(path, it.Line, "unexpected trailing text: %q", tail)
+		}
+		return ast.InlineRule{Name: name, Using: &ref, With: with, Grounds: grounds, Line: it.Line}, nil
+	}
 	rest, ok = takeKeyword(rest, "when")
 	if !ok {
-		return ast.InlineRule{}, errAt(path, it.Line, "expected 'when' after rule name")
+		return ast.InlineRule{}, errAt(path, it.Line, "expected 'when' after rule name (or 'uses' for a host rule)")
 	}
 	rest = strings.TrimSpace(rest)
 	cond, err := parseInlineRuleHead(rest, it, path)

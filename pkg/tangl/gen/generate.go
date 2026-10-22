@@ -7,19 +7,41 @@ import (
 	"strings"
 
 	"github.com/park-jun-woo/toulmin/pkg/tangl/ast"
+	"github.com/park-jun-woo/toulmin/pkg/tangl/materialize"
 )
 
 // Generate compiles doc into a single Go source file string: definitions,
 // inline rules, case graph builders, provided endpoints, and internal
 // triggers, in that document order, formatted via go/format.Source.
 func Generate(doc *ast.Document) (string, error) {
-	gc := &genContext{Doc: doc, Flags: collectFlags(doc)}
+	return GenerateWithOptions(doc, GenerateOptions{})
+}
+
+// GenerateOptions supplies file-definition loaders used at generation time.
+type GenerateOptions struct {
+	Loaders materialize.DefinitionLoaderRegistry
+}
+
+// GenerateWithOptions generates source after eagerly snapshotting file definitions.
+func GenerateWithOptions(doc *ast.Document, opts GenerateOptions) (string, error) {
+	materialized, err := materialize.Lists(doc, opts.Loaders)
+	if err != nil {
+		return "", err
+	}
+	lists := make(map[string][]string, len(materialized))
+	for name, spec := range materialized {
+		lists[name] = spec.StringList()
+	}
+	gc := &genContext{Doc: doc, Flags: collectFlags(doc), Rules: make(map[string]ast.InlineRule, len(doc.Rules))}
+	for _, rule := range doc.Rules {
+		gc.Rules[rule.Name] = rule
+	}
 	imports, err := buildImports(gc)
 	if err != nil {
 		return "", err
 	}
 	var body strings.Builder
-	gc.Defs = buildDefinitions(&body, doc.Defs)
+	gc.Defs = buildDefinitions(&body, doc.Defs, lists)
 	writeRuleHelpers(&body, gc.Flags)
 	if gc.Flags.NeedsCaseHelper {
 		writeCaseHelper(&body)
