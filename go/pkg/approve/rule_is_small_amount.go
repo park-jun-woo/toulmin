@@ -1,0 +1,19 @@
+//ff:func feature=approve type=rule control=sequence
+//ff:what IsSmallAmount: spec(*ThresholdSpec)으로 지정된 금액 임계값 이하인지 판정
+package approve
+
+import "github.com/park-jun-woo/toulmin/go/pkg/toulmin"
+
+// IsSmallAmount checks if the requested amount is at or below spec threshold.
+func IsSmallAmount(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
+	amount, _ := ctx.Get("amount")
+	if len(specs) == 0 {
+		return false, nil
+	}
+	b := specs[0].(*ThresholdSpec)
+	a, ok := amount.(float64)
+	if !ok {
+		return false, nil
+	}
+	return a <= b.Max, nil
+}

@@ -1,0 +1,29 @@
+//ff:func feature=tangl type=parser control=sequence
+//ff:what parseConstValue — split a ConstDef's literal value from its "as Ref" clause
+package parser
+
+import (
+	"strings"
+
+	"github.com/park-jun-woo/toulmin/go/pkg/tangl/ast"
+)
+
+// parseConstValue splits "<literal> [as <Ref>]" into its literal value and an
+// optional spec Ref. One matching pair of surrounding double quotes is syntax;
+// unquoted literals retain their existing pass-through behavior.
+func parseConstValue(s string, path string, line int) (string, *ast.Ref, error) {
+	idx := strings.Index(s, " as `")
+	if idx < 0 {
+		return stripLiteralQuotes(strings.TrimSpace(s)), nil, nil
+	}
+	value := stripLiteralQuotes(strings.TrimSpace(s[:idx]))
+	refPart := strings.TrimSpace(s[idx+len(" as "):])
+	ref, rest, ok := parseRef(refPart)
+	if !ok {
+		return "", nil, errAt(path, line, "expected reference after 'as'")
+	}
+	if strings.TrimSpace(rest) != "" {
+		return "", nil, errAt(path, line, "unexpected trailing text: %q", rest)
+	}
+	return value, &ref, nil
+}

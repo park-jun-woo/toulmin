@@ -1,0 +1,33 @@
+//ff:func feature=approve type=rule control=iteration dimension=1
+//ff:what TestIsAboveLevel — tests IsAboveLevel rule
+package approve
+
+import (
+	"testing"
+
+	"github.com/park-jun-woo/toulmin/go/pkg/toulmin"
+)
+
+func TestIsAboveLevel(t *testing.T) {
+	tests := []struct {
+		name  string
+		level int
+		min   int
+		want  bool
+	}{
+		{"above", 5, 3, true},
+		{"equal", 3, 3, true},
+		{"below", 2, 3, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ab := &ApproverSpec{Level: tt.min}
+			ctx := toulmin.NewContext()
+			ctx.Set("approverLevel", tt.level)
+			got, _ := IsAboveLevel(ctx, toulmin.Specs{ab})
+			if got != tt.want {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
