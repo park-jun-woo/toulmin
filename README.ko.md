@@ -93,7 +93,7 @@ toulmin: **요구사항마다 2줄, 기존 코드 변경 없음.** if-else: **�
 ```bash
 npm install rulecat          # TypeScript
 pip install rulecat          # Python (planned)
-go get github.com/park-jun-woo/toulmin/pkg/toulmin  # Go
+go get github.com/park-jun-woo/toulmin/go/pkg/toulmin  # Go
 ```
 
 ## 핵심 개념
@@ -297,27 +297,27 @@ TANGEUL은 코어 위에 바로 컴파일되는 마크다운 정책 언어다 �
 - **saga 보상이 내장되어 있다.** `do`가 성공하는 순간 짝을 이루는 `undo`가 보상 스택에 적재되고, 같은 패스 안에서 이후 단계가 실패하면 스택을 LIFO로 되돌린다. 복구 불가능한 실패는 원인과 보상 실패를 함께 담은 `*tangl.ReviewError`로 승격된다.
 - **effect summary로 감사한다.** `tangl effects`는 실행하지 않고도 한 엔드포인트가 일으킬 수 있는 모든 `do`/`undo`를 정적으로 나열한다.
 - **크리스프 우선권과 레벨도 표면에서.** `` `X` 면 `Y` 배제한다 ``는 `X`가 성립하면 `Y`를 집계에서 배제한다. `` `A` > `B` > `C` 순서로 배제한다 ``는 모든 앞→뒤 우선권 간선으로 전개된다. 관형절 `실패를 보고하는` / `검토를 보고하는`은 크리스프 리포팅 레벨을 표기한다.
-- **하나의 이진 단일 진실(TANGEUL).** `tangl encode`는 저작한 `.md` 표면을 로케일 독립적인 컴팩트 `.tangeul` 스트림(AST + 원문 prose span)으로 흡수하며, 이후 모든 명령은 그 스트림 위에서 동작한다. `tangl decode`는 스트림을 다시 텍스트 표면으로 렌더링한다 — 모드 1에서는 바이트 항등, 모드 2에서는 다른 로케일로 재생성.
-- **영어·한국어 표면, 같은 AST.** `tangl encode`는 문서의 섹션 헤더로 en/ko를 자동 판별하고, `tangl decode --locale ko`는 임의의 `.tangeul`을 비개발자 감사자를 위한 한국어 감사 표면으로 렌더링한다(`TANGEUL.ko.md` 참조).
+- **하나의 이진 단일 진실(TANGEUL).** `tangl encode`는 저작한 `.md` 표면을 로케일 독립적인 컴팩트 `.geul` 파일(GEUL t002 DOC 하나, TOULMIN 코덱: AST + 원문 prose span)로 흡수하며, 이후 모든 명령은 그 스트림 위에서 동작한다. `tangl decode`는 스트림을 다시 텍스트 표면으로 렌더링한다 — 모드 1에서는 바이트 항등, 모드 2에서는 다른 로케일로 재생성.
+- **영어·한국어 표면, 같은 AST.** `tangl encode`는 문서의 섹션 헤더로 en/ko를 자동 판별하고, `tangl decode --locale ko`는 임의의 `.geul`을 비개발자 감사자를 위한 한국어 감사 표면으로 렌더링한다(`TANGEUL.ko.md` 참조).
 
 ```bash
-go install github.com/park-jun-woo/toulmin/cmd/tangl@latest
+go install github.com/park-jun-woo/toulmin/go/cmd/tangl@latest
 
-tangl encode policy.md -o policy.tangeul   # .md 표면을 .tangeul 스트림으로 흡수 (로케일 자동 판별)
-tangl check policy.tangeul                 # 검증 + lint
-tangl effects policy.tangeul pay           # 엔드포인트 "pay"에서 도달 가능한 정적 do/undo 요약
-tangl gen policy.tangeul -o pay_gen.go     # 문서를 Go 소스로 컴파일
-tangl decode policy.tangeul                # 스트림을 다시 텍스트로 렌더링 (모드 1, 바이트 항등)
-tangl decode policy.tangeul --locale ko    # 같은 스트림을 한국어 감사 표면으로 렌더링 (모드 2)
+tangl encode policy.md -o policy.geul   # .md 표면을 .geul 스트림으로 흡수 (로케일 자동 판별)
+tangl check policy.geul                 # 검증 + lint
+tangl effects policy.geul pay           # 엔드포인트 "pay"에서 도달 가능한 정적 do/undo 요약
+tangl gen policy.geul -o pay_gen.go     # 문서를 Go 소스로 컴파일
+tangl decode policy.geul                # 스트림을 다시 텍스트로 렌더링 (모드 1, 바이트 항등)
+tangl decode policy.geul --locale ko    # 같은 스트림을 한국어 감사 표면으로 렌더링 (모드 2)
 ```
 
 ```
-$ tangl encode pkg/tangl/parser/testdata/transfer.md -o transfer.tangeul
+$ tangl encode pkg/tangl/parser/testdata/transfer.md -o transfer.geul
 
-$ tangl check transfer.tangeul
+$ tangl check transfer.geul
 ok
 
-$ tangl effects transfer.tangeul transfer
+$ tangl effects transfer.geul transfer
 do   bank.withdraw        once (can withdraw / balance sufficient)
 undo bank.refund               (can withdraw / balance sufficient)
 do   bank.deposit         once (can deposit / recipient valid)

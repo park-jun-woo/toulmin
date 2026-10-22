@@ -167,7 +167,7 @@ toulmin: **2 lines per requirement, structure never changes.** if-else: **restru
 ```bash
 npm install rulecat          # TypeScript
 pip install rulecat          # Python (planned)
-go get github.com/park-jun-woo/toulmin/pkg/toulmin  # Go
+go get github.com/park-jun-woo/toulmin/go/pkg/toulmin  # Go
 make -C c build              # C — vendor the c/ dir, or `make -C c install` (see c/README.md)
 ```
 
@@ -372,27 +372,27 @@ TANGEUL is a markdown policy language that compiles directly onto the core: no s
 - **Saga compensation, built in.** Each `do` arms its paired `undo` on a compensation stack the moment it succeeds; a later failure in the same pass replays the stack LIFO, and unrecoverable failures escalate to a `*tangl.ReviewError` carrying both the cause and the compensation error.
 - **Effect summary, for audit.** `tangl effects` statically lists every `do`/`undo` an endpoint can trigger — without running it.
 - **Crisp overrides and levels, in the surface too.** `` `X` supersedes `Y` `` excludes `Y` from the tally when `X` holds. `` supersede in order: `A` > `B` > `C` `` expands to every earlier→later priority edge. A trailing `, level fail` / `, level review` tags a case's crisp reporting level. All forms round-trip in either locale.
-- **One binary source of truth (TANGEUL).** `tangl encode` absorbs an authored `.md` surface into a compact, locale-independent `.tangeul` stream (AST + verbatim prose spans); every other command runs on that stream. `tangl decode` renders it back to a text surface — byte-identically in mode 1, or regenerated into another locale in mode 2.
-- **English or Korean surface, same AST.** `tangl encode` auto-detects en/ko from the document's section headers; `tangl decode --locale ko` renders any `.tangeul` as a Korean audit surface for non-developer reviewers (see `TANGEUL.ko.md`).
+- **One binary source of truth (TANGEUL).** `tangl encode` absorbs an authored `.md` surface into a compact, locale-independent `.geul` file — exactly one GEUL DOC (GEUL t002, TOULMIN codec) holding the AST and the verbatim prose spans; every other command runs on that stream. `tangl decode` renders it back to a text surface — byte-identically in mode 1, or regenerated into another locale in mode 2.
+- **English or Korean surface, same AST.** `tangl encode` auto-detects en/ko from the document's section headers; `tangl decode --locale ko` renders any `.geul` as a Korean audit surface for non-developer reviewers (see `TANGEUL.ko.md`).
 
 ```bash
-go install github.com/park-jun-woo/toulmin/cmd/tangl@latest
+go install github.com/park-jun-woo/toulmin/go/cmd/tangl@latest
 
-tangl encode policy.md -o policy.tangeul   # absorb the .md surface into a .tangeul stream (locale auto-detected)
-tangl check policy.tangeul                 # validate + lint
-tangl effects policy.tangeul pay           # static do/undo summary reachable from endpoint "pay"
-tangl gen policy.tangeul -o pay_gen.go     # compile the document to Go source
-tangl decode policy.tangeul                # render the stream back to text (mode-1, byte-identical)
-tangl decode policy.tangeul --locale ko    # render the same stream as a Korean audit surface (mode-2)
+tangl encode policy.md -o policy.geul   # absorb the .md surface into a .geul stream (locale auto-detected)
+tangl check policy.geul                 # validate + lint
+tangl effects policy.geul pay           # static do/undo summary reachable from endpoint "pay"
+tangl gen policy.geul -o pay_gen.go     # compile the document to Go source
+tangl decode policy.geul                # render the stream back to text (mode-1, byte-identical)
+tangl decode policy.geul --locale ko    # render the same stream as a Korean audit surface (mode-2)
 ```
 
 ```
-$ tangl encode pkg/tangl/parser/testdata/transfer.md -o transfer.tangeul
+$ tangl encode pkg/tangl/parser/testdata/transfer.md -o transfer.geul
 
-$ tangl check transfer.tangeul
+$ tangl check transfer.geul
 ok
 
-$ tangl effects transfer.tangeul transfer
+$ tangl effects transfer.geul transfer
 do   bank.withdraw        once (can withdraw / balance sufficient)
 undo bank.refund               (can withdraw / balance sufficient)
 do   bank.deposit         once (can deposit / recipient valid)

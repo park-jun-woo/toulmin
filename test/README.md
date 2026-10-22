@@ -5,19 +5,20 @@
 예제 모음이다. `pkg/tangl/parser/testdata/{americano,access,transfer}.md`의
 예시는 재사용하지 않았다.
 
-모든 명령은 저장소 루트에서 실행한다. **Phase 007부터 CLI는 `.tangeul`
-전용**이므로, 각 문서는 먼저 `encode`로 `.tangeul` 스트림에 흡수한 뒤 그 위에서
+모든 명령은 저장소 루트에서 실행한다. Go 모듈은 `go/`에 있으므로 CLI는 먼저
+`(cd go && go install ./cmd/tangl)`로 설치한다. **Phase 007부터 CLI는 `.geul`
+전용**이므로, 각 문서는 먼저 `encode`로 `.geul` 스트림에 흡수한 뒤 그 위에서
 `check`/`effects`/`gen`/`decode`를 돌린다:
 
 ```
-$ go run ./cmd/tangl encode test/<file>.md -o /tmp/<file>.tangeul
-$ go run ./cmd/tangl <sub> /tmp/<file>.tangeul ...
+$ tangl encode test/<file>.md -o /tmp/<file>.geul
+$ tangl <sub> /tmp/<file>.geul ...
 ```
 
 아래 개별 예시의 코드 블록은 Phase 007 이전의 직접 `.md` 실행 형태를 그대로
 남겼다(설명하는 **의미**는 불변이다). 재현할 때는 위 2단계로 바꿔 실행하면
-동일한 출력이 나오며, 다만 `.tangeul` 스트림은 저작 줄 번호를 담지 않으므로
-`check` 단계 진단의 `path:line`이 `<file>.tangeul:0`으로 정규화되는 점만 다르다
+동일한 출력이 나오며, 다만 `.geul` 스트림은 저작 줄 번호를 담지 않으므로
+`check` 단계 진단의 `path:line`이 `<file>.geul:0`으로 정규화되는 점만 다르다
 (Phase 008 step 5 재검증 로그는 문서 하단 참조).
 
 ## 정상 문서 (check 통과)
@@ -42,17 +43,17 @@ request`는 `checking`으로 `can renew loan`/`can waive late fee` 두 판정을
   `Not{Compare}`로 정확히 중첩 파싱됨을 확인
 
 ```
-$ go run ./cmd/tangl check test/library-renewal.md
+$ tangl check test/library-renewal.md
 ok
 
-$ go run ./cmd/tangl effects test/library-renewal.md "renew"
+$ tangl effects test/library-renewal.md "renew"
 do catalog.stampRenewal once (can renew loan / no blocking overdue)
 do log.RenewalResult         (can renew loan / no blocking overdue)
 
-$ go run ./cmd/tangl effects test/library-renewal.md "renewal eligibility"
+$ tangl effects test/library-renewal.md "renewal eligibility"
 (공집합 — check 엔드포인트는 항상 부수효과 0)
 
-$ go run ./cmd/tangl effects test/library-renewal.md "process renewal"
+$ tangl effects test/library-renewal.md "process renewal"
 do log.ProcessSummary  (can process renewal request / renewal allowed)
 ```
 
@@ -69,11 +70,11 @@ do log.ProcessSummary  (can process renewal request / renewal allowed)
   반영하는 가드"(§틱 멱등성 요구의 (c))까지 이중으로 방어한다 → 경고 0건.
 
 ```
-$ go run ./cmd/tangl check test/newsletter-tick-warn.md
+$ tangl check test/newsletter-tick-warn.md
 test/newsletter-tick-warn.md:24: warning: case "can send digest" do mailer.sendDigest has no once guard and is reachable from tangl:Internal
 ok
 
-$ go run ./cmd/tangl check test/newsletter-tick-fixed.md
+$ tangl check test/newsletter-tick-fixed.md
 ok
 ```
 
@@ -95,10 +96,10 @@ sent today` counter 가드를 걸어도 `logDigestSent`에 `once`를 빼면 경�
 캐스케이드 전체가 공유한다(§undo 간선 구현 노트).
 
 ```
-$ go run ./cmd/tangl check test/order-saga.md
+$ tangl check test/order-saga.md
 ok
 
-$ go run ./cmd/tangl effects test/order-saga.md "place order"
+$ tangl effects test/order-saga.md "place order"
 do   inventory.reserve   once (can reserve inventory / stock available)
 undo inventory.release        (can reserve inventory / stock available)
 do   payment.charge      once (can charge payment / payment method valid)
@@ -122,17 +123,17 @@ do   log.OrderComplete        (can book shipment / address deliverable)
 생산 시작 case에서 `checking`으로만 참조한다.
 
 ```
-$ go run ./cmd/tangl check test/factory-line-cascade.md
+$ tangl check test/factory-line-cascade.md
 ok
 
-$ go run ./cmd/tangl effects test/factory-line-cascade.md "start line"
+$ tangl effects test/factory-line-cascade.md "start line"
 do plc.energize          once (can power on / breaker closed)
 do plc.openValve         once (can pressurize / pressure in range)
 do plc.enableHeater      once (can heat / temperature in range)
 do plc.startLine         once (can start production / ready to produce)
 do log.ProductionStarted      (can start production / ready to produce)
 
-$ go run ./cmd/tangl effects test/factory-line-cascade.md "diagnostics"
+$ tangl effects test/factory-line-cascade.md "diagnostics"
 (공집합)
 ```
 
@@ -144,7 +145,7 @@ $ go run ./cmd/tangl effects test/factory-line-cascade.md "diagnostics"
 
 ### gen (모든 정상 문서 공통)
 
-다섯 정상 문서 전부 `go run ./cmd/tangl gen test/<file>.md`가 exit 0으로
+다섯 정상 문서 전부 `tangl gen test/<file>.md`가 exit 0으로
 Go 소스를 stdout에 출력했고, `Generate` 내부에서 이미 `go/format.Source`를
 거치므로 별도로 `gofmt -l`을 걸어도 변경 사항 없음(포맷 완료 상태)을
 재확인했다. `order-saga.md`는 실제로 격리된 임시 모듈에 손으로 쓴 stub
@@ -161,15 +162,15 @@ Go 소스를 stdout에 출력했고, `Generate` 내부에서 이미 `go/format.S
 | `bad-section-order.md` | 섹션 순서 위반 (Provides가 Cases보다 앞) | `parser.ParseSource` (Validate 이전) | `tangl:Cases appears out of order` |
 
 ```
-$ go run ./cmd/tangl check test/bad-undo-without-do.md
+$ tangl check test/bad-undo-without-do.md
 Error: test/bad-undo-without-do.md:22: case "can refund": undo when "balance sufficient" has no preceding do on that node
 (exit 1)
 
-$ go run ./cmd/tangl check test/bad-run-cycle.md
+$ tangl check test/bad-run-cycle.md
 Error: test/bad-run-cycle.md:18: run cycle detected at "can start a"
 (exit 1)
 
-$ go run ./cmd/tangl check test/bad-section-order.md
+$ tangl check test/bad-section-order.md
 Error: test/bad-section-order.md:20: tangl:Cases appears out of order
 (exit 1)
 ```
@@ -248,28 +249,28 @@ EN 인코더(plans/tangl-en) 완성 후, 위 8개 예제를 `encode → check`(�
 거부, 정상 문서는 추가로 `effects`/`decode`)로 재검증했다. 결과는 직접 `.md`
 파싱 경로와 **동일**하며, 아래 두 지점만 표면적으로 달라진다.
 
-- **줄 번호 정규화**: `.tangeul` 스트림은 저작 줄 번호를 담지 않으므로,
-  `check` 단계에서 발화하는 경고·에러의 `path:line`이 `<file>.tangeul:0`으로
-  나온다. 예: `bad-undo-without-do`는 `...:22:`가 아니라 `...tangeul:0:`,
-  `bad-run-cycle`는 `...:18:`이 아니라 `...tangeul:0:`, `newsletter-tick-warn`의
-  Lint 경고도 `...tangeul:0:`. 메시지 본문과 지목 대상은 완전히 동일하다.
+- **줄 번호 정규화**: `.geul` 스트림은 저작 줄 번호를 담지 않으므로,
+  `check` 단계에서 발화하는 경고·에러의 `path:line`이 `<file>.geul:0`으로
+  나온다. 예: `bad-undo-without-do`는 `...:22:`가 아니라 `...geul:0:`,
+  `bad-run-cycle`는 `...:18:`이 아니라 `...geul:0:`, `newsletter-tick-warn`의
+  Lint 경고도 `...geul:0:`. 메시지 본문과 지목 대상은 완전히 동일하다.
 - **bad-section-order는 encode 단계에서 잡힌다**: 섹션 순서 위반은 파서
-  (`parser.ParseSource`)가 `.tangeul` 흡수 **이전**에 거부하므로 `check`까지
+  (`parser.ParseSource`)가 `.geul` 흡수 **이전**에 거부하므로 `check`까지
   가지 못하고 `encode`가 실패한다. 이 경우 원본 `.md`를 파싱하는 시점이라
   줄 번호가 보존된다(`test/bad-section-order.md:20:`).
 
 ```
-$ go run ./cmd/tangl encode test/bad-undo-without-do.md -o /tmp/x.tangeul
-$ go run ./cmd/tangl check /tmp/x.tangeul
-Error: /tmp/x.tangeul:0: case "can refund": undo when "balance sufficient" has no preceding do on that node
+$ tangl encode test/bad-undo-without-do.md -o /tmp/x.geul
+$ tangl check /tmp/x.geul
+Error: /tmp/x.geul:0: case "can refund": undo when "balance sufficient" has no preceding do on that node
 (exit 1)
 
-$ go run ./cmd/tangl encode test/bad-run-cycle.md -o /tmp/x.tangeul
-$ go run ./cmd/tangl check /tmp/x.tangeul
-Error: /tmp/x.tangeul:0: run cycle detected at "can start a"
+$ tangl encode test/bad-run-cycle.md -o /tmp/x.geul
+$ tangl check /tmp/x.geul
+Error: /tmp/x.geul:0: run cycle detected at "can start a"
 (exit 1)
 
-$ go run ./cmd/tangl encode test/bad-section-order.md -o /tmp/x.tangeul
+$ tangl encode test/bad-section-order.md -o /tmp/x.geul
 Error: test/bad-section-order.md:20: tangl:Cases appears out of order
 (exit 1 — encode 단계에서 거부, check까지 도달하지 못함)
 ```
@@ -282,7 +283,7 @@ Error: test/bad-section-order.md:20: tangl:Cases appears out of order
 ## 한국어 감사 표면 재검증 (plans/tangl-ko Phase 007)
 
 KO 코덱(`pkg/tangl/codec/ko`) 완성 후, 한국어 저작 표면(서술어형 정규형)이
-`encode`로 `.tangeul`에 흡수되면 EN 경로와 **동일한 AST**로 실행됨을 두 예제로
+`encode`로 `.geul`에 흡수되면 EN 경로와 **동일한 AST**로 실행됨을 두 예제로
 재현했다. 도메인 식별자(백틱 안의 case/함수 이름)는 영어 코드베이스를 그대로
 가리키고, 문장 골격만 한국어다 — 그래서 `effects`/`gen` 산출이 영어판과 같다.
 
@@ -294,19 +295,19 @@ KO 코덱(`pkg/tangl/codec/ko`) 완성 후, 한국어 저작 표면(서술어형
   `check`가 틱 멱등성 Lint 경고를 그대로 발화한다(경고이므로 exit 0).
 
 ```
-$ go run ./cmd/tangl encode test/order-saga-ko.md -o /tmp/saga-ko.tangeul
-$ go run ./cmd/tangl check /tmp/saga-ko.tangeul                 # ok
-$ go run ./cmd/tangl effects /tmp/saga-ko.tangeul "place order" # order-saga.md와 동일
-$ go run ./cmd/tangl decode /tmp/saga-ko.tangeul | diff - test/order-saga-ko.md  # 차이 없음
+$ tangl encode test/order-saga-ko.md -o /tmp/saga-ko.geul
+$ tangl check /tmp/saga-ko.geul                 # ok
+$ tangl effects /tmp/saga-ko.geul "place order" # order-saga.md와 동일
+$ tangl decode /tmp/saga-ko.geul | diff - test/order-saga-ko.md  # 차이 없음
 
-$ go run ./cmd/tangl encode test/newsletter-tick-ko.md -o /tmp/news-ko.tangeul
-$ go run ./cmd/tangl check /tmp/news-ko.tangeul
-/tmp/news-ko.tangeul:0: warning: case "can send digest" do mailer.sendDigest has no once guard and is reachable from tangl:Internal
+$ tangl encode test/newsletter-tick-ko.md -o /tmp/news-ko.geul
+$ tangl check /tmp/news-ko.geul
+/tmp/news-ko.geul:0: warning: case "can send digest" do mailer.sendDigest has no once guard and is reachable from tangl:Internal
 ok
 ```
 
-교차 로케일(모드 2)도 확인했다: `decode --locale en`은 KO 저작 `.tangeul`을
-영어 정규형으로, `decode --locale ko`는 EN 저작 `.tangeul`을 한국어 정규형으로
+교차 로케일(모드 2)도 확인했다: `decode --locale en`은 KO 저작 `.geul`을
+영어 정규형으로, `decode --locale ko`는 EN 저작 `.geul`을 한국어 정규형으로
 재생성한다(산문 블록은 verbatim 유지, statement만 대상 로케일로 재렌더).
 
 ## 파일 목록

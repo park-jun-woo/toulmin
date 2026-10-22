@@ -14,7 +14,7 @@ Toulmin argumentation-based rule engine for Go. Rules are Go functions. Engine b
 | `pkg/feature` | Feature flags (Flags, rollout, net/http Require/Inject) | `pkg/feature/README.md` |
 | `pkg/moderate` | Content moderation (Classifier, 3-level action) | `pkg/moderate/README.md` |
 | `pkg/tangl` | TANGEUL markdown policy language: runtime, ast, en/ko codecs, validate, eval, effects, gen | see "TANGEUL — Markdown Policy Language" below |
-| `pkg/tangeul` | TANGEUL binary stream: the `.tangeul` SSOT the CLI operates on (load/save, AST+prose tiling, surface codecs) | `pkg/tangeul/README.md` |
+| `pkg/tangeul` | TANGEUL binary stream: the `.geul` SSOT the CLI operates on (load/save, AST+prose tiling, surface codecs) | `pkg/tangeul/README.md` |
 
 ## How to Navigate
 
@@ -414,7 +414,7 @@ this endpoint actually do" without executing anything. `checking` edges
 | `pkg/tangl` | runtime used by generated code: saga compensation + once guards | `Required(ctx, fields...) error`, `ErrRequired`, `InitCompensation(ctx)`, `PushCompensation(ctx, fn)`, `Compensate(ctx) error`, `CommitCompensation(ctx)`, `OnceDone(ctx, key) bool`, `OnceMark(ctx, key)`, `Review(ctx, cause, comp) error`, `ReviewError{Cause, Compensate}` |
 | `pkg/tangl/ast` | locale-independent AST types | `Document`, `Case`, `Node`, `InlineRule`, `Exec`, `Endpoint`, `Definition`, `Ref`, `Role` |
 | `pkg/tangl/parser` | markdown → AST | `Parse(path string) (*ast.Document, error)`, `ParseSource(src, path string) (*ast.Document, error)` |
-| `pkg/tangeul` | binary SSOT stream: `.tangeul` load/save + AST/prose tiling | `Load`, `Save`, `EqualIgnoringLine`; en/ko surface codecs implement `doc.Codec` (see `TANGEUL.en.md`, `TANGEUL.ko.md`) |
+| `pkg/tangeul` | binary SSOT stream: `.geul` load/save + AST/prose tiling | `Load`, `Save`, `EqualIgnoringLine`; en/ko surface codecs implement `doc.Codec` (see `TANGEUL.en.md`, `TANGEUL.ko.md`) |
 | `pkg/tangl/validate` | structural checks + advisories | `Validate(doc *ast.Document) error` (duplicate names, dangling refs, undo-without-do, checking/run/attack cycles — collects all violations), `Lint(doc *ast.Document) []string` (warns on unguarded `do` reachable from `tangl:Internal`) |
 | `pkg/tangl/effects` | static effect-summary analyzer | `Closure(doc *ast.Document, endpoint string) ([]Entry, error)`; `Entry{Kind, Func, Once, Case, Node}` |
 | `pkg/tangl/gen` | AST → Go source | `Generate`, `GenerateWithOptions` — definitions and materialized list Specs, rules, case graphs, endpoints, internal triggers, `gofmt`-ed |
@@ -458,46 +458,48 @@ Legacy Case-local `using`/`with`/`grounded on` remains readable only when no sam
 
 ### TANGEUL — the binary stream the CLI operates on
 
-Since Phase 007 the `tangl` CLI is **`.tangeul`-only**: it no longer parses
+Since Phase 007 the `tangl` CLI is **`.geul`-only**: it no longer parses
 `.md` directly. `tangl encode <file.md>` absorbs an authored markdown surface
-into a `.tangeul` stream (the `pkg/tangeul` package — AST + verbatim prose
-spans, locale-independent, the single source of truth), and every other
-subcommand (`check`/`ast`/`effects`/`gen`) loads that `.tangeul`. The authoring
+into a `.geul` file (the `pkg/tangeul` package — AST + verbatim prose
+spans, locale-independent, the single source of truth; the file is exactly one
+GEUL t002 DOC whose records follow the TOULMIN codec, see
+`pkg/tangeul/README.md` §Binary format), and every other
+subcommand (`check`/`ast`/`effects`/`gen`) loads that `.geul`. The authoring
 locale (en or ko) is auto-detected from the first `## tangl:` section header's
 keyword (English `Subject`/`Cases`/… vs Korean `주제`/`사안`/…) and resolved to
 the matching registered `doc.Codec`; the whole document is one locale. `tangl
 decode` renders a stream back to text — byte-identically (mode 1) or
 regenerated into a target locale (mode 2, `--locale en|ko`), so an EN-authored
-`.tangeul` can be rendered as a Korean audit surface and vice versa. Because the
+`.geul` can be rendered as a Korean audit surface and vice versa. Because the
 stream does not store authored line numbers, `check`-stage diagnostics
-normalize their `path:line` prefix to `<file>.tangeul:0`; structural errors
+normalize their `path:line` prefix to `<file>.geul:0`; structural errors
 caught during `encode` (e.g. section order) still carry the original `.md`
 line.
 
 ### Example
 
 ```
-$ tangl encode pkg/tangl/parser/testdata/transfer.md -o transfer.tangeul
+$ tangl encode pkg/tangl/parser/testdata/transfer.md -o transfer.geul
 
-$ tangl check transfer.tangeul
+$ tangl check transfer.geul
 ok
 
-$ tangl effects transfer.tangeul transfer
+$ tangl effects transfer.geul transfer
 do   bank.withdraw        once (can withdraw / balance sufficient)
 undo bank.refund               (can withdraw / balance sufficient)
 do   bank.deposit         once (can deposit / recipient valid)
 do   log.TransferComplete      (can deposit / recipient valid)
 
-$ tangl gen transfer.tangeul | head -10
+$ tangl gen transfer.geul | head -10
 // Code generated by tangl. DO NOT EDIT.
 
 package transfer
 
 import (
 	bank "bank/core"
-	tangl "github.com/park-jun-woo/toulmin/pkg/tangl"
-	log "github.com/park-jun-woo/toulmin/pkg/tangl/log"
-	toulmin "github.com/park-jun-woo/toulmin/pkg/toulmin"
+	tangl "github.com/park-jun-woo/toulmin/go/pkg/tangl"
+	log "github.com/park-jun-woo/toulmin/go/pkg/tangl/log"
+	toulmin "github.com/park-jun-woo/toulmin/go/pkg/toulmin"
 )
 ```
 
@@ -508,13 +510,13 @@ import (
 ```bash
 toulmin evaluate                              # run example
 
-tangl encode <file.md> [-o out.tangeul]       # absorb a .md surface into a .tangeul stream (locale auto-detected)
-tangl decode <file.tangeul> [--locale en|ko]  # render a stream back to text (default: mode-1 byte-identical; --locale: mode-2)
-tangl check <file.tangeul>                     # validate + lint; prints "ok" or errors, lint warnings go to stderr
-tangl ast <file.tangeul>                       # load and print the AST as indented JSON
-tangl effects <file.tangeul> <endpoint>        # print the static do/undo effect summary reachable from <endpoint>
-tangl effects <subject>.<endpoint> --dir DIR  # same, resolving <subject> by scanning DIR for a matching .tangeul (default DIR ".")
-tangl gen <file.tangeul> [-o out.go]           # generate Go source for <file.tangeul> (stdout, or -o/--out path)
+tangl encode <file.md> [-o out.geul]       # absorb a .md surface into a .geul stream (locale auto-detected)
+tangl decode <file.geul> [--locale en|ko]  # render a stream back to text (default: mode-1 byte-identical; --locale: mode-2)
+tangl check <file.geul>                     # validate + lint; prints "ok" or errors, lint warnings go to stderr
+tangl ast <file.geul>                       # load and print the AST as indented JSON
+tangl effects <file.geul> <endpoint>        # print the static do/undo effect summary reachable from <endpoint>
+tangl effects <subject>.<endpoint> --dir DIR  # same, resolving <subject> by scanning DIR for a matching .geul (default DIR ".")
+tangl gen <file.geul> [-o out.go]           # generate Go source for <file.geul> (stdout, or -o/--out path)
 ```
 
 ---
