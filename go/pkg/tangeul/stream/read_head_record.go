@@ -19,7 +19,7 @@ func readHeadRecord(h *headInfo, r core.Record) error {
 	switch r.Codec {
 	case core.MetaSpecVersion:
 		h.spec = true
-		return expectMetaText(r, core.CodecUTF8TextEven, toulmin.SpecVersion)
+		return expectSpecVersion(r)
 	case core.MetaProfile:
 		h.profile = true
 		s, err := metaText(r, core.CodecUTF8TextEven)

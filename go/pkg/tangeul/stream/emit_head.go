@@ -8,12 +8,12 @@ import (
 )
 
 // emitHead encodes the HEAD of a TANGEUL document (GEUL t002 TOULMIN 문서):
-// SPEC-VERSION and PROFILE as UTF8-TEXT Values, DEFAULT-LANGUAGE only when the
+// SPEC-VERSION as its bare unsigned integer, PROFILE as a UTF8-TEXT Value, DEFAULT-LANGUAGE only when the
 // authoring locale is known, then the BODY marker. No width is declared: Edge
 // Ids are LOCAL Reference records sized by their own Length. The Meta records
 // are a few words, so encoding them cannot fail.
 func emitHead(locale string) []core.Word {
-	out, _ := metaRecord(core.MetaSpecVersion, core.EncodeBytesValue(core.CodecUTF8TextEven, []byte(toulmin.SpecVersion)))
+	out, _ := core.EncodeRecord(core.EncodeSpecVersion(toulmin.SpecVersion))
 	prof, _ := metaRecord(core.MetaProfile, core.EncodeBytesValue(core.CodecUTF8TextEven, []byte(toulmin.ProfileString())))
 	out = append(out, prof...)
 	if locale != "" {

@@ -51,7 +51,7 @@ A `.geul` file is one GEUL t002 document (TOULMIN codec):
 
 ```
 DOC-1WORD/2WORD/4WORD   total length
-  SPEC-VERSION          "geul-t002"
+  SPEC-VERSION          0x0002
   PROFILE               "tangeul-<codebook major>.<minor>"
   [DEFAULT-LANGUAGE]    authoring locale (en/ko)
 BODY
