@@ -18,17 +18,9 @@ import (
 func emitBlock(e *enc, d *doc.Doc, b doc.Block) ([]core.Word, error) {
 	switch b.Kind {
 	case doc.ProseBlock:
-		return proseWords(e, b.Span)
+		return proseWords(e, b.Span), nil
 	case doc.SectionBlock:
-		sec, err := controlWords(e, toulmin.ControlSection, uint64(b.Ref.Sec), nil)
-		if err != nil {
-			return nil, err
-		}
-		pr, err := proseWords(e, b.Span)
-		if err != nil {
-			return nil, err
-		}
-		return append(sec, pr...), nil
+		return append(controlWords(e, toulmin.ControlSection, uint64(b.Ref.Sec), nil), proseWords(e, b.Span)...), nil
 	case doc.StmtBlock:
 		elem, err := doc.ResolveStmt(d, b.Ref)
 		if err != nil {

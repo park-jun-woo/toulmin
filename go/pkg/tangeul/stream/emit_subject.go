@@ -13,11 +13,7 @@ import (
 func emitSubject(e *enc, ref doc.StmtRef, elem any, span toulmin.Span) ([]core.Word, error) {
 	self := e.tt.byRef[tidKey(ref)]
 	var pre, body []core.Word
-	if err := appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeNamespace, Span: span}); err != nil {
-		return nil, err
-	}
-	if err := appendLabel(e, &pre, &body, self, elem.(string), span); err != nil {
-		return nil, err
-	}
+	appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeNamespace, Span: span})
+	appendLabel(e, &pre, &body, self, elem.(string), span)
 	return append(pre, body...), nil
 }

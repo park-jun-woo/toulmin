@@ -53,7 +53,6 @@ A `.geul` file is one GEUL t002 document (TOULMIN codec):
 DOC-1WORD/2WORD/4WORD   total length
   SPEC-VERSION          "geul-t002"
   PROFILE               "tangeul-<codebook major>.<minor>"
-  [ID-WIDTH]            Edge Id width, when not 1 word
   [DEFAULT-LANGUAGE]    authoring locale (en/ko)
 BODY
   SOURCE                authored bytes verbatim + SPAN width
@@ -66,8 +65,10 @@ END
   DO, DO-ONCE, UNDO, CHECKING, ENTRY, TRIGGER) or a GEUL ISSUER format number
   (`0xC000`+: SOURCE, TEXT, SECTION, CASE-BEGIN/END, PROSE, NAMESPACE, FUNC,
   FIELD, ALIAS, GROUP and the remaining relations).
-- Every record carries an Edge Id; references are Edge Ids. Field widths are
-  declared, not fixed: Edge Id width in Meta ID-WIDTH, SPAN width in SOURCE.
+- Every record carries an Edge Id; references are Edge Ids. Both are embedded
+  LOCAL Reference records (`0000 0LLL L100 0000` + id in minimal words), so no
+  id width is declared. The SPAN width is declared in SOURCE. `with`/`grounded
+  on` list counts are embedded UNSIGNED-INTEGER Values.
 - Verdict/qualifier are SIGNED-DECIMAL Values, the confidence gate an operator
   word plus an UNSIGNED-DECIMAL percent, strings UTF8-TEXT Values.
 - The former Free-area `.tangeul` framing (STREAM_HEADER, 16-bit TID, VFIX16,

@@ -1,21 +1,19 @@
 //ff:func feature=tangl type=util control=iteration dimension=1
-//ff:what TestWideIDRoundTrip — a document whose Edge Ids need 2 words declares ID-WIDTH and reads back identically
+//ff:what TestWideIDRoundTrip — Edge Ids past 0xFFFF encode as 2-word LOCAL References and read back identically
 package stream
 
 import (
+	"reflect"
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
-
-	"reflect"
-
 	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/geul/go/pkg/toulmin"
 )
 
 // TestWideIDRoundTrip shifts every pass-1 Edge Id of the transfer document past
-// 0xFFFF, encodes the BODY at a 2-word Edge Id width behind a HEAD that declares
-// ID-WIDTH, and checks ReadDoc rebuilds the same AST and blocks — the declared
-// width path end to end, without needing 65536 real records.
+// 0xFFFF, encodes the BODY (each LOCAL Reference then takes 2 id words) and
+// checks ReadDoc rebuilds the same AST and blocks — the wide-id path end to
+// end, without needing 65536 real records.
 func TestWideIDRoundTrip(t *testing.T) {
 	d := buildTransferDoc()
 	tt, err := assignTIDs(d)
@@ -28,15 +26,11 @@ func TestWideIDRoundTrip(t *testing.T) {
 		}
 	}
 	tt.primaryEnd += 0x10000
-	body, last, err := emitBody(d, tt, toulmin.Wire{ID: 2, Span: 1})
-	if err != nil || last <= 0xFFFF {
-		t.Fatalf("emitBody: last=%d err=%v", last, err)
-	}
-	head, err := emitHead(d.Locale, 2)
+	body, err := emitBody(d, tt, testWire)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("emitBody: %v", err)
 	}
-	ws := core.WrapDocument(append(append(head, body...), 0x180F))
+	ws := core.WrapDocument(append(append(emitHead(d.Locale), body...), 0x180F))
 	got, err := ReadDoc(core.PutWords(ws))
 	if err != nil {
 		t.Fatalf("ReadDoc: %v", err)

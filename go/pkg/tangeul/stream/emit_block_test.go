@@ -16,7 +16,6 @@ import (
 // (success, a ResolveStmt failure, and an oversized-span toWireSpan failure),
 // and the default unknown-BlockKind hard error.
 func TestEmitBlock(t *testing.T) {
-	e := testEnc(&tidTable{})
 	d := &doc.Doc{AST: &ast.Document{Subject: "sys"}}
 	small := doc.Span{Off: 0, Len: 3}
 	huge := doc.Span{Off: 0, Len: 0x10000}
@@ -35,7 +34,11 @@ func TestEmitBlock(t *testing.T) {
 		{"unknown kind", doc.Block{Kind: doc.BlockKind(99), Span: small}, true},
 	}
 	for _, c := range cases {
+		e := testEnc(&tidTable{})
 		got, err := emitBlock(e, d, c.b)
+		if err == nil {
+			err = e.err
+		}
 		if c.wantErr && err == nil {
 			t.Errorf("%s: expected error, got nil", c.name)
 		}
@@ -49,9 +52,4 @@ func TestEmitBlock(t *testing.T) {
 			t.Errorf("%s: expected non-empty words", c.name)
 		}
 	}
-
-	failsAtEachID(t, 2, nil, func(e *enc) error {
-		_, err := emitBlock(e, &doc.Doc{AST: &ast.Document{}}, doc.Block{Kind: doc.SectionBlock, Ref: doc.StmtRef{Sec: toulmin.SectionSubject}})
-		return err
-	})
 }

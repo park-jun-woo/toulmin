@@ -14,11 +14,7 @@ import (
 func emitCaseDecl(e *enc, ref doc.StmtRef, c ast.Case, span toulmin.Span) ([]core.Word, error) {
 	self := e.tt.byRef[tidKey(ref)]
 	var pre, body []core.Word
-	if err := appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeCase, Span: span}); err != nil {
-		return nil, err
-	}
-	if err := appendLabel(e, &pre, &body, self, c.Name, span); err != nil {
-		return nil, err
-	}
+	appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeCase, Span: span})
+	appendLabel(e, &pre, &body, self, c.Name, span)
 	return append(pre, body...), nil
 }

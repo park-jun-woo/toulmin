@@ -27,8 +27,6 @@ func emitSupersede(e *enc, ref doc.StmtRef, s ast.Supersede, span toulmin.Span) 
 		return nil, fmt.Errorf("tangeul/stream: supersede references undeclared node %q", s.Superseded)
 	}
 	var body []core.Word
-	if err := appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropSupersedes, Src: toulmin.TID(superseder), DstTID: toulmin.TID(superseded), Span: span}); err != nil {
-		return nil, err
-	}
+	appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropSupersedes, Src: toulmin.TID(superseder), DstTID: toulmin.TID(superseded), Span: span})
 	return body, nil
 }

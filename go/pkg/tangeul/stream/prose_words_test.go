@@ -13,15 +13,12 @@ import (
 // TestProseWords checks the PROSE record carries the span, and that a span past
 // the declared 1-word SPAN width is an error rather than a truncation.
 func TestProseWords(t *testing.T) {
-	got, err := proseWords(testEnc(nil), doc.Span{Off: 10, Len: 20})
-	if err != nil {
-		t.Fatalf("proseWords: %v", err)
-	}
-	cps := controlsOf(t, got)
+	cps := controlsOf(t, proseWords(testEnc(nil), doc.Span{Off: 10, Len: 20}))
 	if len(cps) != 1 || cps[0].Code != toulmin.ControlProse || cps[0].Span == nil || cps[0].Span.Off != 10 || cps[0].Span.Len != 20 {
 		t.Fatalf("got %+v, want one PROSE 10+20", cps)
 	}
-	if _, err := proseWords(testEnc(nil), doc.Span{Off: 0x10000, Len: 1}); err == nil {
-		t.Fatal("span past the SPAN width: want error")
+	e := testEnc(nil)
+	if ws := proseWords(e, doc.Span{Off: 0x10000, Len: 1}); ws != nil || e.err == nil {
+		t.Fatal("span past the SPAN width: want a recorded error")
 	}
 }

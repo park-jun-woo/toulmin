@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/geul-org/geul/go/pkg/toulmin"
-	"github.com/park-jun-woo/toulmin/go/pkg/tangeul/doc"
 )
 
 // TestEmitCaseEdge covers both emitCaseEdge branches: an undeclared case name
@@ -41,11 +40,4 @@ func TestEmitCaseEdge(t *testing.T) {
 			t.Errorf("%s: expected non-empty words", c.name)
 		}
 	}
-
-	ceTT := nodeTT(doc.StmtRef{}, 0)
-	ceTT.caseByName["c"] = 2
-	failsAtEachID(t, 1, ceTT, func(e *enc) error {
-		_, err := emitCaseEdge(e, toulmin.PropRuns, 1, "c", toulmin.Span{})
-		return err
-	})
 }

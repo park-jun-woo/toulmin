@@ -10,7 +10,7 @@ import (
 
 // proseWords encodes a PROSE record carrying s. It backs both standalone prose
 // blocks and the heading span that follows a SECTION.
-func proseWords(e *enc, s doc.Span) ([]core.Word, error) {
+func proseWords(e *enc, s doc.Span) []core.Word {
 	ws := toWireSpan(s)
 	return controlWords(e, toulmin.ControlProse, 0, &ws)
 }

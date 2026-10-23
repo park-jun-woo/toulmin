@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=util control=iteration dimension=1
-//ff:what TestAppendNode — a valid Node appends its words to body; an unencodable Node errors and leaves body untouched
+//ff:what TestAppendNode — a valid Node appends its words to body; an unencodable Node records an error and leaves body untouched
 package stream
 
 import (
@@ -26,9 +26,10 @@ func TestAppendNode(t *testing.T) {
 	run := func(t *testing.T, i int) {
 		c := cases[i]
 		var body []core.Word
-		err := appendNode(testEnc(nil), &body, c.p)
+		e := testEnc(nil)
+		appendNode(e, &body, c.p)
 		if c.wantErr {
-			if err == nil {
+			if e.err == nil {
 				t.Fatalf("want error, got nil")
 			}
 			if len(body) != 0 {
@@ -36,8 +37,8 @@ func TestAppendNode(t *testing.T) {
 			}
 			return
 		}
-		if err != nil {
-			t.Fatalf("appendNode: %v", err)
+		if e.err != nil {
+			t.Fatalf("appendNode: %v", e.err)
 		}
 		want, err := toulmin.EncodeNode(c.p, testWire)
 		if err != nil {

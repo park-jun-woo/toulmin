@@ -9,9 +9,9 @@ import (
 
 // closeCase emits a CASE_END for a case left open when the Blocks walk ends (the
 // last section was Cases), so every CASE_BEGIN is balanced.
-func closeCase(e *enc, st *caseState) ([]core.Word, error) {
+func closeCase(e *enc, st *caseState) []core.Word {
 	if !st.open {
-		return nil, nil
+		return nil
 	}
 	return controlWords(e, toulmin.ControlCaseEnd, uint64(st.tid), nil)
 }

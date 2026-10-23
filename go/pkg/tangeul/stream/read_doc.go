@@ -10,7 +10,7 @@ import (
 
 // ReadDoc parses b, which must be exactly one GEUL t002 document, into a Doc —
 // the inverse of WriteDoc. It validates the DOC container, reads the HEAD (spec,
-// profile, Edge Id width, locale), lifts the SOURCE record, then walks the
+// profile, locale), lifts the SOURCE record, then walks the
 // remaining records: framing controls (handleControl) place prose, sections and
 // case membership, and each statement group rebuilds one AST element. Forward
 // case-name references are patched once all names are known.
@@ -31,11 +31,11 @@ func ReadDoc(b []byte) (*doc.Doc, error) {
 	if err != nil {
 		return nil, err
 	}
-	src, spanWidth, err := readPreamble(packets, h.idWidth)
+	src, spanWidth, err := readPreamble(packets)
 	if err != nil {
 		return nil, err
 	}
-	d := newDec(toulmin.Wire{ID: h.idWidth, Span: spanWidth})
+	d := newDec(toulmin.Wire{Span: spanWidth})
 	if err := claimID(d, src.TID); err != nil {
 		return nil, err
 	}

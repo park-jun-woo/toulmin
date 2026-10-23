@@ -19,12 +19,8 @@ import (
 func emitTermDecl(e *enc, ref doc.StmtRef, d ast.Definition, span toulmin.Span) ([]core.Word, error) {
 	self := e.tt.byRef[tidKey(ref)]
 	var pre, body []core.Word
-	if err := appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeTerm, Role: toulmin.RoleCode(d.Kind), Span: span}); err != nil {
-		return nil, err
-	}
-	if err := appendLabel(e, &pre, &body, self, d.Name, span); err != nil {
-		return nil, err
-	}
+	appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeTerm, Role: toulmin.RoleCode(d.Kind), Span: span})
+	appendLabel(e, &pre, &body, self, d.Name, span)
 	if d.Kind == ast.StructDef {
 		return append(pre, body...), nil
 	}
@@ -40,21 +36,14 @@ func emitTermDecl(e *enc, ref doc.StmtRef, d ast.Definition, span toulmin.Span) 
 		}{d.LoadType, d.FilePath}) // two strings always marshal
 		value = string(encoded)
 	}
-	valTID, err := addText(e, &pre, value)
-	if err != nil {
-		return nil, err
-	}
-	if err := appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropMeans, Src: toulmin.TID(self), DstTID: toulmin.TID(valTID), Span: span}); err != nil {
-		return nil, err
-	}
+	valTID := addText(e, &pre, value)
+	appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropMeans, Src: toulmin.TID(self), DstTID: toulmin.TID(valTID), Span: span})
 	if d.Kind == ast.ConstDef && d.SpecRef != nil {
 		fTID, err := emitFuncRef(e, &pre, &body, *d.SpecRef, span)
 		if err != nil {
 			return nil, err
 		}
-		if err := appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropSameAs, Src: toulmin.TID(self), DstTID: toulmin.TID(fTID), Span: span}); err != nil {
-			return nil, err
-		}
+		appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropSameAs, Src: toulmin.TID(self), DstTID: toulmin.TID(fTID), Span: span})
 	}
 	return append(pre, body...), nil
 }

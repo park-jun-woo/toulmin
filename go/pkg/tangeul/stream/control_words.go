@@ -9,6 +9,9 @@ import (
 
 // controlWords encodes a framing record with a fresh Edge Id: CASE-BEGIN /
 // CASE-END carry the case Edge Id in arg, SECTION a section code, PROSE a span.
-func controlWords(e *enc, code toulmin.ControlCode, arg uint64, span *toulmin.Span) ([]core.Word, error) {
-	return toulmin.EncodeControl(toulmin.ControlPacket{ID: issueID(e), Code: code, Arg: arg, Span: span}, e.wire)
+// An encoding error is recorded on e (setErr) and no words are returned.
+func controlWords(e *enc, code toulmin.ControlCode, arg uint64, span *toulmin.Span) []core.Word {
+	ws, err := toulmin.EncodeControl(toulmin.ControlPacket{ID: issueID(e), Code: code, Arg: arg, Span: span}, e.wire)
+	setErr(e, err)
+	return ws
 }

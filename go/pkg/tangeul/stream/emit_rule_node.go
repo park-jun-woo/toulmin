@@ -52,11 +52,7 @@ func emitRuleNode(e *enc, ref doc.StmtRef, n ast.Node, span toulmin.Span) ([]cor
 		p.Flags |= toulmin.NodeFlagQual
 		p.Qual = &v
 	}
-	if err := appendNode(e, &body, p); err != nil {
-		return nil, err
-	}
-	if err := appendLabel(e, &pre, &body, self, n.Name, span); err != nil {
-		return nil, err
-	}
+	appendNode(e, &body, p)
+	appendLabel(e, &pre, &body, self, n.Name, span)
 	return append(pre, body...), nil
 }

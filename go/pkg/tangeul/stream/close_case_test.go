@@ -8,17 +8,11 @@ import (
 	"github.com/geul-org/geul/go/pkg/toulmin"
 )
 
-// TestCloseCase checks the closed state yields nothing and the open state a
-// single CASE-END carrying the open case's Edge Id.
 func TestCloseCase(t *testing.T) {
-	if got, err := closeCase(testEnc(nil), &caseState{}); err != nil || got != nil {
-		t.Fatalf("closed: got %v %v, want nil", got, err)
+	if got := closeCase(testEnc(nil), &caseState{}); got != nil {
+		t.Fatalf("closed: got %v, want nil", got)
 	}
-	got, err := closeCase(testEnc(nil), &caseState{open: true, tid: 7})
-	if err != nil {
-		t.Fatal(err)
-	}
-	cps := controlsOf(t, got)
+	cps := controlsOf(t, closeCase(testEnc(nil), &caseState{open: true, tid: 7}))
 	if len(cps) != 1 || cps[0].Code != toulmin.ControlCaseEnd || cps[0].Arg != 7 {
 		t.Fatalf("open: got %+v, want CASE-END 7", cps)
 	}

@@ -48,11 +48,4 @@ func TestEmitSupersede(t *testing.T) {
 			t.Errorf("%s: expected non-empty words", c.name)
 		}
 	}
-
-	supTT := nodeTT(doc.StmtRef{}, 0)
-	supTT.nodeByCase[nodeKey(0, "a")], supTT.nodeByCase[nodeKey(0, "b")] = 1, 2
-	failsAtEachID(t, 1, supTT, func(e *enc) error {
-		_, err := emitSupersede(e, doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{0, 4, 0}}, ast.Supersede{Superseder: "a", Superseded: "b"}, toulmin.Span{})
-		return err
-	})
 }

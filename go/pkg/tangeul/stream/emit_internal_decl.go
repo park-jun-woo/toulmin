@@ -19,24 +19,18 @@ import (
 func emitInternalDecl(e *enc, ref doc.StmtRef, in ast.Internal, span toulmin.Span) ([]core.Word, error) {
 	self := e.tt.byRef[tidKey(ref)]
 	var pre, body []core.Word
-	if err := appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeTrigger, Role: toulmin.RoleCode(in.Kind), Span: span}); err != nil {
-		return nil, err
-	}
+	appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeTrigger, Role: toulmin.RoleCode(in.Kind), Span: span})
 	head := in.Event
 	if in.Kind == ast.EveryTick {
 		head = in.Interval
 	}
-	if err := appendLabel(e, &pre, &body, self, head, span); err != nil {
-		return nil, err
-	}
+	appendLabel(e, &pre, &body, self, head, span)
 	if in.Kind == ast.EveryTick && in.Until != "" {
 		dst, ok := e.tt.caseByName[in.Until]
 		if !ok {
 			return nil, fmt.Errorf("tangeul/stream: internal until references undeclared case %q", in.Until)
 		}
-		if err := appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropUntil, Src: toulmin.TID(self), DstTID: toulmin.TID(dst), Span: span}); err != nil {
-			return nil, err
-		}
+		appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropUntil, Src: toulmin.TID(self), DstTID: toulmin.TID(dst), Span: span})
 	}
 	return append(pre, body...), nil
 }

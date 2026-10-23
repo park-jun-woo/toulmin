@@ -16,18 +16,9 @@ func emitSee(e *enc, ref doc.StmtRef, elem any, span toulmin.Span) ([]core.Word,
 	self := e.tt.byRef[tidKey(ref)]
 	see := elem.(ast.See)
 	var pre, body []core.Word
-	if err := appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeAlias, Span: span}); err != nil {
-		return nil, err
-	}
-	if err := appendLabel(e, &pre, &body, self, see.Alias, span); err != nil {
-		return nil, err
-	}
-	pathTID, err := addText(e, &pre, see.Package)
-	if err != nil {
-		return nil, err
-	}
-	if err := appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropImportedFrom, Src: toulmin.TID(self), DstTID: toulmin.TID(pathTID), Span: span}); err != nil {
-		return nil, err
-	}
+	appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeAlias, Span: span})
+	appendLabel(e, &pre, &body, self, see.Alias, span)
+	pathTID := addText(e, &pre, see.Package)
+	appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropImportedFrom, Src: toulmin.TID(self), DstTID: toulmin.TID(pathTID), Span: span})
 	return append(pre, body...), nil
 }

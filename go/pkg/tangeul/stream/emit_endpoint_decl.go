@@ -15,11 +15,7 @@ import (
 func emitEndpointDecl(e *enc, ref doc.StmtRef, ep ast.Endpoint, span toulmin.Span) ([]core.Word, error) {
 	self := e.tt.byRef[tidKey(ref)]
 	var pre, body []core.Word
-	if err := appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeEndpoint, Span: span}); err != nil {
-		return nil, err
-	}
-	if err := appendLabel(e, &pre, &body, self, ep.Name, span); err != nil {
-		return nil, err
-	}
+	appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeEndpoint, Span: span})
+	appendLabel(e, &pre, &body, self, ep.Name, span)
 	return append(pre, body...), nil
 }

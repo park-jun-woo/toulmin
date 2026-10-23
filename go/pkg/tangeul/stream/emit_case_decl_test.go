@@ -28,13 +28,4 @@ func TestEmitCaseDecl(t *testing.T) {
 	if len(got) == 0 {
 		t.Error("expected non-empty words")
 	}
-
-	caseRef := doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{0}}
-	if _, err := emitCaseDecl(testEnc(nodeTT(caseRef, 0x10000)), caseRef, ast.Case{Name: "c"}, toulmin.Span{}); err == nil {
-		t.Fatal("node id overflow: want error")
-	}
-	failsAtEachID(t, 2, nodeTT(caseRef, 1), func(e *enc) error {
-		_, err := emitCaseDecl(e, caseRef, ast.Case{Name: "c"}, toulmin.Span{})
-		return err
-	})
 }

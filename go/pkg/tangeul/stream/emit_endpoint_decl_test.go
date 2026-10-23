@@ -28,13 +28,4 @@ func TestEmitEndpointDecl(t *testing.T) {
 	if len(got) == 0 {
 		t.Error("expected non-empty words")
 	}
-
-	epRef := doc.StmtRef{Sec: toulmin.SectionProvides, Path: []int{0}}
-	if _, err := emitEndpointDecl(testEnc(nodeTT(epRef, 0x10000)), epRef, ast.Endpoint{Name: "p"}, toulmin.Span{}); err == nil {
-		t.Fatal("node id overflow: want error")
-	}
-	failsAtEachID(t, 2, nodeTT(epRef, 1), func(e *enc) error {
-		_, err := emitEndpointDecl(e, epRef, ast.Endpoint{Name: "p"}, toulmin.Span{})
-		return err
-	})
 }

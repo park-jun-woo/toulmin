@@ -59,16 +59,4 @@ func TestEmitInternalDecl(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) { check(t, c.in, c.wantErr) })
 	}
-
-	inRef := doc.StmtRef{Sec: toulmin.SectionInternal, Path: []int{0}}
-	tick := ast.Internal{Kind: ast.EveryTick, Interval: "30s", Until: "c"}
-	if _, err := emitInternalDecl(testEnc(nodeTT(inRef, 0x10000)), inRef, tick, toulmin.Span{}); err == nil {
-		t.Fatal("node id overflow: want error")
-	}
-	ovTT := nodeTT(inRef, 1)
-	ovTT.caseByName["c"] = 2
-	failsAtEachID(t, 3, ovTT, func(e *enc) error {
-		_, err := emitInternalDecl(e, inRef, tick, toulmin.Span{})
-		return err
-	})
 }

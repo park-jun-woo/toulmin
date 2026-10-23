@@ -37,12 +37,4 @@ func TestEmitRequire(t *testing.T) {
 			}
 		})
 	}
-
-	if _, err := emitRequire(testEnc(nil), ast.Require{Field: "f"}, 0x10000, 1, toulmin.Span{}); err == nil {
-		t.Fatal("node id overflow: want error")
-	}
-	failsAtEachID(t, 5, nil, func(e *enc) error {
-		_, err := emitRequire(e, ast.Require{Field: "f", Type: "Text"}, 1, 2, toulmin.Span{})
-		return err
-	})
 }

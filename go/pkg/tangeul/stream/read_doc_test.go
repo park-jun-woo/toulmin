@@ -15,7 +15,7 @@ import (
 // SOURCE with Edge Id 0 (rejected by claimID).
 func TestReadDoc(t *testing.T) {
 	build := func(src toulmin.TID, extra ...core.Word) []byte {
-		head, _ := emitHead("en", 1)
+		head := emitHead("en")
 		sw, _ := toulmin.EncodeSource(toulmin.TextPacket{TID: src, Bytes: []byte("x")}, testWire)
 		ws := core.WrapDocument(append(append(append(head, sw...), extra...), 0x180F))
 		return core.PutWords(ws)
@@ -32,7 +32,7 @@ func TestReadDoc(t *testing.T) {
 		t.Fatal("SOURCE Edge Id 0: want error")
 	}
 
-	head, _ := emitHead("", 1)
+	head := emitHead("")
 	tw, _ := toulmin.EncodeText(toulmin.TextPacket{TID: 1}, testWire)
 	noSource := core.WrapDocument(append(append(head, tw...), 0x180F))
 	if _, err := ReadDoc(core.PutWords(noSource)); err == nil {

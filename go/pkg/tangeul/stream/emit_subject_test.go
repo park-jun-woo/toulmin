@@ -26,13 +26,4 @@ func TestEmitSubject(t *testing.T) {
 	if len(got) == 0 {
 		t.Errorf("emitSubject: expected non-empty words")
 	}
-
-	subRef := doc.StmtRef{Sec: toulmin.SectionSubject}
-	if _, err := emitSubject(testEnc(nodeTT(subRef, 0x10000)), subRef, "s", toulmin.Span{}); err == nil {
-		t.Fatal("node id overflow: want error")
-	}
-	failsAtEachID(t, 2, nodeTT(subRef, 1), func(e *enc) error {
-		_, err := emitSubject(e, subRef, "s", toulmin.Span{})
-		return err
-	})
 }

@@ -11,7 +11,7 @@ import (
 )
 
 // docPackets parses b (WriteDoc output) down to its classified BODY records and
-// returns them with a fresh reader state at the document's widths, as ReadDoc
+// returns them with a fresh reader state at the document's SPAN width, as ReadDoc
 // would have them before walking statements.
 func docPackets(t *testing.T, b []byte) (*dec, []rawPacket) {
 	t.Helper()
@@ -23,17 +23,16 @@ func docPackets(t *testing.T, b []byte) (*dec, []rawPacket) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, err := readHead(gd.Head)
-	if err != nil {
+	if _, err := readHead(gd.Head); err != nil {
 		t.Fatal(err)
 	}
 	packets, err := readPackets(gd.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, sw, err := readPreamble(packets, h.idWidth)
+	_, sw, err := readPreamble(packets)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return newDec(toulmin.Wire{ID: h.idWidth, Span: sw}), packets
+	return newDec(toulmin.Wire{Span: sw}), packets
 }

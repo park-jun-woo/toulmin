@@ -26,8 +26,6 @@ func emitAttack(e *enc, ref doc.StmtRef, a ast.Attack, span toulmin.Span) ([]cor
 		return nil, fmt.Errorf("tangeul/stream: attack references undeclared node %q", a.Target)
 	}
 	var body []core.Word
-	if err := appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropAttacks, Src: toulmin.TID(attacker), DstTID: toulmin.TID(target), Span: span}); err != nil {
-		return nil, err
-	}
+	appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropAttacks, Src: toulmin.TID(attacker), DstTID: toulmin.TID(target), Span: span})
 	return body, nil
 }

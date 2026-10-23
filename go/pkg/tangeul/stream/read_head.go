@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=util control=iteration dimension=1
-//ff:what readHead — validate a TANGEUL HEAD (spec, profile, ID-WIDTH, language) and extract its settings
+//ff:what readHead — validate a TANGEUL HEAD (spec, profile, language) and extract its settings
 package stream
 
 import (
@@ -12,7 +12,7 @@ import (
 // SPEC-VERSION and PROFILE, so a document of another spec or profile is
 // rejected before its BODY is read.
 func readHead(head []core.Record) (headInfo, error) {
-	h := headInfo{idWidth: 1}
+	var h headInfo
 	for _, r := range head {
 		if err := readHeadRecord(&h, r); err != nil {
 			return headInfo{}, err

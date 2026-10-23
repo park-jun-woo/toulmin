@@ -49,8 +49,6 @@ func emitExecStmt(e *enc, ref doc.StmtRef, x ast.Exec, span toulmin.Span) ([]cor
 		}
 		ep.DstTID = toulmin.TID(dst)
 	}
-	if err := appendEdge(e, &body, ep); err != nil {
-		return nil, err
-	}
+	appendEdge(e, &body, ep)
 	return append(pre, body...), nil
 }

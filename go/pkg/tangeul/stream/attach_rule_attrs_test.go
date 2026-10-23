@@ -24,9 +24,8 @@ func TestAttachRuleAttrs(t *testing.T) {
 	if err := attachRuleAttrs(testEnc(nil), &pre, &body, nil, nil, nil, toulmin.Span{}, &none); err != nil || none.Flags != 0 {
 		t.Fatalf("no attrs: %+v %v", none, err)
 	}
-	// Issues: FUNC name TEXT, FUNC node, LABEL, with TEXT, grounds TEXT.
-	failsAtEachID(t, 5, nil, func(e *enc) error {
-		var q toulmin.NodePacket
-		return attachRuleAttrs(e, &pre, &body, &ast.Ref{Name: "f"}, []string{"w"}, []string{"g"}, toulmin.Span{}, &q)
-	})
+	var q toulmin.NodePacket
+	if err := attachRuleAttrs(testEnc(&tidTable{}), &pre, &body, &ast.Ref{Alias: "missing", Name: "f"}, nil, nil, toulmin.Span{}, &q); err == nil {
+		t.Fatal("undeclared alias: want error")
+	}
 }

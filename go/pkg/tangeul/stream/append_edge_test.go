@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=util control=iteration dimension=1
-//ff:what TestAppendEdge — a valid Edge appends its words to body; an unencodable Edge errors and leaves body untouched
+//ff:what TestAppendEdge — a valid Edge appends its words to body; an unencodable Edge records an error and leaves body untouched
 package stream
 
 import (
@@ -26,9 +26,10 @@ func TestAppendEdge(t *testing.T) {
 	run := func(t *testing.T, i int) {
 		c := cases[i]
 		var body []core.Word
-		err := appendEdge(testEnc(nil), &body, c.ep)
+		e := testEnc(nil)
+		appendEdge(e, &body, c.ep)
 		if c.wantErr {
-			if err == nil {
+			if e.err == nil {
 				t.Fatalf("want error, got nil")
 			}
 			if len(body) != 0 {
@@ -36,8 +37,8 @@ func TestAppendEdge(t *testing.T) {
 			}
 			return
 		}
-		if err != nil {
-			t.Fatalf("appendEdge: %v", err)
+		if e.err != nil {
+			t.Fatalf("appendEdge: %v", e.err)
 		}
 		want, err := toulmin.EncodeEdge(c.ep, testWire)
 		if err != nil {

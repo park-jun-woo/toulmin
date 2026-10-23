@@ -26,24 +26,15 @@ func emitFuncRef(e *enc, prefix, body *[]core.Word, ref ast.Ref, span toulmin.Sp
 		}
 		aliasTID = t
 	}
-	nameTID, err := addText(e, prefix, ref.Name)
-	if err != nil {
-		return 0, err
-	}
+	nameTID := addText(e, prefix, ref.Name)
 	fTID := issueID(e)
-	node, err := toulmin.EncodeNode(toulmin.NodePacket{
+	appendNode(e, body, toulmin.NodePacket{
 		TID:   toulmin.TID(fTID),
 		Type:  toulmin.NodeFunc,
 		Flags: toulmin.NodeFlagFunc,
 		Func:  &toulmin.FuncRef{Alias: toulmin.TID(aliasTID)},
 		Span:  span,
-	}, e.wire)
-	if err != nil {
-		return 0, err
-	}
-	*body = append(*body, node...)
-	if err := appendEdge(e, body, toulmin.EdgePacket{Prop: toulmin.PropLabel, Src: fTID, DstTID: nameTID, Span: span}); err != nil {
-		return 0, err
-	}
+	})
+	appendEdge(e, body, toulmin.EdgePacket{Prop: toulmin.PropLabel, Src: fTID, DstTID: nameTID, Span: span})
 	return fTID, nil
 }

@@ -17,15 +17,11 @@ import (
 // case open with the block the same case (no-op, case stays open). Each
 // scenario asserts distinct setup/output, so the test itself selects.
 func TestTransitionCase(t *testing.T) {
-	// run invokes transitionCase against the fixture tidTable, failing the
-	// subtest on an unexpected error.
+	// run invokes transitionCase against the fixture tidTable and decodes the
+	// controls it emits.
 	run := func(t *testing.T, st *caseState, b doc.Block) []toulmin.ControlPacket {
 		t.Helper()
-		out, err := transitionCase(testEnc(transitionCaseTT()), st, b)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		return controlsOf(t, out)
+		return controlsOf(t, transitionCase(testEnc(transitionCaseTT()), st, b))
 	}
 	ctl := func(code toulmin.ControlCode, arg uint64) toulmin.ControlPacket {
 		return toulmin.ControlPacket{Code: code, Arg: arg}
@@ -111,8 +107,4 @@ func TestTransitionCase(t *testing.T) {
 		}
 	})
 
-	failsAtEachID(t, 2, transitionCaseTT(), func(e *enc) error {
-		_, err := transitionCase(e, &caseState{open: true, idx: 0, tid: 100}, doc.Block{Kind: doc.StmtBlock, Ref: doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{1}}})
-		return err
-	})
 }

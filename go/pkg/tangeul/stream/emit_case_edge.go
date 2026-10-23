@@ -19,8 +19,6 @@ func emitCaseEdge(e *enc, prop toulmin.PropCode, owner toulmin.TID, target strin
 		return nil, fmt.Errorf("tangeul/stream: edge references undeclared case %q", target)
 	}
 	var body []core.Word
-	if err := appendEdge(e, &body, toulmin.EdgePacket{Prop: prop, Src: toulmin.TID(owner), DstTID: toulmin.TID(dst), Span: span}); err != nil {
-		return nil, err
-	}
+	appendEdge(e, &body, toulmin.EdgePacket{Prop: prop, Src: toulmin.TID(owner), DstTID: toulmin.TID(dst), Span: span})
 	return body, nil
 }

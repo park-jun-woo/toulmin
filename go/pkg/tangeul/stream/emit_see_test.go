@@ -28,14 +28,4 @@ func TestEmitSee(t *testing.T) {
 	if len(got) == 0 {
 		t.Errorf("emitSee: expected non-empty words")
 	}
-
-	seeRef := doc.StmtRef{Sec: toulmin.SectionSee, Path: []int{0}}
-	ovSee := ast.See{Alias: "bank", Package: "example.com/bank"}
-	if _, err := emitSee(testEnc(nodeTT(seeRef, 0x10000)), seeRef, ovSee, toulmin.Span{}); err == nil {
-		t.Fatal("node id overflow: want error")
-	}
-	failsAtEachID(t, 4, nodeTT(seeRef, 1), func(e *enc) error {
-		_, err := emitSee(e, seeRef, ovSee, toulmin.Span{})
-		return err
-	})
 }

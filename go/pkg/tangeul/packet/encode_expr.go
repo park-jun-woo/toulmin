@@ -16,11 +16,7 @@ func EncodeExpr(p ExprPacket, w toulmin.Wire) ([]core.Word, error) {
 	if err != nil {
 		return nil, err
 	}
-	body, err := toulmin.PutID(nil, p.ID, w.ID)
-	if err != nil {
-		return nil, err
-	}
-	body = append(body, core.Word(count))
+	body := append(toulmin.PutID(nil, p.ID), core.Word(count))
 	lw, err := encodeLabels(labels)
 	if err != nil {
 		return nil, err

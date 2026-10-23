@@ -15,17 +15,9 @@ func emitStructField(e *enc, ref doc.StmtRef, f ast.Field, span toulmin.Span) ([
 	self := e.tt.byRef[tidKey(ref)]
 	termTID := e.tt.byRef[tidKey(doc.StmtRef{Sec: toulmin.SectionDefinitions, Path: ref.Path[:1]})]
 	var pre, body []core.Word
-	if err := appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeField, Span: span}); err != nil {
-		return nil, err
-	}
-	if err := appendLabel(e, &pre, &body, self, f.Name, span); err != nil {
-		return nil, err
-	}
-	if err := appendLabel(e, &pre, &body, self, f.Type, span); err != nil {
-		return nil, err
-	}
-	if err := appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropHas, Src: toulmin.TID(termTID), DstTID: toulmin.TID(self), Span: span}); err != nil {
-		return nil, err
-	}
+	appendNode(e, &body, toulmin.NodePacket{TID: toulmin.TID(self), Type: toulmin.NodeField, Span: span})
+	appendLabel(e, &pre, &body, self, f.Name, span)
+	appendLabel(e, &pre, &body, self, f.Type, span)
+	appendEdge(e, &body, toulmin.EdgePacket{Prop: toulmin.PropHas, Src: toulmin.TID(termTID), DstTID: toulmin.TID(self), Span: span})
 	return append(pre, body...), nil
 }

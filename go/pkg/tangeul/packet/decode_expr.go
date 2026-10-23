@@ -23,7 +23,7 @@ func DecodeExpr(r core.Record, w toulmin.Wire) (ExprPacket, error) {
 		return ExprPacket{}, errors.New("tangeul/packet: record is not a PREDICATE-DECLARE")
 	}
 	ws, pos := r.Payload, 0
-	id, err := toulmin.TakeID(ws, &pos, w.ID)
+	id, err := toulmin.TakeID(ws, &pos)
 	if err != nil {
 		return ExprPacket{}, err
 	}

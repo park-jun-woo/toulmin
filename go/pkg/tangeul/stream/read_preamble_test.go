@@ -13,20 +13,20 @@ import (
 // TestReadPreamble covers an empty BODY, a BODY not opened by SOURCE, a SOURCE
 // that fails to decode, and the success path with a 2-word SPAN width.
 func TestReadPreamble(t *testing.T) {
-	sw, _ := toulmin.EncodeSource(toulmin.TextPacket{TID: 1, Bytes: []byte("hello")}, toulmin.Wire{ID: 1, Span: 2})
+	sw, _ := toulmin.EncodeSource(toulmin.TextPacket{TID: 1, Bytes: []byte("hello")}, toulmin.Wire{Span: 2})
 	src := rawOf(t, sw)
-	if _, _, err := readPreamble(nil, 1); err == nil {
+	if _, _, err := readPreamble(nil); err == nil {
 		t.Fatal("empty BODY: want error")
 	}
 	tw, _ := toulmin.EncodeText(toulmin.TextPacket{TID: 1}, testWire)
-	if _, _, err := readPreamble([]rawPacket{rawOf(t, tw)}, 1); err == nil {
+	if _, _, err := readPreamble([]rawPacket{rawOf(t, tw)}); err == nil {
 		t.Fatal("BODY opened by TEXT: want error")
 	}
 	bad := rawPacket{Class: classSource, Rec: core.Record{Kind: core.KindEdge, Codec: core.CodecIssuer1Word, Issuer: []core.Word{0}, Format: toulmin.FormatSource}}
-	if _, _, err := readPreamble([]rawPacket{bad}, 1); err == nil {
+	if _, _, err := readPreamble([]rawPacket{bad}); err == nil {
 		t.Fatal("malformed SOURCE: want error")
 	}
-	got, w, err := readPreamble([]rawPacket{src}, 1)
+	got, w, err := readPreamble([]rawPacket{src})
 	if err != nil || string(got.Bytes) != "hello" || w != 2 {
 		t.Fatalf("got %q %d %v", got.Bytes, w, err)
 	}

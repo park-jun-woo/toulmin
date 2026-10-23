@@ -59,11 +59,4 @@ func TestEmitExecStmt(t *testing.T) {
 			t.Errorf("%s: expected non-empty words", c.name)
 		}
 	}
-
-	exTT := nodeTT(doc.StmtRef{}, 0)
-	exTT.nodeByCase[nodeKey(0, "n")], exTT.caseByName["c"] = 1, 2
-	failsAtEachID(t, 1, exTT, func(e *enc) error {
-		_, err := emitExecStmt(e, doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{0, 3, 0}}, ast.Exec{Kind: ast.RunExec, Node: "n", Case: "c"}, toulmin.Span{})
-		return err
-	})
 }

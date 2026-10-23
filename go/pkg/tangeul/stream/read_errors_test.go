@@ -26,7 +26,7 @@ func TestReadErrors(t *testing.T) {
 		ws := core.WrapDocument(append(inner, 0x180F))
 		return core.PutWords(ws)
 	}
-	head, _ := emitHead("", 1)
+	head := emitHead("")
 	bad := map[string][]byte{
 		"empty":         nil,
 		"odd length":    b[:len(b)-1],

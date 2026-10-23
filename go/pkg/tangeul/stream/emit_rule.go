@@ -30,11 +30,7 @@ func emitRule(e *enc, ref doc.StmtRef, elem any, span toulmin.Span) ([]core.Word
 	if err := attachRuleAttrs(e, &pre, &body, rule.Using, rule.With, rule.Grounds, span, &p); err != nil {
 		return nil, err
 	}
-	if err := appendNode(e, &body, p); err != nil {
-		return nil, err
-	}
-	if err := appendLabel(e, &pre, &body, self, rule.Name, span); err != nil {
-		return nil, err
-	}
+	appendNode(e, &body, p)
+	appendLabel(e, &pre, &body, self, rule.Name, span)
 	return append(pre, body...), nil
 }

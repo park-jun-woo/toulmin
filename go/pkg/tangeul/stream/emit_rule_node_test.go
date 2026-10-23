@@ -93,11 +93,4 @@ func TestEmitRuleNode(t *testing.T) {
 			t.Fatalf("%+v: want error", n)
 		}
 	}
-	if _, err := emitRuleNode(testEnc(nodeTT(rnRef, 0x10000)), rnRef, ast.Node{Name: "n"}, toulmin.Span{}); err == nil {
-		t.Fatal("node id overflow: want error")
-	}
-	failsAtEachID(t, 3, rnTT, func(e *enc) error {
-		_, err := emitRuleNode(e, rnRef, ast.Node{Name: "n", With: []string{"w"}}, toulmin.Span{})
-		return err
-	})
 }

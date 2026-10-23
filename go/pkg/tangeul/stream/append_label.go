@@ -11,10 +11,6 @@ import (
 // record (src → that TEXT) to the body — the standard way a node's spelling is
 // bound losslessly. The TEXT rides in the prefix so grouping stays
 // prefix-then-body.
-func appendLabel(e *enc, pre, body *[]core.Word, src toulmin.TID, s string, span toulmin.Span) error {
-	tid, err := addText(e, pre, s)
-	if err != nil {
-		return err
-	}
-	return appendEdge(e, body, toulmin.EdgePacket{Prop: toulmin.PropLabel, Src: src, DstTID: tid, Span: span})
+func appendLabel(e *enc, pre, body *[]core.Word, src toulmin.TID, s string, span toulmin.Span) {
+	appendEdge(e, body, toulmin.EdgePacket{Prop: toulmin.PropLabel, Src: src, DstTID: addText(e, pre, s), Span: span})
 }

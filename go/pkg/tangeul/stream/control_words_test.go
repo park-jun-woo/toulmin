@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=util control=sequence
-//ff:what TestControlWords — controlWords issues a fresh Edge Id and encodes the control and its argument
+//ff:what TestControlWords — a CASE-BEGIN with a fresh Edge Id; a bad section code records an error and returns nothing
 package stream
 
 import (
@@ -8,19 +8,13 @@ import (
 	"github.com/geul-org/geul/go/pkg/toulmin"
 )
 
-// TestControlWords checks a CASE-BEGIN record takes the next Edge Id and carries
-// the case REF, and that an argument the width cannot hold is an error.
 func TestControlWords(t *testing.T) {
 	e := testEnc(nil)
-	got, err := controlWords(e, toulmin.ControlCaseBegin, 42, nil)
-	if err != nil {
-		t.Fatalf("controlWords: %v", err)
+	cps := controlsOf(t, controlWords(e, toulmin.ControlCaseBegin, 42, nil))
+	if e.err != nil || len(cps) != 1 || cps[0].ID != 1 || cps[0].Code != toulmin.ControlCaseBegin || cps[0].Arg != 42 || e.next != 2 {
+		t.Errorf("got %+v next=%d err=%v, want one CASE-BEGIN id 1 arg 42", cps, e.next, e.err)
 	}
-	cps := controlsOf(t, got)
-	if len(cps) != 1 || cps[0].ID != 1 || cps[0].Code != toulmin.ControlCaseBegin || cps[0].Arg != 42 || e.next != 2 {
-		t.Errorf("got %+v next=%d, want one CASE-BEGIN id 1 arg 42", cps, e.next)
-	}
-	if _, err := controlWords(e, toulmin.ControlCaseEnd, 0x10000, nil); err == nil {
-		t.Error("REF past the 1-word width: want error")
+	if ws := controlWords(e, toulmin.ControlSection, 0x10000, nil); ws != nil || e.err == nil {
+		t.Errorf("section code past one word: got %04X err %v", ws, e.err)
 	}
 }

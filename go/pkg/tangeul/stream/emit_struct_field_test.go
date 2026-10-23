@@ -31,13 +31,4 @@ func TestEmitStructField(t *testing.T) {
 	if len(got) == 0 {
 		t.Errorf("emitStructField: expected non-empty words")
 	}
-
-	fieldRef := doc.StmtRef{Sec: toulmin.SectionDefinitions, Path: []int{0, 0}}
-	if _, err := emitStructField(testEnc(nodeTT(fieldRef, 0x10000)), fieldRef, ast.Field{Name: "n", Type: "Text"}, toulmin.Span{}); err == nil {
-		t.Fatal("node id overflow: want error")
-	}
-	failsAtEachID(t, 5, nodeTT(fieldRef, 1), func(e *enc) error {
-		_, err := emitStructField(e, fieldRef, ast.Field{Name: "n", Type: "Text"}, toulmin.Span{})
-		return err
-	})
 }

@@ -21,16 +21,13 @@ func attachRuleAttrs(e *enc, pre, body *[]core.Word, using *ast.Ref, with, groun
 		p.Flags |= toulmin.NodeFlagFunc
 		p.Func = &toulmin.FuncRef{Alias: fTID}
 	}
-	var err error
 	if len(with) > 0 {
 		p.Flags |= toulmin.NodeFlagWith
-		if p.With, err = withTexts(e, pre, with); err != nil {
-			return err
-		}
+		p.With = withTexts(e, pre, with)
 	}
 	if len(grounds) > 0 {
 		p.Flags |= toulmin.NodeFlagGrounds
-		p.Grounds, err = withTexts(e, pre, grounds)
+		p.Grounds = withTexts(e, pre, grounds)
 	}
-	return err
+	return nil
 }

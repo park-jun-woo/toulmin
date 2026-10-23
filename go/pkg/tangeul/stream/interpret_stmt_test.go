@@ -107,7 +107,7 @@ func TestInterpretStmt(t *testing.T) {
 		}
 	})
 
-	wd := newDec(toulmin.Wire{ID: 1, Span: 4})
+	wd := newDec(toulmin.Wire{Span: 4})
 	wide, _ := toulmin.EncodeNode(toulmin.NodePacket{TID: 8, Type: toulmin.NodeNamespace, Span: toulmin.Span{Off: 1 << 32}}, wd.wire)
 	if _, err := interpretStmt(wd, nil, []rawPacket{rawOf(t, wide)}); err == nil {
 		t.Fatal("span past 32 bits: want error")

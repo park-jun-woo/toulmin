@@ -52,10 +52,4 @@ func TestEmitFuncRef(t *testing.T) {
 			t.Error("expected error, got nil")
 		}
 	})
-
-	failsAtEachID(t, 3, nil, func(e *enc) error {
-		var pre, body []core.Word
-		_, err := emitFuncRef(e, &pre, &body, ast.Ref{Name: "f"}, toulmin.Span{})
-		return err
-	})
 }

@@ -10,31 +10,27 @@ import (
 
 // emitBody encodes the BODY records of d at widths w: the SOURCE record first,
 // then one record run per Block in stream order, with CASE-BEGIN/CASE-END
-// inserted by transitionCase as the walk enters and leaves cases. It also
-// returns the highest Edge Id issued, from which the Writer sizes ID-WIDTH.
-// Declaration order is the Blocks order, so the TANGEUL order rule holds by
-// construction.
-func emitBody(d *doc.Doc, tt *tidTable, w toulmin.Wire) ([]core.Word, toulmin.TID, error) {
+// inserted by transitionCase as the walk enters and leaves cases. Declaration
+// order is the Blocks order, so the TANGEUL order rule holds by construction.
+// A record that fails to encode is recorded on e and reported once the walk
+// ends.
+func emitBody(d *doc.Doc, tt *tidTable, w toulmin.Wire) ([]core.Word, error) {
 	e := &enc{tt: tt, wire: w, next: tt.primaryEnd}
 	out, err := toulmin.EncodeSource(toulmin.TextPacket{TID: issueID(e), Bytes: d.Source}, w)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	st := &caseState{}
 	for _, b := range d.Blocks {
-		trans, err := transitionCase(e, st, b)
-		if err != nil {
-			return nil, 0, err
-		}
+		trans := transitionCase(e, st, b)
 		bw, err := emitBlock(e, d, b)
 		if err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 		out = append(append(out, trans...), bw...)
 	}
-	tail, err := closeCase(e, st)
-	if err != nil {
-		return nil, 0, err
+	if out = append(out, closeCase(e, st)...); e.err != nil {
+		return nil, e.err
 	}
-	return append(out, tail...), e.next - 1, nil
+	return out, nil
 }

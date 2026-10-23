@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=util control=selection
-//ff:what readHeadRecord — apply one HEAD Meta record (SPEC-VERSION, PROFILE, ID-WIDTH, DEFAULT-LANGUAGE)
+//ff:what readHeadRecord — apply one HEAD Meta record (SPEC-VERSION, PROFILE, DEFAULT-LANGUAGE)
 package stream
 
 import (
@@ -27,8 +27,6 @@ func readHeadRecord(h *headInfo, r core.Record) error {
 			return err
 		}
 		return toulmin.CheckProfile(s)
-	case core.MetaIDWidth:
-		return readIDWidth(h, r)
 	case core.MetaDefaultLanguage:
 		s, err := metaText(r, core.CodecLanguageBCP47Even)
 		h.locale = s

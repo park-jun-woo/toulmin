@@ -47,11 +47,4 @@ func TestEmitAttack(t *testing.T) {
 			t.Errorf("%s: expected non-empty words", c.name)
 		}
 	}
-
-	atkTT := nodeTT(doc.StmtRef{}, 0)
-	atkTT.nodeByCase[nodeKey(0, "a")], atkTT.nodeByCase[nodeKey(0, "b")] = 1, 2
-	failsAtEachID(t, 1, atkTT, func(e *enc) error {
-		_, err := emitAttack(e, doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{0, 2, 0}}, ast.Attack{Attacker: "a", Target: "b"}, toulmin.Span{})
-		return err
-	})
 }

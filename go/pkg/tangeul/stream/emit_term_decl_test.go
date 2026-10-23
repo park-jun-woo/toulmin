@@ -60,14 +60,4 @@ func TestEmitTermDecl(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) { check(t, c.d, c.wantErr) })
 	}
-
-	termRef := doc.StmtRef{Sec: toulmin.SectionDefinitions, Path: []int{0}}
-	cdef := ast.Definition{Name: "limit", Kind: ast.ConstDef, Value: "5", SpecRef: &ast.Ref{Name: "spec"}}
-	if _, err := emitTermDecl(testEnc(nodeTT(termRef, 0x10000)), termRef, cdef, toulmin.Span{}); err == nil {
-		t.Fatal("node id overflow: want error")
-	}
-	failsAtEachID(t, 8, nodeTT(termRef, 1), func(e *enc) error {
-		_, err := emitTermDecl(e, termRef, cdef, toulmin.Span{})
-		return err
-	})
 }
