@@ -22,7 +22,7 @@ func TestExprByteIdentity(t *testing.T) {
 	}}
 	want := []core.Word{
 		0x1761, 0x0018, // Edge PREDICATE-DECLARE, 1-word Length extension: 24 words
-		0x00C0, 0x0001, 0x0003, // LOCAL Edge Id 1, node count 3
+		0x00E0, 0x0001, 0x0003, // LOCAL Edge Id 1, node count 3
 		0x0003, 0x08C1, 0x7800, 0x08C1, 0x7900, 0x0840, // labels "x", "y", ""
 		0x4002, 0x0311, // Logic and, 2 children
 		0x0000, 0x0303, 0x0000, 0x0000, 0x0882, 0x0001, // x equals UNSIGNED-INTEGER 1

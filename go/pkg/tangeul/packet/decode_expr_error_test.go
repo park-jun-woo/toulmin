@@ -21,7 +21,7 @@ func TestDecodeExprErrors(t *testing.T) {
 	if _, err := DecodeExpr(core.Record{Kind: core.KindEdge, Codec: 0x60}, testWire); err == nil {
 		t.Fatal("wrong codec: want error")
 	}
-	bad := []core.Record{rec(), rec(0x00C0, 1), rec(0x00C0, 1, 0, 1), rec(0x00C0, 1, 0, 0, 0)}
+	bad := []core.Record{rec(), rec(0x00E0, 1), rec(0x00E0, 1, 0, 1), rec(0x00E0, 1, 0, 0, 0)}
 	for i, r := range bad {
 		if _, err := DecodeExpr(r, testWire); err == nil {
 			t.Fatalf("malformed payload %d: want error", i)
