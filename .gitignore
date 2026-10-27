@@ -33,3 +33,7 @@ session.json
 .env*
 *.key
 *.pem
+
+# 로컬 Go 워크스페이스(상위 draft/go.work를 쓴다)
+go.work
+go.work.sum
