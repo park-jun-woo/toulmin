@@ -5,7 +5,7 @@ go 1.22
 toolchain go1.22.2
 
 require (
-	github.com/geul-org/gogeul v0.0.0-20261027045730-631d114e99b1
+	github.com/geul-org/gogeul v0.0.0-20261027083952-d91b6d10b3e5
 	github.com/spf13/cobra v1.10.2
 )
 
