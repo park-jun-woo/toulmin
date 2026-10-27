@@ -2,7 +2,7 @@
 //ff:what readPackets — classify every BODY record into a rawPacket
 package stream
 
-import "github.com/geul-org/geul/go/pkg/core"
+import "github.com/geul-org/gogeul/pkg/core"
 
 // readPackets classifies each BODY record (already framed by
 // core.SplitDocument) into a rawPacket. An unclassifiable record is an error.

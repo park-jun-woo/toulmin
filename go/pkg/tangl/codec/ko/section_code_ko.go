@@ -3,7 +3,7 @@
 package ko
 
 import (
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // sectionCodeKo maps the canonical English section name (as returned by

@@ -3,7 +3,7 @@
 package stream
 
 import (
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // testWire is the narrowest document width, used by unit tests that build

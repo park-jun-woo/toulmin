@@ -5,9 +5,9 @@ package stream
 import (
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // TestSpanOfRaw drives every arm of spanOfRaw: a real NODE and LINK from an

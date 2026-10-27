@@ -5,9 +5,9 @@ package packet
 import (
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // TestParseExprErrors exercises parseExpr's self-contained guards across all

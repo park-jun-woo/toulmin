@@ -3,7 +3,7 @@
 package doc
 
 import (
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // StmtRef is the AST coordinate of a statement, linking a packet/Block to an AST

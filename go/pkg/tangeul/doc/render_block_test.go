@@ -6,7 +6,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // TestRenderBlock drives renderBlock directly for each BlockKind: a ProseBlock

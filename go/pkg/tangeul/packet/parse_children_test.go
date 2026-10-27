@@ -5,7 +5,7 @@ package packet
 import (
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // TestParseChildren checks parseChildren returns an empty slice for n=0,

@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // TestRegisterFuncNodes drives registerFuncNodes directly (white-box) over the

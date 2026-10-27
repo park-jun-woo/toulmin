@@ -3,7 +3,7 @@
 package stream
 
 import (
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // caseState tracks the case currently wrapped by a CASE_BEGIN as WriteDoc walks

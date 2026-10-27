@@ -3,8 +3,8 @@
 package packet
 
 import (
-	"github.com/geul-org/geul/go/pkg/core"
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/core"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // nodeHeader packs a Node header word from Role, ObjKind and Flags, matching

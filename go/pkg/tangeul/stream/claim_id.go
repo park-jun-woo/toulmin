@@ -5,7 +5,7 @@ package stream
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // claimID records id as used. Edge Ids start at 1 (0 means "no reference") and

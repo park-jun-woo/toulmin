@@ -5,9 +5,9 @@ package packet
 import (
 	"errors"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // decodeLabels reads the EXPR label table at the head of ws — a count word, then

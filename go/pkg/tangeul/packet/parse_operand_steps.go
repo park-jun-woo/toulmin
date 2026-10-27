@@ -5,7 +5,7 @@ package packet
 import (
 	"errors"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // parseOperandSteps reads a stepped operand body (a step count followed by that

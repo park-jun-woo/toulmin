@@ -3,7 +3,7 @@
 package stream
 
 import (
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // issueID returns the next free Edge Id for a non-primary record and advances

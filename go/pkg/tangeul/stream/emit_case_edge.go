@@ -5,9 +5,9 @@ package stream
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // emitCaseEdge encodes a single edge from owner to the case named target — the

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"math"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 
 	"github.com/park-jun-woo/toulmin/go/pkg/tangeul/doc"
 )

@@ -2,7 +2,7 @@
 //ff:what unpackExprHeader — split an EXPR record header word into its 3-bit ExprKind and 13-bit child count
 package packet
 
-import "github.com/geul-org/geul/go/pkg/core"
+import "github.com/geul-org/gogeul/pkg/core"
 
 // unpackExprHeader is the inverse of packExprHeader: it reassembles the 3-bit
 // ExprKind from bits 15-14 (low two bits) and bit 13 (high bit), and reads the

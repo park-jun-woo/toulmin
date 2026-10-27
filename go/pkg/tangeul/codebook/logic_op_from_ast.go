@@ -5,7 +5,7 @@ package codebook
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // LogicOpFromAST maps a canonical ast.Logic.Op string ("and" or "or") to its

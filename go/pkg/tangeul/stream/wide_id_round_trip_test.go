@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/core"
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/core"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // TestWideIDRoundTrip shifts every pass-1 Edge Id of the transfer document past

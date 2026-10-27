@@ -5,7 +5,7 @@ package stream
 import (
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // TestReadHeadRecord applies each HEAD Meta kind: a wrong SPEC-VERSION, an

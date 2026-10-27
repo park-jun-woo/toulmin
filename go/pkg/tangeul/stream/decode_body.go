@@ -5,7 +5,7 @@ package stream
 import (
 	"errors"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // decodeBody decodes the span-bearing body records of one statement into nodes

@@ -3,7 +3,7 @@
 package stream
 
 import (
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // splitEdges partitions a statement's decoded edges into label edges (node ->

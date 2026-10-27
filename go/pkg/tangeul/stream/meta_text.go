@@ -5,7 +5,7 @@ package stream
 import (
 	"errors"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // metaText returns the text of a Meta record whose payload is exactly one

@@ -5,7 +5,7 @@ package codebook
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // FieldTypeToAST maps a FieldTypeCode back to its canonical ast.Field.Type

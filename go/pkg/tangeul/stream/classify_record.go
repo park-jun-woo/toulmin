@@ -5,9 +5,9 @@ package stream
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // classifyRecord returns the reader class of r. A record outside the TANGEUL

@@ -3,7 +3,7 @@
 package stream
 
 import (
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // nameFixup records a forward case-name reference to patch once every case name

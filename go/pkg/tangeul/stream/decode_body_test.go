@@ -5,7 +5,7 @@ package stream
 import (
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // TestDecodeBody covers decodeBody's loop and its two internal branches: the

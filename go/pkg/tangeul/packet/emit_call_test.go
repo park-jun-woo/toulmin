@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 	"github.com/park-jun-woo/toulmin/go/pkg/tangl/ast"
 )
 

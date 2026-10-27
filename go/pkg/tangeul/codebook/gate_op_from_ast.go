@@ -5,7 +5,7 @@ package codebook
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // GateOpFromAST maps a canonical ast.Certainty.Op string ("at least", "above",

@@ -3,8 +3,8 @@
 package packet
 
 import (
-	"github.com/geul-org/geul/go/pkg/core"
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/core"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // EncodeExpr encodes p as a PREDICATE-DECLARE record (GEUL t002 TOULMIN EXPR):

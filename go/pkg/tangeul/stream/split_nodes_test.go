@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // TestSplitNodes drives splitNodes over an empty slice (the loop runs zero

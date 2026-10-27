@@ -2,7 +2,7 @@
 //ff:what textsOf — the strings of a list of TEXT Edge Ids, in order
 package stream
 
-import "github.com/geul-org/geul/go/pkg/toulmin"
+import "github.com/geul-org/gogeul/pkg/toulmin"
 
 // textsOf resolves TEXT Edge Ids (a node's F_WITH or F_GROUNDS list) to their
 // strings in order; nil for an empty list.

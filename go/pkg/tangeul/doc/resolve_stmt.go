@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // ResolveStmt returns the AST element that ref coordinates into, implementing the

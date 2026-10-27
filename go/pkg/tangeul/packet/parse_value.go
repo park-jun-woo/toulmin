@@ -6,9 +6,9 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // parseCompareValue reads a Compare value slot from recs at *pos and returns it

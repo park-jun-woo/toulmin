@@ -5,7 +5,7 @@ package codebook
 import (
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // TestQuantOpToAST exercises both branches of QuantOpToAST: the sole assigned

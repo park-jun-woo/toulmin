@@ -5,7 +5,7 @@ package stream
 import (
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // TestMetaText reads the text of a well-formed Meta and rejects a payload with

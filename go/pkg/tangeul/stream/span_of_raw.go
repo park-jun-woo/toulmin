@@ -5,7 +5,7 @@ package stream
 import (
 	"errors"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // spanOfRaw decodes rp just far enough to return its SPAN; only NODE and LINK

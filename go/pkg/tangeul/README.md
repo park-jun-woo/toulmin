@@ -3,7 +3,7 @@
 TANGEUL is the **binary single source of truth (SSOT)** for the `tangl`
 toolchain. An authored markdown surface (`.md`) is *absorbed* into a compact,
 locale-independent `.geul` file — exactly one GEUL DOC (GEUL t002) whose records
-follow the TOULMIN codec (`geul/draft/t002/docs/TOULMIN.md`); `check`/`ast`/`effects`/`gen` all run on
+follow the TOULMIN codec (`geul/draft/docs/TOULMIN.md`); `check`/`ast`/`effects`/`gen` all run on
 that stream, and a decoder renders it back to text. Direct execution of `.md`
 is gone — the surface is reachable only through an encoder/decoder codec.
 
@@ -79,8 +79,8 @@ END
 | Package | Role |
 |---|---|
 | `pkg/tangeul` | loader: `Load`/`Save` (`.geul` ↔ `doc.Doc`), `EqualIgnoringLine` AST comparison |
-| `github.com/geul-org/geul/go/pkg/core` | GEUL t002 core (imported, not part of this repo): TAG WORD/Length/ISSUER record framing, DOC container (wrap/split), Values (UTF-8, integer, decimal), declared-width ids |
-| `github.com/geul-org/geul/go/pkg/toulmin` | TOULMIN codec (imported): code tables, codec/format-number mapping, VFix/Gate/Span, NODE/LINK/control/TEXT/SOURCE records |
+| `github.com/geul-org/gogeul/pkg/core` | GEUL t002 core (imported, not part of this repo): TAG WORD/Length/ISSUER record framing, DOC container (wrap/split), Values (UTF-8, integer, decimal), declared-width ids |
+| `github.com/geul-org/gogeul/pkg/toulmin` | TOULMIN codec (imported): code tables, codec/format-number mapping, VFix/Gate/Span, NODE/LINK/control/TEXT/SOURCE records |
 | `pkg/tangeul/codebook` | tangl AST ↔ TOULMIN code mappings (role, level, operators, field types, exec kinds) |
 | `pkg/tangeul/packet` | EXPR: the PREDICATE-DECLARE condition record (tangl expression AST) |
 | `pkg/tangeul/stream` | Doc ↔ GEUL DOC serialization (HEAD, Writer/Reader, Edge Id issue/resolve, order preservation) |

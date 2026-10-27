@@ -5,7 +5,7 @@ package stream
 import (
 	"errors"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // buildLabelMap resolves each label edge's Text and groups the strings by their

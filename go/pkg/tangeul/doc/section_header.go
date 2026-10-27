@@ -5,7 +5,7 @@ package doc
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // sectionHeader returns the mode-2 section heading line for the given locale and

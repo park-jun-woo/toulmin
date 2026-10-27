@@ -5,7 +5,7 @@ package doc
 import (
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // TestSectionHeader verifies sectionHeader resolves the en and ko locale

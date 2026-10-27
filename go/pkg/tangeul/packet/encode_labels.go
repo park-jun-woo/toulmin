@@ -3,8 +3,8 @@
 package packet
 
 import (
-	"github.com/geul-org/geul/go/pkg/core"
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/core"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // encodeLabels serializes an EXPR label table: a count word, then each label as

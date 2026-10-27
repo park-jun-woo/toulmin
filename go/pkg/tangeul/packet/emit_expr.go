@@ -5,7 +5,7 @@ package packet
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 	"github.com/park-jun-woo/toulmin/go/pkg/tangeul/codebook"
 	"github.com/park-jun-woo/toulmin/go/pkg/tangl/ast"
 )

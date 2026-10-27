@@ -5,7 +5,7 @@ package stream
 import (
 	"errors"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // readPreamble requires that the BODY opens with the SOURCE record (GEUL t002

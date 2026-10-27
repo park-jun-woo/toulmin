@@ -5,8 +5,8 @@ package stream
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/core"
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/core"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // expectSpecVersion requires r, Meta SPEC-VERSION, to carry toulmin.SpecVersion

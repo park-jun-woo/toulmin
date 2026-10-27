@@ -5,7 +5,7 @@ package packet
 import (
 	"strconv"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // emitCompareValue encodes a literal Compare value string as its value slot: an

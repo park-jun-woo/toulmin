@@ -5,7 +5,7 @@ package doc
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // RenderStmt returns canned statement text: a Cases declaration or body node as a

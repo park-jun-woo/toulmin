@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // DecodeExpr decodes r as a PREDICATE-DECLARE record (Edge Id, node count, label

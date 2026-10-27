@@ -5,7 +5,7 @@ package stream
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // handleControl decodes a framing record and updates the reader: SECTION arms

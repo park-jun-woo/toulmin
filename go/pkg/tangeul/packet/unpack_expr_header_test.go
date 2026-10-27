@@ -5,7 +5,7 @@ package packet
 import (
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // TestUnpackExprHeader locks the EXPR header decode (§design 1) against golden

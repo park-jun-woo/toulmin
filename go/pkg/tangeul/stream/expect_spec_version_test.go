@@ -5,8 +5,8 @@ package stream
 import (
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/core"
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/core"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 func TestExpectSpecVersion(t *testing.T) {

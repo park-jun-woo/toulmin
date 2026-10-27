@@ -3,8 +3,8 @@
 package stream
 
 import (
-	"github.com/geul-org/geul/go/pkg/core"
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/core"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // appendLabel adds a TEXT record for s to the statement prefix and a LABEL

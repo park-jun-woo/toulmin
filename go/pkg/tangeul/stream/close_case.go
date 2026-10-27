@@ -3,8 +3,8 @@
 package stream
 
 import (
-	"github.com/geul-org/geul/go/pkg/core"
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/core"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // closeCase emits a CASE_END for a case left open when the Blocks walk ends (the

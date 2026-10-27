@@ -3,7 +3,7 @@
 package en
 
 import (
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // sectionCode maps a scanner Section.Name (the verbatim `## tangl:<Name>` label)

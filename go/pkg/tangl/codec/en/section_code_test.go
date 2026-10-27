@@ -5,7 +5,7 @@ package en
 import (
 	"testing"
 
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 )
 
 // TestSectionCode checks the seven recognized section names map to their codebook

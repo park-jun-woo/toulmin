@@ -5,7 +5,7 @@ package packet
 import (
 	"fmt"
 
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // exprCountMax is the largest child count a 13-bit EXPR header field holds.

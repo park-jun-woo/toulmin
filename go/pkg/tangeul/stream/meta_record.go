@@ -2,7 +2,7 @@
 //ff:what metaRecord — a HEAD Meta record whose payload is one embedded Value
 package stream
 
-import "github.com/geul-org/geul/go/pkg/core"
+import "github.com/geul-org/gogeul/pkg/core"
 
 // metaRecord encodes a Meta record of codec whose payload is the single
 // embedded Value v (GEUL t002: a Meta payload may embed Value records).

@@ -3,8 +3,8 @@
 package stream
 
 import (
-	"github.com/geul-org/geul/go/pkg/core"
-	"github.com/geul-org/geul/go/pkg/toulmin"
+	"github.com/geul-org/gogeul/pkg/core"
+	"github.com/geul-org/gogeul/pkg/toulmin"
 	"github.com/park-jun-woo/toulmin/go/pkg/tangeul/doc"
 	"github.com/park-jun-woo/toulmin/go/pkg/tangl/ast"
 )

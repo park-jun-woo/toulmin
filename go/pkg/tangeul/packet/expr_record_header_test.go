@@ -3,7 +3,7 @@
 package packet
 
 import (
-	"github.com/geul-org/geul/go/pkg/core"
+	"github.com/geul-org/gogeul/pkg/core"
 )
 
 // exprRecHeader packs an EXPR record header word from an ExprKind and a child
