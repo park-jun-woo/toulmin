@@ -3,7 +3,7 @@
 TANGEUL is the **binary single source of truth (SSOT)** for the `tangl`
 toolchain. An authored markdown surface (`.md`) is *absorbed* into a compact,
 locale-independent `.geul` file — exactly one GEUL DOC (GEUL t002) whose records
-follow the TOULMIN codec (`geul/draft/docs/TOULMIN.md`); `check`/`ast`/`effects`/`gen` all run on
+follow the TOULMIN codec (`geul/files/geul/docs/TOULMIN.md`); `check`/`ast`/`effects`/`gen` all run on
 that stream, and a decoder renders it back to text. Direct execution of `.md`
 is gone — the surface is reachable only through an encoder/decoder codec.
 
