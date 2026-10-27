@@ -31,7 +31,7 @@ func TestReadHeadRecord(t *testing.T) {
 		t.Fatalf("head = %+v", h)
 	}
 	bad := []core.Record{
-		core.EncodeSpecVersion(1),
+		core.EncodeSpecVersion(2),
 		text(core.MetaProfile, core.CodecUTF8TextEven, "tangeul-0.3"),
 		{Kind: core.KindMeta, Codec: core.MetaProfile, Payload: []core.Word{0x0882, 1}},
 		{Kind: core.KindMeta, Codec: 0x13, Payload: []core.Word{0x4000}},

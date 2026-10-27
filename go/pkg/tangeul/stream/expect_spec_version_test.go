@@ -13,7 +13,7 @@ func TestExpectSpecVersion(t *testing.T) {
 	if err := expectSpecVersion(core.EncodeSpecVersion(toulmin.SpecVersion)); err != nil {
 		t.Fatal(err)
 	}
-	if err := expectSpecVersion(core.EncodeSpecVersion(1)); err == nil {
+	if err := expectSpecVersion(core.EncodeSpecVersion(2)); err == nil {
 		t.Fatal("other version: want error")
 	}
 	if err := expectSpecVersion(core.Record{Kind: core.KindMeta, Codec: core.MetaSpecVersion}); err == nil {
