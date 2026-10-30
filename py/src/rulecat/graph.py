@@ -26,6 +26,7 @@ class Graph:
         self.rules: list[RuleMeta] = []
         self.roles: dict[str, str] = {}
         self.defeats: list[DefeatEdge] = []
+        self.supersedes: list[DefeatEdge] = []  # 배제 간선(force 미사용)
 
     def rule(self, fn: Any) -> Rule:
         return self._register(fn, Strength.DEFEASIBLE, "rule")
@@ -70,8 +71,8 @@ class Graph:
                 f"toulmin: run depth exceeded {run_max_depth} "
                 "(possible runaway composition)"
             )
-        results, active, verdict_cache, evidence, rule_verdict = self._evaluate(
-            ctx, opt, full=True
+        results, active, verdict_cache, evidence, rule_verdict, excluded = (
+            self._evaluate(ctx, opt, full=True)
         )
 
         # 디스패치 전 1회 — 전 노드 TraceEntry를 등록 순서로 조립
@@ -88,6 +89,7 @@ class Graph:
                 evidence=evidence.get(r.name),
                 ground=ctx,
                 specs=r.specs,
+                excluded=r.name in excluded,
             ))
 
         tr = Trace(entries, ctx)
@@ -119,7 +121,7 @@ class Graph:
         self, ctx: Context, opt: EvalOption, full: bool
     ) -> tuple[
         list[EvalResult], dict[str, bool], dict[str, float], dict[str, Any],
-        dict[str, float],
+        dict[str, float], set[str],
     ]:
         # Build eval maps
         fn_map: dict[str, Any] = {}
@@ -143,6 +145,16 @@ class Graph:
         cycle_err = detect_cycle(edges)
         if cycle_err:
             raise RuntimeError(cycle_err)
+
+        # 배제 간선: target → 배제자 목록. 순회에 들어가지 않으며 순환은 작성 오류
+        supersede_by: dict[str, list[str]] = {}
+        supersede_adj: dict[str, list[str]] = {}
+        for s in self.supersedes:
+            supersede_by.setdefault(s.to, []).append(s.from_)
+            supersede_adj.setdefault(s.from_, []).append(s.to)
+        sup_cycle_err = detect_cycle(supersede_adj)
+        if sup_cycle_err:
+            raise RuntimeError(f"toulmin: supersede {sup_cycle_err}")
 
         # Attacker set
         attacker_set: set[str] = set()
@@ -259,6 +271,21 @@ class Graph:
                 return -1.0  # 해당 없음: 공격자 평가를 건너뜀(지연 평가)
             return combine(id, lambda aid: calc_trace(aid, with_duration))
 
+        def resolve_supersedes() -> set[str]:
+            # 보고 전용: 배제자 중 하나라도 a_eff > 0이면 target을 배제한다.
+            # 예외 게이트는 반영, 반박은 미반영, 비활성 배제자는 a_eff 0.
+            # 배제자는 모두 calc(멱등)하고 단락하지 않는다. 배제된 배제자도 배제권을 유지한다.
+            excluded: set[str] = set()
+            for target, superseders in supersede_by.items():
+                applicable = False
+                for frm in superseders:
+                    calc(frm)
+                    if applicability.get(frm, 0.0) > 0.0:
+                        applicable = True
+                if applicable:
+                    excluded.add(target)
+            return excluded
+
         def reset() -> None:
             ran.clear()
             active.clear()
@@ -291,6 +318,9 @@ class Graph:
                 applicability=applicability.get(r.name, 0.0),
             )
             if opt.trace:
+                excluded = resolve_supersedes()
+                if err[0]:
+                    raise err[0]
                 result.trace = [
                     TraceEntry(
                         name=short_name(t.name),
@@ -301,6 +331,7 @@ class Graph:
                         evidence=t.evidence,
                         specs=t.specs,
                         duration=t.duration,
+                        excluded=t.name in excluded,
                     )
                     for t in trace_entries
                 ]
@@ -313,7 +344,10 @@ class Graph:
             if err[0]:
                 raise err[0]
 
-        return results, active, verdict_cache, evidence, rule_verdict
+        excluded = resolve_supersedes() if full else set()
+        if err[0]:
+            raise err[0]
+        return results, active, verdict_cache, evidence, rule_verdict, excluded
 
 
 def _resolve_option(opt: EvalOption | None) -> EvalOption:

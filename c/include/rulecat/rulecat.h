@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 /* 라이브러리 버전 (SemVer 문자열) */
-#define RC_VERSION "0.2.0"
+#define RC_VERSION "0.3.0"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,7 +16,7 @@ typedef enum rc_status {
     RC_OK = 0,
     RC_ERR_INVALID_ARG = 1,   /* NULL/범위 위반 인자 */
     RC_ERR_DUPLICATE   = 2,   /* 중복 규칙 등록 */
-    RC_ERR_CYCLE       = 3,   /* defeats 그래프 순환 */
+    RC_ERR_CYCLE       = 3,   /* defeats 그래프 순환 또는 supersede 간선 순환 */
     RC_ERR_RULE        = 4,   /* 규칙 함수가 실패 반환 */
     RC_ERR_BUILDER     = 5,   /* 빌더 체인 중 지연 기록된 오류 */
     RC_ERR_HANDLER     = 6,   /* RunOn 핸들러 실패 (Phase 005) */
@@ -102,6 +102,8 @@ typedef struct rc_trace_entry {
     double      duration_ms; /* duration=false면 0.0 */
     double      rule_verdict;/* 규칙 함수 자신의 v ∈ [-1,1] (bool 규칙은 ±1). 실행 안 된 노드는 -1.
                                 activated == (rule_verdict > -1). 0.2.0에서 끝에 추가 */
+    bool        excluded;    /* 크리스프 배제: 이 노드를 supersede하는 규칙 중 하나라도
+                                a_eff > 0. 보고 전용(verdict 불변). 0.3.0에서 끝에 추가 */
 } rc_trace_entry;
 
 /* --- Results --- */
@@ -143,6 +145,12 @@ rc_status   rc_rule_attacks(rc_rule *r, rc_rule *target);           /* force = 1
    NaN·범위 밖이면 RC_ERR_INVALID_ARG를 반환하고, 빌더 오류도 래치해 이후 evaluate/run이
    RC_ERR_BUILDER로 실패한다(Qualifier 관례, Go는 panic). 간선은 추가되지 않는다. */
 rc_status   rc_rule_attacks_with_force(rc_rule *r, rc_rule *target, double force);
+/* r → target supersede 간선(0.3.0): r의 적용도 a_eff > 0이면 target을 집계에서 크리스프하게
+   배제한다(rc_trace_entry.excluded). a_eff = (v+1)/2 · Π_예외 (1 − F·(v_j+1)/2) — 예외 게이트는
+   반영하고 반박(counter)은 반영하지 않으며, Strict는 a_eff = (v+1)/2다. 예외가 r을 완전히
+   막으면 배제도 풀린다. h-Categoriser 순회에는 들어가지 않는다. supersede 간선 순환은
+   evaluate/run에서 RC_ERR_CYCLE("supersede cycle detected at ..."). */
+rc_status   rc_rule_supersedes(rc_rule *r, rc_rule *target);
 rc_rule    *rc_rule_with(rc_rule *r, rc_spec *spec);
 rc_rule    *rc_rule_qualifier(rc_rule *r, double q);   /* NaN·[0,1] 밖은 지연 빌더 오류 */
 const char *rc_rule_id(const rc_rule *r);   /* 현재 규칙 ID 조회 */

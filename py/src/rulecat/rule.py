@@ -28,6 +28,17 @@ class Rule:
         f = attack_force(force)
         self._graph.defeats.append(DefeatEdge(from_=self.id, to=target.id, force=f))
 
+    def supersedes(self, target: Rule) -> None:
+        """이 규칙이 target을 크리스프하게 배제(supersede)한다는 간선을 선언한다.
+
+        이 규칙의 적용도 a_eff > 0일 때만 배제한다. a_eff = (v+1)/2 · Π_예외
+        (1 − F·(v_j+1)/2)로 예외 게이트는 반영하고 반박(counter)은 반영하지 않으며,
+        strict 규칙은 a_eff = (v+1)/2다. 예외가 이 규칙을 완전히 막으면 배제도 풀린다.
+        간선은 h-Categoriser 순회에 들어가지 않고 TraceEntry.excluded만 정한다.
+        """
+        from rulecat.defeat_edge import DefeatEdge
+        self._graph.supersedes.append(DefeatEdge(from_=self.id, to=target.id))
+
     def with_spec(self, spec: Spec) -> Rule:
         spec.validate()
         meta = self._graph.rules[self._idx]
@@ -39,7 +50,7 @@ class Rule:
         role = self._graph.roles.pop(old_id, None)
         if role is not None:
             self._graph.roles[new_id] = role
-        for edge in self._graph.defeats:
+        for edge in [*self._graph.defeats, *self._graph.supersedes]:
             if edge.from_ == old_id:
                 edge.from_ = new_id
             if edge.to == old_id:

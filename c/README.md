@@ -197,6 +197,28 @@ NULL 인자·다른 graph 규칙은 `rc_rule_attacks`와 같이 래치 없이 `R
 
 `rc_rule_qualifier`는 NaN도 거부한다(지연 빌더 오류, `RC_ERR_BUILDER`).
 
+## 배제 — `rc_rule_supersedes` (0.3.0)
+
+```c
+rc_rule_supersedes(vip, general);   /* vip의 a_eff > 0이면 general을 집계에서 배제 */
+```
+
+`Attacks`와 달리 h-Categoriser에 들어가지 않는 크리스프 우선권이다. 배제자의 적용도
+`a_eff = (v+1)/2 · Π_예외 (1 − F·(v_j+1)/2)`가 0보다 크면 대상의 `rc_trace_entry.excluded`가
+`true`가 된다(보고 전용, 대상 verdict는 그대로). 예외 게이트는 반영하고 반박은 반영하지 않으며,
+`RC_STRICT` 배제자는 `a_eff = (v+1)/2`다. a_eff가 일부만 남아도 전부 배제한다.
+
+- VIP 할인이 일반 할인을 배제할 때 "정지된 VIP" 예외가 VIP 할인을 완전히 막으면(a_eff 0)
+  일반 할인은 배제되지 않는다. 예외 force가 0.5면(a_eff 0.5) 배제된다. 반박은 배제를 풀지 않는다.
+- 배제된 노드도 자기 배제권을 유지한다(x ⊐ y ⊐ z에서 y가 배제돼도 z는 배제된다).
+- supersede 간선 순환은 `RC_ERR_CYCLE`(`supersede cycle detected at …`).
+- Run trace와 Evaluate trace(`opt.trace`, 워런트별) 모두 `excluded`를 채운다.
+
+### ABI 변경 (0.2.0 → 0.3.0)
+
+- `rc_trace_entry` 끝에 `excluded`가 추가되어 구조체 크기가 바뀌었다. 0.2.0으로 빌드한 객체
+  파일과 섞지 말고 다시 컴파일한다. 새 심볼 `rc_rule_supersedes`만 추가됐다.
+
 ### ABI 변경 (0.1.0 → 0.2.0)
 
 - `rc_eval_result` 끝에 `applicability`, `rc_trace_entry` 끝에 `rule_verdict`가 추가되어

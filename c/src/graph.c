@@ -66,6 +66,18 @@ bool rc__specs_append(rc_graph *g, rc_rule_meta *m, rc_spec *spec) {
     return true;
 }
 
+/* supersedes 배열이 need개를 담도록 성장한다. */
+bool rc__supersedes_reserve(rc_graph *g, size_t need) {
+    if (need <= g->cap_supersedes) return true;
+    size_t new_cap = g->cap_supersedes ? g->cap_supersedes * 2 : 8;
+    while (new_cap < need) new_cap *= 2;
+    rc_defeat_edge *grown = realloc(g->supersedes, new_cap * sizeof *grown);
+    if (!grown) { rc__set_error(g, RC_ERR_NOMEM, "out of memory"); return false; }
+    g->supersedes = grown;
+    g->cap_supersedes = new_cap;
+    return true;
+}
+
 /* defeats 배열이 need개를 담도록 성장한다. */
 bool rc__defeats_reserve(rc_graph *g, size_t need) {
     if (need <= g->cap_defeats) return true;
@@ -100,6 +112,7 @@ void rc_graph_destroy(rc_graph *g) {
     for (size_t i = 0; i < g->n_handles; i++) free(g->handles[i]);
     free(g->handles);
     free(g->defeats);
+    free(g->supersedes);
     for (size_t i = 0; i < g->n_funcs; i++) free(g->funcs[i].id);
     free(g->funcs);
     free(g->name);

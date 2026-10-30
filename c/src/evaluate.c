@@ -133,6 +133,7 @@ static double rc__calc_node(rc_eval_state *es, size_t i, bool trace, bool with_d
                 .n_specs      = m->n_specs,
                 .duration_ms  = elapsed,
                 .rule_verdict = rv,                      /* 규칙 자신의 v */
+                .excluded     = false,                   /* 워런트 평가 후 배제 패스가 표시 */
             };
             if (!rc__trace_append(es, entry)) {
                 rc__set_error(es->g, RC_ERR_NOMEM, "trace: out of memory");
@@ -175,6 +176,32 @@ static void rc__reset(rc_eval_state *es) {
     es->err = RC_OK;
 }
 
+/* 보고 전용 배제 패스: 배제자 중 하나라도 a_eff > 0이면 target을 es->excluded에 표시한다.
+   a_eff는 예외 게이트를 반영하고 반박은 반영하지 않는다(Strict는 a_eff = a). 비활성 배제자는
+   settle에 이르지 않아 a_eff 0이다. 배제자는 모두 평가(멱등)하고 단락하지 않는다. 배제된
+   배제자도 배제권을 유지한다. 평가 중 오류는 es->err에 래치된다. */
+static void rc__resolve_supersedes(rc_eval_state *es) {
+    rc_graph *g = es->g;
+    if (g->n_rules) memset(es->excluded, 0, g->n_rules * sizeof *es->excluded);
+    for (size_t e = 0; e < g->n_supersedes; e++) {
+        size_t from = g->supersedes[e].from_idx;
+        rc__calc_node(es, from, false, false);
+        if (es->err != RC_OK) return;
+        if (es->applicability[from] > 0.0) es->excluded[g->supersedes[e].to_idx] = true;
+    }
+}
+
+/* trace 버퍼 엔트리에 배제 표시를 옮긴다. 엔트리 name은 graph 소유 short_name을 차용하므로
+   포인터 동일성으로 노드를 찾는다. */
+static void rc__mark_trace_excluded(rc_eval_state *es) {
+    for (size_t k = 0; k < es->n_trace; k++) {
+        es->trace[k].excluded = false;
+        for (size_t t = 0; t < es->g->n_rules; t++)
+            if (es->excluded[t] && es->trace[k].name == es->g->rules[t].short_name)
+                es->trace[k].excluded = true;
+    }
+}
+
 /* Defeater가 아니고 아무도 공격하지 않는 노드가 warrant. */
 static bool rc__is_warrant(const rc_eval_state *es, size_t i) {
     if (es->g->rules[i].strength == RC_DEFEATER) return false;
@@ -199,6 +226,14 @@ rc_status rc__evaluate_internal(rc_graph *g, rc_context *ctx, rc_eval_option o,
     if (st != RC_OK) {
         if (st == RC_ERR_CYCLE)
             rc__set_error(g, RC_ERR_CYCLE, "cycle detected at %s",
+                          g->rules[cycle_at].name);
+        rc__eval_state_free(es);
+        return st;
+    }
+    st = rc__detect_supersede_cycle(g, &cycle_at);
+    if (st != RC_OK) {
+        if (st == RC_ERR_CYCLE)
+            rc__set_error(g, RC_ERR_CYCLE, "supersede cycle detected at %s",
                           g->rules[cycle_at].name);
         rc__eval_state_free(es);
         return st;
@@ -233,6 +268,16 @@ rc_status rc__evaluate_internal(rc_graph *g, rc_context *ctx, rc_eval_option o,
             .n_trace  = 0,
             .applicability = es->applicability[i],   /* a_eff */
         };
+        if (o.trace) {
+            rc__resolve_supersedes(es);   /* 워런트별(리셋된) 상태에서 배제 판정 */
+            if (es->err != RC_OK) {
+                st = es->err;
+                rc__results_abandon(res, es);
+                rc__eval_state_free(es);
+                return st;
+            }
+            rc__mark_trace_excluded(es);
+        }
         if (o.trace && es->n_trace > 0) {
             /* trace 버퍼를 결과에 딥카피 (엔트리 배열만 — 문자열/spec은 graph 차용). */
             item.trace = rc__memdup(es->trace, es->n_trace * sizeof *es->trace);
@@ -254,6 +299,7 @@ rc_status rc__evaluate_internal(rc_graph *g, rc_context *ctx, rc_eval_option o,
     if (full) {   /* run 경로: trace 강제 off이므로 non-trace 평가로 미평가 노드를 채움 */
         for (size_t i = 0; i < g->n_rules; i++)
             if (!es->ran[i]) rc__calc_node(es, i, false, false);
+        if (es->err == RC_OK) rc__resolve_supersedes(es);   /* run trace의 excluded */
         if (es->err != RC_OK) {
             st = es->err;
             rc__results_abandon(res, es);

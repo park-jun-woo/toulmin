@@ -63,6 +63,7 @@ static rc_status rc__run_depth(rc_graph *g, rc_context *ctx, rc_eval_option o,
             .n_specs     = m->n_specs,
             .duration_ms = 0.0,             /* full pass는 non-trace — 측정 없음 */
             .rule_verdict = es.ran[i] ? es.rule_verdict[i] : -1.0,   /* 규칙 자신의 v */
+            .excluded    = es.excluded ? es.excluded[i] : false,   /* supersede 배제 */
         };
     }
 

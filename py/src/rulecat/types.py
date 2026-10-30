@@ -57,6 +57,8 @@ class TraceEntry:
     ground: Any = None       # ctx 그대로
     specs: list[Spec] = field(default_factory=list)  # = Backing
     duration: float | None = None
+    # 크리스프 배제: 이 노드를 배제하는 규칙 중 하나라도 a_eff > 0. 보고 전용(verdict 불변)
+    excluded: bool = False
 
 
 @dataclass

@@ -225,7 +225,9 @@ expunged.Attacks(criminal)  // expungement neutralizes criminal record
 
 **Except is the differentiator.** "Exceptions to exceptions" cannot be structurally expressed with if-else. In a defeats graph, it's one edge.
 
-**Supersedes is a crisp override.** `Attacks` weighs into the h-Categoriser; `winner.Supersedes(loser)` doesn't. When `winner` is Active, `loser` is dropped from the tally outright — marked `Excluded` in the trace, never traversed — instead of merely having its verdict lowered. Use it when one rule must flatly take precedence over another rather than weigh against it.
+**Supersedes is a crisp override.** `Attacks` weighs into the h-Categoriser; `winner.Supersedes(loser)` doesn't. While `winner`'s applicability `a_eff > 0`, `loser` is dropped from the tally outright — marked `Excluded` in the trace, never traversed — instead of merely having its verdict lowered. Use it when one rule must flatly take precedence over another rather than weigh against it.
+
+`a_eff` is `winner`'s own `(v+1)/2` after its `Except` gates (see below); `Counter` rebuttals do not count, and a `Strict` winner keeps `(v+1)/2`. Any positive `a_eff`, even 0.3, excludes the whole loser. Example: a VIP discount supersedes the general discount. If a "suspended VIP" exception fully gates the VIP discount, the general discount is no longer excluded, so the customer still gets it; an exception with force 0.5 or a rebuttal against the VIP discount keeps the exclusion. An excluded rule keeps its own power to exclude (`X > Y > Z`: `Z` stays excluded even though `Y` is). Available in all four ports (`supersedes` in TS/Python, `rc_rule_supersedes` in C).
 
 ### Verdict
 
@@ -292,7 +294,7 @@ verdict = 2 · raw − 1
 
 - A **Counter** (rebuttal) argues against the conclusion and stays in the denominator, as before.
 - An **Except** (exception) says the rule does not apply here: it scales down the target's applicability instead of adding to the denominator. One fully applying exception gates its target to `-1`; three exceptions with `v = 0.5` each leave `(1 − 0.75)³ ≈ 0.016` of the applicability. (Before, three exceptions only pulled a target down to `-0.5`.)
-- `Strict` rules ignore both. `Supersedes` is unchanged (crisp exclusion).
+- `Strict` rules ignore both. `Supersedes` excludes only while the superseder's `a_eff > 0`, so an exception that fully gates the superseder lifts its exclusion.
 - `EvalResult.Applicability` reports `a_eff` for each warrant.
 
 `Attacks` takes an optional force `F` in `[0, 1]`, default `1`:
@@ -433,7 +435,7 @@ TANGEUL is a markdown policy language that compiles directly onto the core: no s
 - **Judgment and execution are separated.** A `Provides`/`Internal` entry either `check`s a case (compiles to `Graph.Evaluate` — pure) or `run`s one (compiles to `Graph.Run` — judgment then `do`/`undo` side effects via `RunOn`).
 - **Saga compensation, built in.** Each `do` arms its paired `undo` on a compensation stack the moment it succeeds; a later failure in the same pass replays the stack LIFO, and unrecoverable failures escalate to a `*tangl.ReviewError` carrying both the cause and the compensation error.
 - **Effect summary, for audit.** `tangl effects` statically lists every `do`/`undo` an endpoint can trigger — without running it.
-- **Crisp overrides and levels, in the surface too.** `` `X` supersedes `Y` `` excludes `Y` from the tally when `X` holds. `` supersede in order: `A` > `B` > `C` `` expands to every earlier→later priority edge. A trailing `, level fail` / `, level review` tags a case's crisp reporting level. All forms round-trip in either locale.
+- **Crisp overrides and levels, in the surface too.** `` `X` supersedes `Y` `` excludes `Y` from the tally while `X` applies (`a_eff > 0`). `` supersede in order: `A` > `B` > `C` `` expands to every earlier→later priority edge. A trailing `, level fail` / `, level review` tags a case's crisp reporting level. All forms round-trip in either locale.
 - **One binary source of truth (TANGEUL).** `tangl encode` absorbs an authored `.md` surface into a compact, locale-independent `.geul` file — exactly one GEUL DOC (GEUL t002, TOULMIN codec) holding the AST and the verbatim prose spans; every other command runs on that stream. `tangl decode` renders it back to a text surface — byte-identically in mode 1, or regenerated into another locale in mode 2.
 - **English or Korean surface, same AST.** `tangl encode` auto-detects en/ko from the document's section headers; `tangl decode --locale ko` renders any `.geul` as a Korean audit surface for non-developer reviewers (see `TANGEUL.ko.md`).
 

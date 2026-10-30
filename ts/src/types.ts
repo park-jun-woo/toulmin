@@ -65,6 +65,11 @@ export interface TraceEntry {
   ground?: unknown;    // ← 추가: ctx 그대로
   specs?: Specs;       // = Backing
   duration?: number;
+  /**
+   * Crisply superseded out of the tally: some superseder of this node has
+   * effective applicability a_eff > 0. Reporting-only — the verdict is unchanged.
+   */
+  excluded?: boolean;
 }
 
 export interface Trace {

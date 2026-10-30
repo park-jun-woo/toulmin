@@ -150,7 +150,9 @@ expunged.Attacks(criminal)  // 말소가 전과를 무력화
 
 **Except가 차별점이다.** "예외의 예외"를 if-else로는 구조적으로 표현할 수 없다. defeats graph에서는 엣지 한 줄이다.
 
-**Supersedes는 크리스프한 우선권이다.** `Attacks`는 h-Categoriser에 가중치로 반영되지만 `winner.Supersedes(loser)`는 그렇지 않다. `winner`가 Active면 `loser`는 verdict가 낮아지는 게 아니라 집계에서 통째로 배제된다 — trace에 `Excluded`로 표시되고 순회 자체에 들어가지 않는다. 한 규칙이 다른 규칙과 저울질하는 게 아니라 그냥 우선해야 할 때 쓴다.
+**Supersedes는 크리스프한 우선권이다.** `Attacks`는 h-Categoriser에 가중치로 반영되지만 `winner.Supersedes(loser)`는 그렇지 않다. `winner`의 적용도 `a_eff > 0`이면 `loser`는 verdict가 낮아지는 게 아니라 집계에서 통째로 배제된다 — trace에 `Excluded`로 표시되고 순회 자체에 들어가지 않는다. 한 규칙이 다른 규칙과 저울질하는 게 아니라 그냥 우선해야 할 때 쓴다.
+
+`a_eff`는 `winner` 자신의 `(v+1)/2`에 `Except` 게이트를 곱한 값이다(아래 참조). `Counter` 반박은 반영하지 않고, `Strict`인 winner는 `(v+1)/2` 그대로다. `a_eff`가 0.3처럼 일부만 남아도 loser 전체를 배제한다. 예: VIP 할인이 일반 할인을 배제한다. "정지된 VIP" 예외가 VIP 할인을 완전히 막으면 일반 할인은 배제되지 않아 고객은 일반 할인을 받는다. 예외 force가 0.5이거나 VIP 할인에 반박이 붙으면 배제는 유지된다. 배제된 규칙도 자기 배제권은 유지한다(`X > Y > Z`에서 `Y`가 배제돼도 `Z`는 배제된다). 네 포트 모두 지원한다(TS·Python `supersedes`, C `rc_rule_supersedes`).
 
 ### Verdict
 
@@ -219,7 +221,7 @@ verdict = 2 · raw − 1
 
 - **Counter**(반박)는 결론에 맞서는 주장이다. 지금처럼 분모에 들어간다.
 - **Except**(예외)는 "이 경우엔 규칙이 적용되지 않는다"는 말이다. 분모에 더하지 않고 대상의 적용도를 깎는다. 완전히 해당하는 예외 하나면 대상은 `-1`이 된다. `v = 0.5`인 예외 셋이면 적용도가 `(1 − 0.75)³ ≈ 0.016`만 남는다. (이전에는 예외 셋이 붙어도 `-0.5`까지만 내려갔다.)
-- `Strict` 규칙은 둘 다 무시한다. `Supersedes`(크리스프 배제)는 그대로다.
+- `Strict` 규칙은 둘 다 무시한다. `Supersedes`(크리스프 배제)는 배제자의 `a_eff > 0`일 때만 배제하므로, 예외가 배제자를 완전히 막으면 배제도 풀린다.
 - `EvalResult.Applicability`가 각 warrant의 `a_eff`를 알려 준다.
 
 `Attacks`는 선택 인자로 공격 강도 `F ∈ [0, 1]`을 받는다. 기본값은 `1`이다:

@@ -3,7 +3,7 @@
 package toulmin
 
 // tracedExclusions runs the reporting-only resolveSupersedes pass on the current (per-warrant,
-// reset) state and marks every trace entry whose full id is superseded by an Active superseder
+// reset) state and marks every trace entry whose full id is superseded by a superseder with a_eff > 0
 // as Excluded, then returns the collected trace. resolveSupersedes may set ec.err via ec.calc;
 // the caller checks ec.err after this returns, so patching a possibly-errored trace is harmless.
 // Keys are full ids, matching ec.trace[i].Name.

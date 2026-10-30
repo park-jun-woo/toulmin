@@ -25,6 +25,7 @@ void rc__eval_state_free(rc_eval_state *es) {
     free(es->rule_verdict);
     free(es->applicability);
     free(es->evidence);
+    free(es->excluded);
     free(es->trace);
     memset(es, 0, sizeof *es);
 }
@@ -51,9 +52,10 @@ rc_status rc__eval_state_init(rc_eval_state *es, rc_graph *g, rc_context *ctx) {
     es->rule_verdict  = calloc(n, sizeof *es->rule_verdict);
     es->applicability = calloc(n, sizeof *es->applicability);
     es->evidence    = calloc(n, sizeof *es->evidence);
+    es->excluded    = calloc(n, sizeof *es->excluded);
     if (!es->attackers || !es->forces || !es->n_attackers || !es->is_attacker ||
         !es->ran || !es->active || !es->has_verdict || !es->verdict ||
-        !es->rule_verdict || !es->applicability || !es->evidence) {
+        !es->rule_verdict || !es->applicability || !es->evidence || !es->excluded) {
         rc__eval_state_free(es);
         return RC_ERR_NOMEM;
     }

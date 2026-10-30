@@ -64,6 +64,9 @@ struct rc_graph {
     rc_defeat_edge *defeats;      /* defeats 간선 */
     size_t          n_defeats, cap_defeats;
 
+    rc_defeat_edge *supersedes;   /* supersede 간선 (force 미사용) */
+    size_t          n_supersedes, cap_supersedes;
+
     rc_func_entry  *funcs;        /* (fn, user_data) → id 선형 레지스트리 */
     size_t          n_funcs;
     size_t          cap_funcs;
@@ -90,6 +93,7 @@ typedef struct rc_eval_state {
     double     *rule_verdict;   /* 규칙 함수 자신의 v (ran일 때만 유효) */
     double     *applicability;  /* a_eff (has_verdict일 때만 유효) */
     void      **evidence;
+    bool       *excluded;       /* rc__resolve_supersedes 결과: supersede로 배제된 노드 */
     /* trace 버퍼 (opt.trace 경로 전용, 워런트별 reset). 소멸은 rc__eval_state_free. */
     rc_trace_entry *trace;
     size_t          n_trace, cap_trace;
@@ -143,6 +147,10 @@ void rc__eval_state_free(rc_eval_state *es);
    순환 시 RC_ERR_CYCLE + *cycle_at에 순환 노드 인덱스. 할당 실패 시 RC_ERR_NOMEM. */
 rc_status rc__detect_cycle(rc_eval_state *es, size_t *cycle_at);
 
+/* supersede 간선(from → to)의 순환을 defeats와 독립으로 감지한다.
+   순환 시 RC_ERR_CYCLE + *cycle_at에 순환 노드 인덱스. 할당 실패 시 RC_ERR_NOMEM. */
+rc_status rc__detect_supersede_cycle(const rc_graph *g, size_t *cycle_at);
+
 /* opt가 NULL이면 기본값 {RC_MATRIX,false,false}, duration=true면 trace를 함의한다. */
 rc_eval_option rc__resolve_option(const rc_eval_option *opt);
 
@@ -195,5 +203,6 @@ bool rc__rules_reserve(rc_graph *g, size_t need);
 bool rc__handles_append(rc_graph *g, rc_rule *r);
 bool rc__specs_append(rc_graph *g, rc_rule_meta *m, rc_spec *spec);
 bool rc__defeats_reserve(rc_graph *g, size_t need);
+bool rc__supersedes_reserve(rc_graph *g, size_t need);
 
 #endif /* RULECAT_INTERNAL_H */

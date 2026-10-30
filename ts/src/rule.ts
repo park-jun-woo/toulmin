@@ -26,6 +26,17 @@ export class Rule {
     this.graph.defeats.push({ from: this.id, to: target.id, force: f });
   }
 
+  /**
+   * Declares a supersede edge: while this rule's effective applicability
+   * a_eff > 0 — its own (v+1)/2 after every except gate; counter rebuttals do
+   * not count, strict rules keep a_eff = (v+1)/2 — target is crisply excluded
+   * from the tally (TraceEntry.excluded). An exception that fully gates this
+   * rule lifts the exclusion. The edge never enters the h-Categoriser traversal.
+   */
+  supersedes(target: Rule): void {
+    this.graph.supersedes.push({ from: this.id, to: target.id });
+  }
+
   with(spec: Spec): Rule {
     spec.validate();
     const meta = this.graph.rules[this.idx];
@@ -39,7 +50,7 @@ export class Rule {
       this.graph.roles.delete(oldID);
       this.graph.roles.set(newID, role);
     }
-    for (const edge of this.graph.defeats) {
+    for (const edge of [...this.graph.defeats, ...this.graph.supersedes]) {
       if (edge.from === oldID) edge.from = newID;
       if (edge.to === oldID) edge.to = newID;
     }

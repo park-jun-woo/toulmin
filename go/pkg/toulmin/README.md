@@ -37,7 +37,7 @@ engine cannot detect this, because 0 is a legal value; you must watch for it you
 | `g.Counter(fn)` | graph_counter.go | Register counter, return `*Rule` (builder: `.With(spec)`, `.Qualifier(q)`) |
 | `g.Except(fn)` | graph_except.go | Register except, return `*Rule` (builder: `.With(spec)`, `.Qualifier(q)`) |
 | `rule.Attacks(target, force ...float64)` | rule_attacks.go | Declare defeat edge (method on `*Rule`). Optional force `F` in `[0, 1]`, default `1`; more than one value, NaN, or out of range panics (like `Qualifier`) |
-| `rule.Supersedes(target)` | rule_supersedes.go | Declare supersede edge: when this rule is Active, target is crisply excluded from the tally (sets `TraceEntry.Excluded`); never enters the h-Categoriser traversal |
+| `rule.Supersedes(target)` | rule_supersedes.go | Declare supersede edge: when this rule's applicability `a_eff > 0` (Except gates count, Counter rebuttals do not), target is crisply excluded from the tally (sets `TraceEntry.Excluded`); never enters the h-Categoriser traversal |
 | `rule.With(spec)` | rule_with.go | Attach a Spec to the rule (additive, supports chaining) |
 | `rule.Level(l)` | rule_level.go | Set the crisp reporting `Level` (`Unset`/`Fail`/`Review`); the explicit value (including `Unset`) overrides the role-based default (method on `*Rule`, chains) |
 | `g.Evaluate(ctx, opt ...EvalOption)` | graph_evaluate.go | Run evaluation, return verdicts (ctx is Context, opt controls Trace/Duration) |
@@ -145,7 +145,8 @@ verdict = 2 × raw − 1                              [-1, 1]
   `(1 − 0.75)³ ≈ 0.016`. (Previously exceptions sat in the denominator, so three of them
   only pulled the target to −0.5.)
 - Whether an attacker is an exception is read from its node (`Strength == Defeater` or role `except`).
-- `Strict` nodes ignore both rebuttals and exceptions. `Supersedes` is untouched.
+- `Strict` nodes ignore both rebuttals and exceptions.
+- `Supersedes` excludes its target only while the superseder's `a_eff > 0`: an exception that fully gates the superseder lifts the exclusion; a rebuttal does not.
 - With bool rules and no Except attackers, `a = a_eff = 1`, `F = 1`, and the result is
   bit-for-bit the former `raw = q / (1 + Σ raw(attackers))`.
 - `EvalResult.Applicability` reports `a_eff` for each warrant.

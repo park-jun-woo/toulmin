@@ -4,6 +4,6 @@ libdir=${prefix}/lib
 
 Name: rulecat
 Description: Toulmin argumentation-based rule engine for C
-Version: 0.2.0
+Version: 0.3.0
 Cflags: -I${includedir}
 Libs: -L${libdir} -lrulecat -lm

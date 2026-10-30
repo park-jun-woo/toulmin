@@ -35,6 +35,19 @@ rc_status rc_rule_attacks_with_force(rc_rule *r, rc_rule *target, double force) 
     return rc__attacks(r, target, force);
 }
 
+/* r → target supersede 간선을 추가한다(인덱스 기반 — with의 ID 변경에도 재바인딩 불필요).
+   r의 a_eff > 0일 때 target이 배제된다(판정은 rc__resolve_supersedes). */
+rc_status rc_rule_supersedes(rc_rule *r, rc_rule *target) {
+    if (!r || !target || r->graph != target->graph) return RC_ERR_INVALID_ARG;
+    rc_graph *g = r->graph;
+    if (!rc__supersedes_reserve(g, g->n_supersedes + 1)) return RC_ERR_NOMEM;
+    g->supersedes[g->n_supersedes].from_idx = r->idx;
+    g->supersedes[g->n_supersedes].to_idx = target->idx;
+    g->supersedes[g->n_supersedes].force = 1.0;   /* 미사용 */
+    g->n_supersedes++;
+    return RC_OK;
+}
+
 /* spec을 규칙에 부착하고 ID를 재계산한다. 오류는 지연 처리(self 반환). */
 rc_rule *rc_rule_with(rc_rule *r, rc_spec *spec) {
     if (!r) return r;

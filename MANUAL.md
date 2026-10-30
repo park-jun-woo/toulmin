@@ -135,13 +135,13 @@ reins-style aggregation orthogonal to the `[-1, 1]` verdict.
 
 | Method | File | Effect |
 |---|---|---|
-| `rule.Supersedes(target)` | rule_supersedes.go | When this rule is **Active**, `target` is crisply **excluded** from the tally: `target`'s `TraceEntry.Excluded` is set and it never enters the h-Categoriser traversal (distinct from `Attacks`, which contributes a gradual defeat weight). |
+| `rule.Supersedes(target)` | rule_supersedes.go | When this rule's applicability **`a_eff > 0`** (`(v+1)/2` after Except gates; Counter rebuttals do not count; Strict keeps `(v+1)/2`), `target` is crisply **excluded** from the tally: `target`'s `TraceEntry.Excluded` is set and it never enters the h-Categoriser traversal (distinct from `Attacks`, which contributes a gradual defeat weight). |
 | `rule.Level(l)` | rule_level.go | Set the crisp reporting `Level` (`Unset`/`Fail`/`Review`). The explicit value — including `Level(Unset)` — overrides the role-based default. Chains. |
 
 ```go
 r := g.Counter(IsOverdrawn)
 r.Level(toulmin.Fail)               // report Fail (already the counter default; explicit here)
-r.Supersedes(pending)               // when IsOverdrawn is Active, pending is excluded, not merely attacked
+r.Supersedes(pending)               // while IsOverdrawn has a_eff > 0, pending is excluded, not merely attacked
 g.Except(IsPending).Level(toulmin.Review)
 ```
 
@@ -199,7 +199,7 @@ A `TraceEntry` records, per node, *what* was judged and *on what basis*:
 | `Specs` | **Backing** | the fixed Specs attached at declaration |
 | `Verdict` | — | node verdict `[-1, 1]` (`> 0` prevailed, `<= 0` defeated) |
 | `Activated` | — | whether the rule function returned `true` |
-| `Excluded` | — | crisply superseded out of the tally by an Active `Supersedes(this)` rule (never entered the h-Categoriser) |
+| `Excluded` | — | crisply superseded out of the tally by a `Supersedes(this)` rule with `a_eff > 0` (never entered the h-Categoriser) |
 | `Level` | — | crisp reporting level (`Unset`/`Fail`/`Review`); serialised without `omitempty` since `Unset` (0) means "no level to report", not absent |
 
 > ⚠️ `Ground = ctx` is stored verbatim. If you `json.Marshal` a trace, make sure `ctx`

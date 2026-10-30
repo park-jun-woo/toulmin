@@ -1,6 +1,6 @@
 import type { Context, RuleFunc, EvalOption, EvalResult, Specs, TraceEntry, RunResult } from "./types.js";
 import { Strength, EvalMethod } from "./types.js";
-import type { DefeatEdge } from "./defeat-edge.js";
+import type { DefeatEdge, SupersedeEdge } from "./defeat-edge.js";
 import type { RuleMeta } from "./rule-meta.js";
 import { Rule } from "./rule.js";
 import { ruleID } from "./rule-id.js";
@@ -17,6 +17,7 @@ export class Graph {
   rules: RuleMeta[] = [];
   roles = new Map<string, string>();
   defeats: DefeatEdge[] = [];
+  supersedes: SupersedeEdge[] = [];
 
   constructor(name: string) { this.name = name; }
 
@@ -68,6 +69,7 @@ export class Graph {
         evidence: st.evidence.get(r.name),
         ground: ctx,
         specs: r.specs,
+        excluded: st.excluded.has(r.name),
       });
     }
 
@@ -103,6 +105,7 @@ export class Graph {
     ruleVerdict: Map<string, number>;
     verdictCache: Map<string, number>;
     evidence: Map<string, unknown>;
+    excluded: Set<string>;
   } {
     // Build eval context
     const fnMap = new Map<string, RuleFunc>();
@@ -131,6 +134,16 @@ export class Graph {
     // Cycle detection
     const cycleErr = detectCycle(edges);
     if (cycleErr) throw cycleErr;
+
+    // Supersede edges: target → superseders. Never traversed; a cycle is an authoring error.
+    const supersedeBy = new Map<string, string[]>();
+    const supersedeAdj = new Map<string, string[]>();
+    for (const s of this.supersedes) {
+      supersedeBy.set(s.to, [...(supersedeBy.get(s.to) ?? []), s.from]);
+      supersedeAdj.set(s.from, [...(supersedeAdj.get(s.from) ?? []), s.to]);
+    }
+    const supCycleErr = detectCycle(supersedeAdj);
+    if (supCycleErr) throw new Error(`toulmin: supersede ${supCycleErr.message}`);
 
     // Build attacker set
     const attackerSet = new Set<string>();
@@ -238,10 +251,28 @@ export class Graph {
           evidence: evidence.get(id),
           specs: specsMap.get(id),
           duration: elapsed,
+          excluded: false,                  // patched per warrant by resolveSupersedes
         });
       }
       if (!active.get(id)) return -1.0;
       return combine(id, (aid) => calcTrace(aid, withDuration));
+    }
+
+    // Reporting-only pass: a target is excluded when any superseder has a_eff > 0
+    // (except gates count, rebuttals do not; a non-active superseder keeps a_eff 0).
+    // Every superseder is calc'd (idempotent) — no short-circuit. An excluded
+    // superseder keeps its power to exclude.
+    function resolveSupersedes(): Set<string> {
+      const excluded = new Set<string>();
+      for (const [target, superseders] of supersedeBy) {
+        let applicable = false;
+        for (const from of superseders) {
+          calc(from);
+          if ((applicability.get(from) ?? 0) > 0) applicable = true;
+        }
+        if (applicable) excluded.add(target);
+      }
+      return excluded;
     }
 
     function reset(): void {
@@ -275,7 +306,9 @@ export class Graph {
         applicability: applicability.get(r.name)!,   // active warrant → combine ran
       };
       if (opt.trace) {
-        result.trace = trace.map(t => ({ ...t, name: shortName(t.name) }));
+        const excluded = resolveSupersedes();
+        if (err) throw err;
+        result.trace = trace.map(t => ({ ...t, name: shortName(t.name), excluded: excluded.has(t.name) }));
       }
       results.push(result);
     }
@@ -287,7 +320,9 @@ export class Graph {
       if (err) throw err;
     }
 
-    return { results, active, ruleVerdict, verdictCache, evidence };
+    const excluded = full ? resolveSupersedes() : new Set<string>();
+    if (err) throw err;
+    return { results, active, ruleVerdict, verdictCache, evidence, excluded };
   }
 }
 
