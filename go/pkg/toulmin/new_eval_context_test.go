@@ -11,7 +11,7 @@ func TestNewEvalContext(t *testing.T) {
 	}{
 		{"NilDefeatEdges", func(t *testing.T) {
 			rules := []RuleMeta{
-				{Name: "WarrantA", Qualifier: 1.0, Strength: Strict, Fn: WarrantA},
+				{Name: "WarrantA", Qualifier: 1.0, Strength: Strict, Fn: toRuleFunc(WarrantA)},
 			}
 			roleMap := map[string]string{"WarrantA": "warrant"}
 			ec, err := newEvalContext(rules, nil, nil, roleMap)
@@ -30,8 +30,8 @@ func TestNewEvalContext(t *testing.T) {
 		}},
 		{"WithDefeatEdges", func(t *testing.T) {
 			rules := []RuleMeta{
-				{Name: "WarrantA", Qualifier: 1.0, Strength: Strict, Fn: WarrantA},
-				{Name: "RebuttalB", Qualifier: 0.5, Strength: Defeasible, Fn: RebuttalB},
+				{Name: "WarrantA", Qualifier: 1.0, Strength: Strict, Fn: toRuleFunc(WarrantA)},
+				{Name: "RebuttalB", Qualifier: 0.5, Strength: Defeasible, Fn: toRuleFunc(RebuttalB)},
 			}
 			edges := []defeatEdge{{from: "RebuttalB", to: "WarrantA"}}
 			ec, err := newEvalContext(rules, edges, nil, map[string]string{})
@@ -47,8 +47,8 @@ func TestNewEvalContext(t *testing.T) {
 		}},
 		{"CycleError", func(t *testing.T) {
 			rules := []RuleMeta{
-				{Name: "A", Qualifier: 1.0, Strength: Strict, Fn: WarrantA},
-				{Name: "B", Qualifier: 1.0, Strength: Strict, Fn: WarrantA},
+				{Name: "A", Qualifier: 1.0, Strength: Strict, Fn: toRuleFunc(WarrantA)},
+				{Name: "B", Qualifier: 1.0, Strength: Strict, Fn: toRuleFunc(WarrantA)},
 			}
 			edges := []defeatEdge{
 				{from: "A", to: "B"},

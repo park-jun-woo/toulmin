@@ -25,7 +25,7 @@ func (g *Graph) evaluate(ctx Context, opt EvalOption, full bool) ([]EvalResult, 
 		if !ec.active[r.Name] {
 			continue
 		}
-		result := EvalResult{Name: shortName(r.Name), Verdict: verdict, Evidence: ec.evidence[r.Name]}
+		result := EvalResult{Name: shortName(r.Name), Verdict: verdict, Evidence: ec.evidence[r.Name], Applicability: ec.applicability[r.Name]}
 		if opt.Trace {
 			result.Trace = ec.tracedExclusions(ctx)
 		}

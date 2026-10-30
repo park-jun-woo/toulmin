@@ -30,7 +30,9 @@ func TestDiamondDAG(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("expected 1, got %d", len(results))
 	}
-	if results[0].Verdict != 0.0 {
-		t.Errorf("expected 0.0, got %f", results[0].Verdict)
+	// The defeater gates both rebuttals to -1 (applicability 0), so neither weighs on the
+	// warrant: 1.0 (was 0.0 when the defeater sat in the rebuttals' denominators).
+	if results[0].Verdict != 1.0 {
+		t.Errorf("expected 1.0, got %f", results[0].Verdict)
 	}
 }

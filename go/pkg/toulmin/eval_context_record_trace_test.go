@@ -10,17 +10,19 @@ func TestEvalContextRecordTrace(t *testing.T) {
 		run  func(t *testing.T)
 	}{
 		{"DurationSuccessExplicitRole", func(t *testing.T) {
-			activeFn := func(ctx Context, specs Specs) (bool, any) { return true, "ev" }
+			activeFn := func(ctx Context, specs Specs) (float64, any) { return 1.0, "ev" }
 			ec := &evalContext{
-				fnMap:       map[string]func(Context, Specs) (bool, any){"a": activeFn},
-				ran:         map[string]bool{},
-				active:      map[string]bool{},
-				evidence:    map[string]any{},
-				specsMap:    map[string]Specs{},
-				strMap:      map[string]Strength{"a": Strict},
-				attackerSet: map[string]bool{},
-				roleMap:     map[string]string{"a": "rule"},
-				qualMap:     map[string]float64{"a": 1.0},
+				fnMap:         map[string]func(Context, Specs) (float64, any){"a": activeFn},
+				ran:           map[string]bool{},
+				active:        map[string]bool{},
+				ruleVerdict:   map[string]float64{},
+				applicability: map[string]float64{},
+				evidence:      map[string]any{},
+				specsMap:      map[string]Specs{},
+				strMap:        map[string]Strength{"a": Strict},
+				attackerSet:   map[string]bool{},
+				roleMap:       map[string]string{"a": "rule"},
+				qualMap:       map[string]float64{"a": 1.0},
 			}
 			ec.recordTrace("a", NewContext(), true)
 			if ec.err != nil {
@@ -43,16 +45,18 @@ func TestEvalContextRecordTrace(t *testing.T) {
 			}
 		}},
 		{"DurationPanicSetsErr", func(t *testing.T) {
-			panicFn := func(ctx Context, specs Specs) (bool, any) { panic("boom") }
+			panicFn := func(ctx Context, specs Specs) (float64, any) { panic("boom") }
 			ec := &evalContext{
-				fnMap:       map[string]func(Context, Specs) (bool, any){"a": panicFn},
-				ran:         map[string]bool{},
-				active:      map[string]bool{},
-				evidence:    map[string]any{},
-				specsMap:    map[string]Specs{},
-				strMap:      map[string]Strength{},
-				attackerSet: map[string]bool{},
-				roleMap:     map[string]string{},
+				fnMap:         map[string]func(Context, Specs) (float64, any){"a": panicFn},
+				ran:           map[string]bool{},
+				active:        map[string]bool{},
+				ruleVerdict:   map[string]float64{},
+				applicability: map[string]float64{},
+				evidence:      map[string]any{},
+				specsMap:      map[string]Specs{},
+				strMap:        map[string]Strength{},
+				attackerSet:   map[string]bool{},
+				roleMap:       map[string]string{},
 			}
 			ec.recordTrace("a", NewContext(), true)
 			if ec.err == nil {
@@ -66,17 +70,19 @@ func TestEvalContextRecordTrace(t *testing.T) {
 			}
 		}},
 		{"NoDurationSuccessInferredRole", func(t *testing.T) {
-			activeFn := func(ctx Context, specs Specs) (bool, any) { return false, nil }
+			activeFn := func(ctx Context, specs Specs) (float64, any) { return -1.0, nil }
 			ec := &evalContext{
-				fnMap:       map[string]func(Context, Specs) (bool, any){"a": activeFn},
-				ran:         map[string]bool{},
-				active:      map[string]bool{},
-				evidence:    map[string]any{},
-				specsMap:    map[string]Specs{},
-				strMap:      map[string]Strength{"a": Defeasible},
-				attackerSet: map[string]bool{"a": true},
-				roleMap:     map[string]string{},
-				qualMap:     map[string]float64{"a": 0.5},
+				fnMap:         map[string]func(Context, Specs) (float64, any){"a": activeFn},
+				ran:           map[string]bool{},
+				active:        map[string]bool{},
+				ruleVerdict:   map[string]float64{},
+				applicability: map[string]float64{},
+				evidence:      map[string]any{},
+				specsMap:      map[string]Specs{},
+				strMap:        map[string]Strength{"a": Defeasible},
+				attackerSet:   map[string]bool{"a": true},
+				roleMap:       map[string]string{},
+				qualMap:       map[string]float64{"a": 0.5},
 			}
 			ec.recordTrace("a", NewContext(), false)
 			if ec.err != nil {
@@ -96,16 +102,18 @@ func TestEvalContextRecordTrace(t *testing.T) {
 			}
 		}},
 		{"NoDurationPanicSetsErr", func(t *testing.T) {
-			panicFn := func(ctx Context, specs Specs) (bool, any) { panic("boom") }
+			panicFn := func(ctx Context, specs Specs) (float64, any) { panic("boom") }
 			ec := &evalContext{
-				fnMap:       map[string]func(Context, Specs) (bool, any){"a": panicFn},
-				ran:         map[string]bool{},
-				active:      map[string]bool{},
-				evidence:    map[string]any{},
-				specsMap:    map[string]Specs{},
-				strMap:      map[string]Strength{},
-				attackerSet: map[string]bool{},
-				roleMap:     map[string]string{},
+				fnMap:         map[string]func(Context, Specs) (float64, any){"a": panicFn},
+				ran:           map[string]bool{},
+				active:        map[string]bool{},
+				ruleVerdict:   map[string]float64{},
+				applicability: map[string]float64{},
+				evidence:      map[string]any{},
+				specsMap:      map[string]Specs{},
+				strMap:        map[string]Strength{},
+				attackerSet:   map[string]bool{},
+				roleMap:       map[string]string{},
 			}
 			ec.recordTrace("a", NewContext(), false)
 			if ec.err == nil {

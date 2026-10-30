@@ -31,7 +31,8 @@ func TestGraphFuncReuse(t *testing.T) {
 	if res1[0].Verdict != 0.0 {
 		t.Errorf("g1: expected 0.0, got %f", res1[0].Verdict)
 	}
-	if res2[0].Verdict != 0.0 {
-		t.Errorf("g2: expected 0.0, got %f", res2[0].Verdict)
+	// A full-force Except gates the warrant's applicability to 0: verdict -1 (was 0.0).
+	if res2[0].Verdict != -1.0 {
+		t.Errorf("g2: expected -1.0, got %f", res2[0].Verdict)
 	}
 }

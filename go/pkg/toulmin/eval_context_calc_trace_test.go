@@ -26,7 +26,7 @@ func TestEvalContextCalcTrace(t *testing.T) {
 		}},
 		{"MissingFn", func(t *testing.T) {
 			ec := &evalContext{
-				fnMap:        map[string]func(Context, Specs) (bool, any){},
+				fnMap:        map[string]func(Context, Specs) (float64, any){},
 				verdictCache: map[string]float64{},
 			}
 			if v := ec.calcTrace("missing", NewContext(), false); v != -1.0 {
@@ -35,7 +35,7 @@ func TestEvalContextCalcTrace(t *testing.T) {
 		}},
 		{"NilFn", func(t *testing.T) {
 			ec := &evalContext{
-				fnMap:        map[string]func(Context, Specs) (bool, any){"a": nil},
+				fnMap:        map[string]func(Context, Specs) (float64, any){"a": nil},
 				verdictCache: map[string]float64{},
 			}
 			if v := ec.calcTrace("a", NewContext(), false); v != -1.0 {
@@ -43,17 +43,19 @@ func TestEvalContextCalcTrace(t *testing.T) {
 			}
 		}},
 		{"RecordTracePanicSetsErr", func(t *testing.T) {
-			panicFn := func(ctx Context, specs Specs) (bool, any) { panic("kaboom") }
+			panicFn := func(ctx Context, specs Specs) (float64, any) { panic("kaboom") }
 			ec := &evalContext{
-				fnMap:        map[string]func(Context, Specs) (bool, any){"a": panicFn},
-				verdictCache: map[string]float64{},
-				ran:          map[string]bool{},
-				active:       map[string]bool{},
-				evidence:     map[string]any{},
-				specsMap:     map[string]Specs{},
-				strMap:       map[string]Strength{},
-				attackerSet:  map[string]bool{},
-				roleMap:      map[string]string{},
+				fnMap:         map[string]func(Context, Specs) (float64, any){"a": panicFn},
+				verdictCache:  map[string]float64{},
+				ran:           map[string]bool{},
+				active:        map[string]bool{},
+				ruleVerdict:   map[string]float64{},
+				applicability: map[string]float64{},
+				evidence:      map[string]any{},
+				specsMap:      map[string]Specs{},
+				strMap:        map[string]Strength{},
+				attackerSet:   map[string]bool{},
+				roleMap:       map[string]string{},
 			}
 			if v := ec.calcTrace("a", NewContext(), false); v != -1.0 {
 				t.Fatalf("expected -1.0, got %v", v)
@@ -64,17 +66,19 @@ func TestEvalContextCalcTrace(t *testing.T) {
 		}},
 		{"AlreadyRanInactive", func(t *testing.T) {
 			calledAgain := false
-			fn := func(ctx Context, specs Specs) (bool, any) { calledAgain = true; return true, nil }
+			fn := func(ctx Context, specs Specs) (float64, any) { calledAgain = true; return 1.0, nil }
 			ec := &evalContext{
-				fnMap:        map[string]func(Context, Specs) (bool, any){"a": fn},
-				verdictCache: map[string]float64{},
-				ran:          map[string]bool{"a": true},
-				active:       map[string]bool{"a": false},
-				evidence:     map[string]any{},
-				specsMap:     map[string]Specs{},
-				strMap:       map[string]Strength{},
-				attackerSet:  map[string]bool{},
-				roleMap:      map[string]string{},
+				fnMap:         map[string]func(Context, Specs) (float64, any){"a": fn},
+				verdictCache:  map[string]float64{},
+				ran:           map[string]bool{"a": true},
+				active:        map[string]bool{"a": false},
+				ruleVerdict:   map[string]float64{},
+				applicability: map[string]float64{},
+				evidence:      map[string]any{},
+				specsMap:      map[string]Specs{},
+				strMap:        map[string]Strength{},
+				attackerSet:   map[string]bool{},
+				roleMap:       map[string]string{},
 			}
 			if v := ec.calcTrace("a", NewContext(), false); v != -1.0 {
 				t.Fatalf("expected -1.0 for inactive node, got %v", v)
@@ -84,17 +88,19 @@ func TestEvalContextCalcTrace(t *testing.T) {
 			}
 		}},
 		{"StrictSkipsAttackerLoop", func(t *testing.T) {
-			activeFn := func(ctx Context, specs Specs) (bool, any) { return true, nil }
+			activeFn := func(ctx Context, specs Specs) (float64, any) { return 1.0, nil }
 			ec := &evalContext{
-				fnMap:        map[string]func(Context, Specs) (bool, any){"a": activeFn},
-				verdictCache: map[string]float64{},
-				ran:          map[string]bool{},
-				active:       map[string]bool{},
-				evidence:     map[string]any{},
-				specsMap:     map[string]Specs{},
-				strMap:       map[string]Strength{"a": Strict},
-				attackerSet:  map[string]bool{},
-				roleMap:      map[string]string{},
+				fnMap:         map[string]func(Context, Specs) (float64, any){"a": activeFn},
+				verdictCache:  map[string]float64{},
+				ran:           map[string]bool{},
+				active:        map[string]bool{},
+				ruleVerdict:   map[string]float64{},
+				applicability: map[string]float64{},
+				evidence:      map[string]any{},
+				specsMap:      map[string]Specs{},
+				strMap:        map[string]Strength{"a": Strict},
+				attackerSet:   map[string]bool{},
+				roleMap:       map[string]string{},
 				// Present edges must be ignored because strength is Strict.
 				edges:   map[string][]string{"a": {"unreachable"}},
 				qualMap: map[string]float64{"a": 1.0},
@@ -105,20 +111,22 @@ func TestEvalContextCalcTrace(t *testing.T) {
 			}
 		}},
 		{"DefeasibleWithAttackerLoop", func(t *testing.T) {
-			activeFn := func(ctx Context, specs Specs) (bool, any) { return true, nil }
+			activeFn := func(ctx Context, specs Specs) (float64, any) { return 1.0, nil }
 			ec := &evalContext{
-				fnMap: map[string]func(Context, Specs) (bool, any){
+				fnMap: map[string]func(Context, Specs) (float64, any){
 					"b":  activeFn,
 					"a1": activeFn,
 					"a2": activeFn,
 				},
-				verdictCache: map[string]float64{},
-				ran:          map[string]bool{},
-				active:       map[string]bool{},
-				evidence:     map[string]any{},
-				specsMap:     map[string]Specs{},
-				attackerSet:  map[string]bool{"a1": true, "a2": true},
-				roleMap:      map[string]string{},
+				verdictCache:  map[string]float64{},
+				ran:           map[string]bool{},
+				active:        map[string]bool{},
+				ruleVerdict:   map[string]float64{},
+				applicability: map[string]float64{},
+				evidence:      map[string]any{},
+				specsMap:      map[string]Specs{},
+				attackerSet:   map[string]bool{"a1": true, "a2": true},
+				roleMap:       map[string]string{},
 				strMap: map[string]Strength{
 					"b":  Defeasible,
 					"a1": Strict,

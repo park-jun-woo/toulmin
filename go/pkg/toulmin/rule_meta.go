@@ -2,15 +2,15 @@
 //ff:what RuleMeta — rule metadata (name, qualifier, strength, defeats, specs, fn)
 package toulmin
 
-// RuleMeta holds a rule's metadata and its boolean evaluation function.
+// RuleMeta holds a rule's metadata and its verdict-returning evaluation function.
 type RuleMeta struct {
 	Name      string
 	Qualifier float64
 	Strength  Strength
 	Defeats   []string
 	Specs     Specs
-	Grounds   []string // ground fact names this rule's Fn resolves at eval time (audit metadata only; engine does not resolve/cache)
-	Fn        func(ctx Context, specs Specs) (bool, any)
+	Grounds   []string                                      // ground fact names this rule's Fn resolves at eval time (audit metadata only; engine does not resolve/cache)
+	Fn        func(ctx Context, specs Specs) (float64, any) // verdict v in [-1, 1]; bool rules are wrapped by toRuleFunc
 
 	Level    Level // crisp reporting level (Unset unless set)
 	LevelSet bool  // true once Rule.Level was called; explicit value wins over role default

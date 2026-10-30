@@ -10,7 +10,9 @@ func TestRunCasesBetween(t *testing.T) {
 	r := g.Counter(RebuttalB)
 	d := g.Except(DefeaterC)
 	r.Attacks(w)
-	d.Attacks(r)
+	// Half-force Except: rebuttal applicability 0.5 → rebuttal verdict 0 → warrant 1/3.
+	// (A full-force Except would gate the rebuttal out entirely → warrant 1.0.)
+	d.Attacks(r, 0.5)
 	RunCases(t, g, []TestCase{
 		{Name: "partial defeat", Context: nil, Expect: VerdictBetween(0, 0.5)},
 	})

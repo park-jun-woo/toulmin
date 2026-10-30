@@ -1,4 +1,4 @@
-//ff:func feature=engine type=engine control=iteration dimension=1
+//ff:func feature=engine type=engine control=sequence
 //ff:what calcTrace — h-Categoriser lazy recursive verdict computation with trace
 package toulmin
 
@@ -27,15 +27,5 @@ func (ec *evalContext) calcTrace(id string, ctx Context, duration bool) float64 
 	if !ec.active[id] {
 		return -1.0
 	}
-	sum := 0.0
-	if ec.strMap[id] != Strict {
-		for _, aid := range ec.edges[id] {
-			raw := (ec.calcTrace(aid, ctx, duration) + 1.0) / 2.0
-			sum += raw
-		}
-	}
-	raw := ec.qualMap[id] / (1.0 + sum)
-	v := 2*raw - 1
-	ec.verdictCache[id] = v
-	return v
+	return ec.combine(id, func(aid string) float64 { return ec.calcTrace(aid, ctx, duration) })
 }

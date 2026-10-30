@@ -30,8 +30,8 @@ func TestBuildTraceEntries(t *testing.T) {
 				name:  "g",
 				roles: map[string]string{"WarrantA": "rule"},
 				rules: []RuleMeta{
-					{Name: "WarrantA", Qualifier: 1.0, Strength: Strict, Fn: WarrantA},
-					{Name: "RebuttalB", Qualifier: 0.8, Strength: Defeasible, Fn: RebuttalB},
+					{Name: "WarrantA", Qualifier: 1.0, Strength: Strict, Fn: toRuleFunc(WarrantA)},
+					{Name: "RebuttalB", Qualifier: 0.8, Strength: Defeasible, Fn: toRuleFunc(RebuttalB)},
 				},
 			}
 			ec := &evalContext{

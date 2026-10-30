@@ -108,7 +108,8 @@ const fn: RuleFunc = (ctx, specs) => [boolean, unknown]
 def fn(ctx: Context, specs: list[Spec]) -> tuple[bool, Any]: ...
 
 // Go
-func fn(ctx Context, specs Specs) (bool, any)
+func fn(ctx Context, specs Specs) (float64, any) // 등급 판정: v ∈ [-1, +1]
+func fn(ctx Context, specs Specs) (bool, any)    // 그대로 허용: true → +1, false → -1
 ```
 
 - `ctx` = get/set 기반의 요청별 컨텍스트 (사용자, IP, 컨텍스트)
@@ -169,6 +170,52 @@ verdict = 2 × raw - 1
 - 피처 플래그: `verdict > 0` → 활성
 
 규칙의 주장을 긍정형으로 설계하면 verdict가 직관에 부합한다 — "접근 허용"(+1 = 허용), "파일 구조 준수"(+1 = 준수).
+
+### 등급 규칙, 예외, 공격 강도 (Go)
+
+Go에서는 규칙 함수가 예/아니오 대신 얼마나 해당하는지를 반환할 수 있다:
+
+```go
+func fn(ctx Context, specs Specs) (float64, any) // v ∈ [-1, +1]
+```
+
+| `v` | 의미 |
+|---|---|
+| `+1` | 완전히 해당 (옛 `true`) |
+| `0` | **반쯤 해당** |
+| `-1` | 해당 없음 (옛 `false`) |
+
+**해당 없음은 0이 아니라 −1이다. 0은 '반쯤 해당'이다.** bool에 익숙한 대로 "아니오"를 `return 0, nil`로 쓰면 규칙이 꺼지지 않는다. 적용도 0.5로 Active인 채 남고, 공격자도 평가되고, 그래프에 계속 반영된다. 판정이 조용히 틀어지며, **엔진은 이를 검출하지 못한다 — 0은 합법적인 값이므로 사용자가 알아서 조심해야 한다.** 해당하지 않으면 `-1`을 반환한다.
+
+- `v`는 `[-1, +1]` 안이어야 한다. NaN이나 범위를 벗어난 값은 오류다. `Evaluate`/`Run`이 멈추고 `rule "<id>": rule verdict <v> out of range [-1, 1]`를 반환한다(규칙 panic과 같은 경로).
+- 옛 `func(Context, Specs) (bool, any)` 시그니처도 그대로 쓴다. `true` → `+1`, `false` → `-1`이고, bool 그래프의 판정값은 이전과 정확히 같다(`Except`가 공격하는 경우만 다르다 — 아래).
+- `v > -1`이면 Active다. `v == -1`일 때만 공격자 평가를 건너뛴다(지연 평가).
+- `TraceEntry.RuleVerdict`에 규칙 자체의 `v`가 남는다. `TraceEntry.Activated`는 `v > -1`로 유지된다.
+
+반박(Counter)과 예외(Except)는 이제 다르게 계산한다:
+
+```
+a      = (v + 1) / 2                               자기 적용도
+S      = Σ_반박  F · (v_j + 1) / 2                 반박: 분모
+a_eff  = a · Π_예외 (1 − F · (v_j + 1) / 2)        예외: 곱셈 게이트
+raw    = q · a_eff / (1 + S)
+verdict = 2 · raw − 1
+```
+
+- **Counter**(반박)는 결론에 맞서는 주장이다. 지금처럼 분모에 들어간다.
+- **Except**(예외)는 "이 경우엔 규칙이 적용되지 않는다"는 말이다. 분모에 더하지 않고 대상의 적용도를 깎는다. 완전히 해당하는 예외 하나면 대상은 `-1`이 된다. 반쯤 해당하는 예외 셋이면 적용도가 `(1 − 0.75)³ ≈ 0.016`만 남는다. (이전에는 예외 셋이 붙어도 `-0.5`까지만 내려갔다.)
+- `Strict` 규칙은 둘 다 무시한다. `Supersedes`(크리스프 배제)는 그대로다.
+- `EvalResult.Applicability`가 각 warrant의 `a_eff`를 알려 준다.
+
+`Attacks`는 선택 인자로 공격 강도 `F ∈ [0, 1]`을 받는다. 기본값은 `1`이다:
+
+```go
+blocked.Attacks(auth)       // F = 1 (기존 동작 그대로)
+hint.Attacks(auth, 0.3)     // 약한 반박
+partial.Attacks(rule, 0.5)  // 적용도를 최대 절반만 깎는 예외
+```
+
+`F`는 반박 항과 예외 게이트 양쪽에 곱해진다. 값을 둘 이상 주거나 NaN이거나 `[0, 1]`을 벗어나면 선언 시점에 panic한다(`Qualifier`와 같은 관례).
 
 ### Level
 

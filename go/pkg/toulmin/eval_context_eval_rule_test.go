@@ -10,18 +10,20 @@ func TestEvalContextEvalRule(t *testing.T) {
 		run  func(t *testing.T)
 	}{
 		{"Trace", func(t *testing.T) {
-			activeFn := func(ctx Context, specs Specs) (bool, any) { return true, nil }
+			activeFn := func(ctx Context, specs Specs) (float64, any) { return 1.0, nil }
 			ec := &evalContext{
-				fnMap:        map[string]func(Context, Specs) (bool, any){"a": activeFn},
-				verdictCache: map[string]float64{},
-				ran:          map[string]bool{},
-				active:       map[string]bool{},
-				evidence:     map[string]any{},
-				specsMap:     map[string]Specs{},
-				strMap:       map[string]Strength{"a": Strict},
-				attackerSet:  map[string]bool{},
-				roleMap:      map[string]string{},
-				qualMap:      map[string]float64{"a": 1.0},
+				fnMap:         map[string]func(Context, Specs) (float64, any){"a": activeFn},
+				verdictCache:  map[string]float64{},
+				ran:           map[string]bool{},
+				active:        map[string]bool{},
+				ruleVerdict:   map[string]float64{},
+				applicability: map[string]float64{},
+				evidence:      map[string]any{},
+				specsMap:      map[string]Specs{},
+				strMap:        map[string]Strength{"a": Strict},
+				attackerSet:   map[string]bool{},
+				roleMap:       map[string]string{},
+				qualMap:       map[string]float64{"a": 1.0},
 			}
 			v := ec.evalRule("a", NewContext(), EvalOption{Trace: true})
 			if v != 1.0 {
@@ -32,16 +34,18 @@ func TestEvalContextEvalRule(t *testing.T) {
 			}
 		}},
 		{"Default", func(t *testing.T) {
-			activeFn := func(ctx Context, specs Specs) (bool, any) { return true, nil }
+			activeFn := func(ctx Context, specs Specs) (float64, any) { return 1.0, nil }
 			ec := &evalContext{
-				fnMap:        map[string]func(Context, Specs) (bool, any){"a": activeFn},
-				verdictCache: map[string]float64{},
-				ran:          map[string]bool{},
-				active:       map[string]bool{},
-				evidence:     map[string]any{},
-				specsMap:     map[string]Specs{},
-				strMap:       map[string]Strength{"a": Strict},
-				qualMap:      map[string]float64{"a": 1.0},
+				fnMap:         map[string]func(Context, Specs) (float64, any){"a": activeFn},
+				verdictCache:  map[string]float64{},
+				ran:           map[string]bool{},
+				active:        map[string]bool{},
+				ruleVerdict:   map[string]float64{},
+				applicability: map[string]float64{},
+				evidence:      map[string]any{},
+				specsMap:      map[string]Specs{},
+				strMap:        map[string]Strength{"a": Strict},
+				qualMap:       map[string]float64{"a": 1.0},
 			}
 			v := ec.evalRule("a", NewContext(), EvalOption{Trace: false})
 			if v != 1.0 {

@@ -1,3 +1,5 @@
+//ff:func feature=engine type=engine control=sequence
+//ff:what TestStringListSpecCopiesItems — StringListSpec copies its items in and out, and reports its name and validity
 package toulmin
 
 import "testing"

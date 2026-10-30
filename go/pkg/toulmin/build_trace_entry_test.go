@@ -1,5 +1,5 @@
 //ff:func feature=engine type=engine control=iteration dimension=1
-//ff:what TestBuildTraceEntry — tests Graph.buildTraceEntry for explicit-role and inferred-role branches
+//ff:what TestBuildTraceEntry — tests Graph.buildTraceEntry for explicit-role and inferred-role branches, and RuleVerdict present/absent (-1)
 package toulmin
 
 import "testing"
@@ -15,6 +15,7 @@ func TestBuildTraceEntry(t *testing.T) {
 				strMap:       map[string]Strength{"WarrantA": Strict},
 				attackerSet:  map[string]bool{},
 				active:       map[string]bool{"WarrantA": true},
+				ruleVerdict:  map[string]float64{"WarrantA": 0.5},
 				qualMap:      map[string]float64{"WarrantA": 1.0},
 				verdictCache: map[string]float64{"WarrantA": 1.0},
 				evidence:     map[string]any{"WarrantA": "ev"},
@@ -35,6 +36,9 @@ func TestBuildTraceEntry(t *testing.T) {
 			}
 			if entry.Verdict != 1.0 {
 				t.Errorf("Verdict = %v, want 1.0", entry.Verdict)
+			}
+			if entry.RuleVerdict != 0.5 {
+				t.Errorf("RuleVerdict = %v, want 0.5 (the rule function's own v)", entry.RuleVerdict)
 			}
 			if entry.Evidence != "ev" {
 				t.Errorf("Evidence = %v, want %q", entry.Evidence, "ev")
@@ -60,6 +64,9 @@ func TestBuildTraceEntry(t *testing.T) {
 			}
 			if entry.Activated {
 				t.Error("expected Activated = false")
+			}
+			if entry.RuleVerdict != -1.0 {
+				t.Errorf("RuleVerdict = %v, want -1 for a node that never ran", entry.RuleVerdict)
 			}
 		}},
 	}

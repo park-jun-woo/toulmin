@@ -30,8 +30,8 @@ func TestDetectSupersedeCycle(t *testing.T) {
 	// clean Attacks graph but a cyclic supersede graph fails on supersede only, and
 	// a graph with a clean supersede graph but cyclic Attacks fails on Attacks only.
 	rules := []RuleMeta{
-		{Name: "X", Qualifier: 1.0, Strength: Defeasible, Fn: WarrantA},
-		{Name: "Y", Qualifier: 1.0, Strength: Defeasible, Fn: RebuttalB},
+		{Name: "X", Qualifier: 1.0, Strength: Defeasible, Fn: toRuleFunc(WarrantA)},
+		{Name: "Y", Qualifier: 1.0, Strength: Defeasible, Fn: toRuleFunc(RebuttalB)},
 	}
 	// clean Attacks (nil), cyclic supersede → supersede error
 	_, err = newEvalContext(rules, nil, cyc, map[string]string{})

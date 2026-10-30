@@ -1,5 +1,5 @@
 //ff:func feature=engine type=engine control=sequence
-//ff:what TestEvalContextReset — tests evalContext.reset clears ran/active/evidence/trace/err/verdictCache
+//ff:what TestEvalContextReset — tests evalContext.reset clears ran/active/ruleVerdict/applicability/evidence/trace/err/verdictCache
 package toulmin
 
 import (
@@ -9,12 +9,14 @@ import (
 
 func TestEvalContextReset(t *testing.T) {
 	ec := &evalContext{
-		ran:          map[string]bool{"a": true},
-		active:       map[string]bool{"a": true},
-		evidence:     map[string]any{"a": "ev"},
-		trace:        []TraceEntry{{Name: "a"}},
-		err:          errors.New("boom"),
-		verdictCache: map[string]float64{"a": 1.0},
+		ran:           map[string]bool{"a": true},
+		active:        map[string]bool{"a": true},
+		ruleVerdict:   map[string]float64{"a": 0.5},
+		applicability: map[string]float64{"a": 0.75},
+		evidence:      map[string]any{"a": "ev"},
+		trace:         []TraceEntry{{Name: "a"}},
+		err:           errors.New("boom"),
+		verdictCache:  map[string]float64{"a": 1.0},
 	}
 	ec.reset()
 	if len(ec.ran) != 0 {
@@ -22,6 +24,9 @@ func TestEvalContextReset(t *testing.T) {
 	}
 	if len(ec.active) != 0 {
 		t.Errorf("expected active cleared, got %v", ec.active)
+	}
+	if len(ec.ruleVerdict) != 0 || len(ec.applicability) != 0 {
+		t.Errorf("expected ruleVerdict/applicability cleared, got %v / %v", ec.ruleVerdict, ec.applicability)
 	}
 	if len(ec.evidence) != 0 {
 		t.Errorf("expected evidence cleared, got %v", ec.evidence)

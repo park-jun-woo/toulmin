@@ -7,15 +7,16 @@ import "time"
 // TraceEntry records one rule's evaluation result for explainability.
 // Name is the Claim, Ground is the ctx the rule saw, Specs is the Backing.
 type TraceEntry struct {
-	Name      string        `json:"name"` // = Claim
-	Role      string        `json:"role"`
-	Activated bool          `json:"activated"`
-	Qualifier float64       `json:"qualifier"`
-	Verdict   float64       `json:"verdict"`
-	Evidence  any           `json:"evidence,omitempty"`
-	Ground    any           `json:"ground,omitempty"` // = Ground (ctx as-is)
-	Specs     Specs         `json:"specs,omitempty"`  // = Backing
-	Duration  time.Duration `json:"duration,omitempty"`
-	Excluded  bool          `json:"excluded,omitempty"`
-	Level     Level         `json:"level"` // no omitempty: Unset (0) is a meaningful "no level" report value
+	Name        string        `json:"name"` // = Claim
+	Role        string        `json:"role"`
+	Activated   bool          `json:"activated"`    // derived: RuleVerdict > -1
+	RuleVerdict float64       `json:"rule_verdict"` // the rule function's own v in [-1, 1] (before attacks)
+	Qualifier   float64       `json:"qualifier"`
+	Verdict     float64       `json:"verdict"`
+	Evidence    any           `json:"evidence,omitempty"`
+	Ground      any           `json:"ground,omitempty"` // = Ground (ctx as-is)
+	Specs       Specs         `json:"specs,omitempty"`  // = Backing
+	Duration    time.Duration `json:"duration,omitempty"`
+	Excluded    bool          `json:"excluded,omitempty"`
+	Level       Level         `json:"level"` // no omitempty: Unset (0) is a meaningful "no level" report value
 }

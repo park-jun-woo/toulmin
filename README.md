@@ -183,7 +183,8 @@ const fn: RuleFunc = (ctx, specs) => [boolean, unknown]
 def fn(ctx: Context, specs: list[Spec]) -> tuple[bool, Any]: ...
 
 // Go
-func fn(ctx Context, specs Specs) (bool, any)
+func fn(ctx Context, specs Specs) (float64, any) // graded: v in [-1, +1]
+func fn(ctx Context, specs Specs) (bool, any)    // still accepted: true → +1, false → -1
 ```
 
 - `ctx` = context with get/set for per-request facts (user, IP, context)
@@ -242,6 +243,52 @@ Not binary. **The framework interprets**:
 - Security: `verdict ≤ 0` → deny
 - Moderation: `verdict ≤ 0` → block, `0 < v ≤ 0.3` → flag, `> 0.3` → allow
 - Feature flags: `verdict > 0` → enabled
+
+### Graded rules, exceptions, and attack force (Go)
+
+In Go a rule function may return how much it applies instead of a plain yes/no:
+
+```go
+func fn(ctx Context, specs Specs) (float64, any) // v in [-1, +1]
+```
+
+| `v` | Meaning |
+|---|---|
+| `+1` | fully applies (the old `true`) |
+| `0` | **half applies** |
+| `-1` | does not apply (the old `false`) |
+
+**"Does not apply" is −1, not 0. Zero means "half applies".** A rule written with bool habits that returns `0, nil` for "no" does not switch off: it stays Active with applicability 0.5, its attackers are evaluated, and it still weighs into the graph. The verdict silently comes out wrong, and **the engine cannot detect this — 0 is a legal value, so you must watch for it yourself.** Return `-1` when the rule does not apply.
+
+- `v` must be in `[-1, +1]`. NaN or anything outside the range is an error: `Evaluate`/`Run` stop and return `rule "<id>": rule verdict <v> out of range [-1, 1]`, the same path as a panicking rule.
+- The old `func(Context, Specs) (bool, any)` signature still works unchanged: `true` → `+1`, `false` → `-1`, and bool graphs produce exactly the same verdicts as before (except where an `Except` attacks — see below).
+- A node is Active when `v > -1`. Only `v == -1` skips evaluating its attackers (lazy evaluation).
+- `TraceEntry.RuleVerdict` records the rule's own `v`; `TraceEntry.Activated` is kept as `v > -1`.
+
+Counter and Except are now computed differently:
+
+```
+a      = (v + 1) / 2                               own applicability
+S      = Σ_counter  F · (v_j + 1) / 2              rebuttals: denominator
+a_eff  = a · Π_except (1 − F · (v_j + 1) / 2)      exceptions: multiplicative gate
+raw    = q · a_eff / (1 + S)
+verdict = 2 · raw − 1
+```
+
+- A **Counter** (rebuttal) argues against the conclusion and stays in the denominator, as before.
+- An **Except** (exception) says the rule does not apply here: it scales down the target's applicability instead of adding to the denominator. One fully applying exception gates its target to `-1`; three exceptions that each half-apply leave `(1 − 0.75)³ ≈ 0.016` of the applicability. (Before, three exceptions only pulled a target down to `-0.5`.)
+- `Strict` rules ignore both. `Supersedes` is unchanged (crisp exclusion).
+- `EvalResult.Applicability` reports `a_eff` for each warrant.
+
+`Attacks` takes an optional force `F` in `[0, 1]`, default `1`:
+
+```go
+blocked.Attacks(auth)       // F = 1 (unchanged behaviour)
+hint.Attacks(auth, 0.3)     // a weak rebuttal
+partial.Attacks(rule, 0.5)  // an exception that removes at most half of the applicability
+```
+
+`F` scales both the rebuttal term and the exception gate. More than one force value, NaN, or a value outside `[0, 1]` panics at declaration, like `Qualifier`.
 
 ### Level
 

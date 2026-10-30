@@ -3,6 +3,7 @@
 package toulmin
 
 type defeatEdge struct {
-	from string
-	to   string
+	from  string
+	to    string
+	force float64 // attack force F in [0, 1] (defeat edges only; unused by supersede edges)
 }

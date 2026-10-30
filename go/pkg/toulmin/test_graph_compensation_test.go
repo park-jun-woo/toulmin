@@ -21,7 +21,9 @@ func TestGraphCompensation(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
-	expected := 1.0 / 3.0
+	// Except gates the rebuttal's applicability to 0 (verdict -1): full compensation,
+	// warrant = 1.0 (was 1/3 when Except sat in the rebuttal's denominator).
+	expected := 1.0
 	if math.Abs(results[0].Verdict-expected) > 0.001 {
 		t.Errorf("expected ≈%f, got %f", expected, results[0].Verdict)
 	}
