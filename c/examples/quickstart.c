@@ -4,7 +4,8 @@
  *   ./quickstart
  *
  * 규칙은 함수, 예외는 그래프 간선이다. DSL도, 사이드카도 없다.
- * verdict > 0 → allow, verdict <= 0 → deny (프레임워크가 해석한다). */
+ * verdict > 0 → allow, verdict <= 0 → deny (프레임워크가 해석한다).
+ * 뒷부분은 등급 규칙(verdict 규칙)과 공격 강도(force) 예시다. */
 
 #include <rulecat/rulecat.h>
 
@@ -45,6 +46,18 @@ static rc_status is_internal_ip(rc_context *ctx, rc_spec *const *specs,
     const char *ip = ctx->get(ctx, "ip");
     *out_activated = ip != NULL && strncmp(ip, "10.", 3) == 0;
     *out_evidence  = NULL;
+    return RC_OK;
+}
+
+/* Graded rule(verdict 규칙): 위험 점수 ctx["risk"](0~100 정수)를 v ∈ [-1, +1]로 낸다.
+ * 점수 0이면 -1(해당 없음). 주의: 해당 없음은 0이 아니라 -1이다. 0은 '반쯤 해당'이다. */
+static rc_status is_risky(rc_context *ctx, rc_spec *const *specs,
+                          size_t n_specs, void *ud,
+                          double *out_verdict, void **out_evidence) {
+    (void)specs; (void)n_specs; (void)ud;
+    const int *risk = ctx->get(ctx, "risk");
+    *out_verdict  = risk ? (double)*risk / 50.0 - 1.0 : -1.0;   /* 0 → -1, 50 → 0, 100 → +1 */
+    *out_evidence = NULL;
     return RC_OK;
 }
 
@@ -89,9 +102,34 @@ int main(void) {
 
     decide(g, "authed / normal ip",   "alice", "1.2.3.4");   /* warrant only -> +1 */
     decide(g, "authed / blocked ip",  "alice", "6.6.6.6");   /* counter fires  ->  0 */
-    decide(g, "authed / internal ip", "alice", "10.6.6.6");  /* except rescues -> 1/3 */
+    decide(g, "authed / internal ip", "alice", "10.6.6.6");  /* except gates the counter -> +1 */
     decide(g, "anonymous",            NULL,    "1.2.3.4");   /* rule inactive  -> none */
-
     rc_graph_destroy(g);
+
+    /* 등급 규칙 + 공격 강도: 위험 점수는 인증을 반 강도(F = 0.5)로 반박한다.
+     *   S = 0.5 · (risk_verdict + 1) / 2,  verdict = 2 / (1 + S) − 1 */
+    printf("\ngraded counter (force 0.5)\n");
+    rc_graph *g2 = rc_graph_create("api:risk");
+    rc_rule *auth2 = rc_graph_rule(g2, is_authenticated, NULL);
+    rc_rule *risky = rc_graph_counter_verdict(g2, is_risky, NULL);
+    rc_rule_attacks_with_force(risky, auth2, 0.5);
+
+    static const int risks[] = { 0, 50, 100 };
+    for (size_t i = 0; i < sizeof risks / sizeof risks[0]; i++) {
+        rc_context *ctx = rc_map_context_create();
+        ctx->set(ctx, "user", (void *)"alice");
+        ctx->set(ctx, "risk", (void *)&risks[i]);
+        rc_results *res = NULL;
+        if (rc_graph_evaluate(g2, ctx, NULL, &res) == RC_OK) {
+            size_t n;
+            const rc_eval_result *items = rc_results_items(res, &n);
+            if (n > 0)
+                printf("risk=%-3d               verdict=%+.3f applicability=%.2f\n",
+                       risks[i], items[0].verdict, items[0].applicability);
+            rc_results_destroy(res);
+        }
+        rc_map_context_destroy(ctx);
+    }
+    rc_graph_destroy(g2);
     return 0;
 }

@@ -6,11 +6,17 @@
 #include <stdarg.h>
 #include <stddef.h>
 
+/* --- 규칙 함수 포인터의 공통 표현 --- */
+/* bool 판(rc_rule_func)과 verdict 판(rc_verdict_func)을 정체성 키로 함께 다루려고
+   범용 함수 포인터로 캐스팅해 둔다(C11 6.3.2.3p8: 함수 포인터 간 변환은 왕복 보존).
+   호출은 반드시 원래 타입으로 되돌려서 한다(rc_rule_meta.fn / .vfn). */
+typedef void (*rc__any_fn)(void);
+
 /* --- 함수 정체성 레지스트리 항목 --- */
 /* (fn, user_data) 쌍마다 유일한 ID 문자열을 발급한다.
    C에는 클로저가 없으므로 규칙 정체성 키는 (fn, user_data) 쌍이다. */
 typedef struct rc_func_entry {
-    rc_rule_func fn;
+    rc__any_fn   fn;
     void        *user_data;
     char        *id;          /* graph 소유(strdup), rc_graph_destroy에서 해제 */
 } rc_func_entry;
@@ -25,7 +31,8 @@ typedef struct rc_rule_meta {
     const char  *role;        /* "rule" | "counter" | "except" — 정적 문자열, free 금지 */
     rc_spec    **specs;       /* 포인터 차용 배열 (배열 자체는 graph 소유) */
     size_t       n_specs, cap_specs;
-    rc_rule_func fn;
+    rc_rule_func fn;          /* bool 규칙 (vfn과 둘 중 하나만 non-NULL) */
+    rc_verdict_func vfn;      /* verdict 규칙 */
     void        *user_data;
     /* Phase 005 Run 엔진: Active 노드 핸들러 + 실행 간선(하위 그래프, 차용). */
     rc_node_handler run_on;       /* Active 발화 핸들러 (NULL 허용) */
@@ -36,7 +43,10 @@ typedef struct rc_rule_meta {
 /* --- defeats 간선 (인덱스 기반) --- */
 /* Go/TS/Py는 이름 문자열로 저장하지만, C 핸들은 안정적 인덱스를 가지므로
    (from_idx, to_idx)로 저장한다. with의 ID 변경 시 재바인딩이 불필요하다. */
-typedef struct rc_defeat_edge { size_t from_idx, to_idx; } rc_defeat_edge;
+typedef struct rc_defeat_edge {
+    size_t from_idx, to_idx;
+    double force;             /* 공격 강도 F ∈ [0,1], rc_rule_attacks는 1 */
+} rc_defeat_edge;
 
 /* --- 사용자 반환 핸들 (개별 malloc, 인덱스만 담음) --- */
 struct rc_rule { rc_graph *graph; size_t idx; };
@@ -71,11 +81,14 @@ typedef struct rc_eval_state {
     rc_context *ctx;
     /* 간선(인덱스 기반): attackers[i] = i를 공격하는 노드 인덱스 배열 */
     size_t    **attackers;
+    double    **forces;         /* forces[i][k] = attackers[i][k] 간선의 강도 F */
     size_t     *n_attackers;
     bool       *is_attacker;    /* attacker set: 누군가를 공격하는 노드 */
     /* 노드별 평가 상태 */
     bool       *ran, *active, *has_verdict;
     double     *verdict;
+    double     *rule_verdict;   /* 규칙 함수 자신의 v (ran일 때만 유효) */
+    double     *applicability;  /* a_eff (has_verdict일 때만 유효) */
     void      **evidence;
     /* trace 버퍼 (opt.trace 경로 전용, 워런트별 reset). 소멸은 rc__eval_state_free. */
     rc_trace_entry *trace;
@@ -148,13 +161,16 @@ void rc__results_abandon(rc_results *r, rc_eval_state *es);
 
 /* --- 내부 헬퍼 (비공개, rc__ 접두사) --- */
 
+/* 규칙 메타의 함수 포인터(bool 또는 verdict)를 정체성 키용 범용 포인터로 돌려준다. */
+rc__any_fn rc__meta_fn(const rc_rule_meta *m);
+
 /* (fn, user_data) 쌍의 정체성 ID를 조회하거나 새로 발급한다.
    반환 문자열은 graph 소유 — 호출자는 free 금지. 할당 실패 시 NULL. */
-const char *rc__func_id(rc_graph *g, rc_rule_func fn, void *user_data);
+const char *rc__func_id(rc_graph *g, rc__any_fn fn, void *user_data);
 
 /* funcID + specs 직렬화로 규칙 ID를 만든다.
    반환 문자열은 새로 할당된 것으로 호출자가 소유(free 책임). 실패 시 NULL. */
-char *rc__rule_id(rc_graph *g, rc_rule_func fn, void *user_data,
+char *rc__rule_id(rc_graph *g, rc__any_fn fn, void *user_data,
                   rc_spec *const *specs, size_t n_specs);
 
 /* full 경로 문자열에서 짧은 이름을 추출한다.

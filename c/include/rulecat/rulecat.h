@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 /* 라이브러리 버전 (SemVer 문자열) */
-#define RC_VERSION "0.1.0"
+#define RC_VERSION "0.2.0"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,12 +51,26 @@ struct rc_spec {
 rc_spec *rc_find_spec(rc_spec *const *specs, size_t n_specs, const char *name);
 
 /* --- RuleFunc: 클로저 부재 → 함수 포인터 + user_data --- */
+/* bool 규칙 함수(옛 시그니처, 그대로 지원). *out_activated가 true면 verdict +1,
+   false면 -1로 바뀐다 — bool 그래프의 판정값은 이전과 같다(Except가 공격하는 경우만 다름). */
 typedef rc_status (*rc_rule_func)(
     rc_context *ctx,
     rc_spec *const *specs, size_t n_specs,
     void *user_data,
     bool  *out_activated,
     void **out_evidence);   /* NULL 가능. 소유권은 아래 규약 */
+
+/* verdict 규칙 함수: 규칙이 얼마나 해당하는지 *out_verdict ∈ [-1, +1]로 낸다.
+   +1 = 완전히 해당, 0 = 반쯤 해당, -1 = 해당 없음.
+   주의: 해당 없음은 0이 아니라 -1이다. 0은 '반쯤 해당'이다(엔진은 이 실수를 검출하지 못한다).
+   NaN이나 범위 밖 값은 평가 오류(RC_ERR_RULE)다. v > -1이면 Active, v == -1이면 공격자를
+   평가하지 않는다(지연 평가). */
+typedef rc_status (*rc_verdict_func)(
+    rc_context *ctx,
+    rc_spec *const *specs, size_t n_specs,
+    void *user_data,
+    double *out_verdict,
+    void  **out_evidence);  /* NULL 가능. 소유권은 아래 규약 */
 
 /* --- Enums --- */
 typedef enum rc_strength {
@@ -86,6 +100,8 @@ typedef struct rc_trace_entry {
     rc_spec *const *specs;   /* = Backing (graph 보관 배열 차용) */
     size_t      n_specs;
     double      duration_ms; /* duration=false면 0.0 */
+    double      rule_verdict;/* 규칙 함수 자신의 v ∈ [-1,1] (bool 규칙은 ±1). 실행 안 된 노드는 -1.
+                                activated == (rule_verdict > -1). 0.2.0에서 끝에 추가 */
 } rc_trace_entry;
 
 /* --- Results --- */
@@ -95,6 +111,8 @@ typedef struct rc_eval_result {
     void           *evidence;
     rc_trace_entry *trace;   /* opt.trace=true일 때만, 아니면 NULL */
     size_t          n_trace;
+    double          applicability; /* 유효 적용도 a_eff ∈ [0,1]: (v+1)/2에 예외 게이트
+                                      Π(1 − F·(v_j+1)/2)를 곱한 값. 0.2.0에서 끝에 추가 */
 } rc_eval_result;
 
 typedef struct rc_results rc_results; /* opaque 컨테이너 */
@@ -114,10 +132,19 @@ rc_rule *rc_graph_rule(rc_graph *g, rc_rule_func fn, void *user_data);
 rc_rule *rc_graph_counter(rc_graph *g, rc_rule_func fn, void *user_data);
 rc_rule *rc_graph_except(rc_graph *g, rc_rule_func fn, void *user_data);
 
+/* verdict 규칙 등록(0.2.0). 역할·실패 규약은 위 bool 판과 같다. */
+rc_rule *rc_graph_rule_verdict(rc_graph *g, rc_verdict_func fn, void *user_data);
+rc_rule *rc_graph_counter_verdict(rc_graph *g, rc_verdict_func fn, void *user_data);
+rc_rule *rc_graph_except_verdict(rc_graph *g, rc_verdict_func fn, void *user_data);
+
 /* 빌더: attacks는 상태 코드 반환, with/qualifier는 self 반환(오류 지연) */
-rc_status   rc_rule_attacks(rc_rule *r, rc_rule *target);
+rc_status   rc_rule_attacks(rc_rule *r, rc_rule *target);           /* force = 1 */
+/* 공격 강도 force ∈ [0,1]을 준 간선(0.2.0). force는 반박 분모 항과 예외 게이트 양쪽에 곱해진다.
+   NaN·범위 밖이면 RC_ERR_INVALID_ARG를 반환하고, 빌더 오류도 래치해 이후 evaluate/run이
+   RC_ERR_BUILDER로 실패한다(Qualifier 관례, Go는 panic). 간선은 추가되지 않는다. */
+rc_status   rc_rule_attacks_with_force(rc_rule *r, rc_rule *target, double force);
 rc_rule    *rc_rule_with(rc_rule *r, rc_spec *spec);
-rc_rule    *rc_rule_qualifier(rc_rule *r, double q);
+rc_rule    *rc_rule_qualifier(rc_rule *r, double q);   /* NaN·[0,1] 밖은 지연 빌더 오류 */
 const char *rc_rule_id(const rc_rule *r);   /* 현재 규칙 ID 조회 */
 
 /* 마지막 오류 메시지 (graph 소유 버퍼, 다음 오류 시 덮어씀) */
@@ -127,6 +154,10 @@ const char *rc_graph_last_error(const rc_graph *g);
 void rc_graph_set_evidence_destructor(rc_graph *g, void (*dtor)(void *));
 
 /* 그래프를 평가한다(h-Categoriser). opt=NULL이면 기본 {RC_MATRIX,false,false}.
+     a = (v+1)/2,  S = Σ_반박 F·(v_j+1)/2,  a_eff = a·Π_예외 (1 − F·(v_j+1)/2)
+     raw = q·a_eff/(1+S),  verdict = 2·raw − 1    (Strict는 반박·예외를 모두 무시)
+   예외(Except) 여부는 공격자 노드의 strength(RC_DEFEATER) 또는 등록 role("except")로 판정한다.
+   규칙 함수가 실패(RC_OK 외)하거나 범위 밖·NaN verdict를 내면 RC_ERR_RULE.
    성공: RC_OK + *out에 rc_results (호출자가 rc_results_destroy, graph보다 먼저 해제).
    실패: rc_status 반환 + rc_graph_last_error(g)에 메시지, *out은 NULL. */
 rc_status rc_graph_evaluate(rc_graph *g, rc_context *ctx,
@@ -163,7 +194,7 @@ const rc_trace   *rc_run_result_trace(const rc_run_result *rr);
 void              rc_run_result_destroy(rc_run_result *rr);
 
 /* 그래프를 Run한다: full pass 평가 → 전 노드 평면 trace 조립 → 등록 순서로 Active
-   (activated && verdict > 0) 노드만 (a) 핸들러 → (b) 하위 그래프 순으로 디스패치.
+   (activated(규칙 v > -1) && verdict > 0) 노드만 (a) 핸들러 → (b) 하위 그래프 순으로 디스패치.
    opt.trace/opt.duration은 내부에서 강제 off. 하위 그래프 verdict는 격리(즉시 폐기)된다.
    성공: RC_OK + *out. 핸들러/하위 Run 오류 시에도 *out은 부분 결과로 유효할 수 있으니
    *out이 NULL이 아니면 항상 rc_run_result_destroy로 해제한다. 순환/깊이/빌더 오류 등

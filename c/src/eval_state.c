@@ -11,13 +11,19 @@ void rc__eval_state_free(rc_eval_state *es) {
     if (es->attackers && es->g) {
         for (size_t i = 0; i < es->g->n_rules; i++) free(es->attackers[i]);
     }
+    if (es->forces && es->g) {
+        for (size_t i = 0; i < es->g->n_rules; i++) free(es->forces[i]);
+    }
     free(es->attackers);
+    free(es->forces);
     free(es->n_attackers);
     free(es->is_attacker);
     free(es->ran);
     free(es->active);
     free(es->has_verdict);
     free(es->verdict);
+    free(es->rule_verdict);
+    free(es->applicability);
     free(es->evidence);
     free(es->trace);
     memset(es, 0, sizeof *es);
@@ -35,15 +41,19 @@ rc_status rc__eval_state_init(rc_eval_state *es, rc_graph *g, rc_context *ctx) {
     if (n == 0) return RC_OK;   /* 노드 없음 — 배열은 NULL 유지 */
 
     es->attackers   = calloc(n, sizeof *es->attackers);
+    es->forces      = calloc(n, sizeof *es->forces);
     es->n_attackers = calloc(n, sizeof *es->n_attackers);
     es->is_attacker = calloc(n, sizeof *es->is_attacker);
     es->ran         = calloc(n, sizeof *es->ran);
     es->active      = calloc(n, sizeof *es->active);
     es->has_verdict = calloc(n, sizeof *es->has_verdict);
     es->verdict     = calloc(n, sizeof *es->verdict);
+    es->rule_verdict  = calloc(n, sizeof *es->rule_verdict);
+    es->applicability = calloc(n, sizeof *es->applicability);
     es->evidence    = calloc(n, sizeof *es->evidence);
-    if (!es->attackers || !es->n_attackers || !es->is_attacker || !es->ran ||
-        !es->active || !es->has_verdict || !es->verdict || !es->evidence) {
+    if (!es->attackers || !es->forces || !es->n_attackers || !es->is_attacker ||
+        !es->ran || !es->active || !es->has_verdict || !es->verdict ||
+        !es->rule_verdict || !es->applicability || !es->evidence) {
         rc__eval_state_free(es);
         return RC_ERR_NOMEM;
     }
@@ -56,15 +66,20 @@ rc_status rc__eval_state_init(rc_eval_state *es, rc_graph *g, rc_context *ctx) {
     for (size_t i = 0; i < n; i++) {
         if (es->n_attackers[i]) {
             es->attackers[i] = malloc(es->n_attackers[i] * sizeof **es->attackers);
-            if (!es->attackers[i]) { rc__eval_state_free(es); return RC_ERR_NOMEM; }
+            es->forces[i]    = malloc(es->n_attackers[i] * sizeof **es->forces);
+            if (!es->attackers[i] || !es->forces[i]) {
+                rc__eval_state_free(es);
+                return RC_ERR_NOMEM;
+            }
         }
         es->n_attackers[i] = 0;
     }
 
-    /* 3) 간선 채우기 + attacker set 표시 */
+    /* 3) 간선(+강도) 채우기 + attacker set 표시 */
     for (size_t e = 0; e < g->n_defeats; e++) {
         size_t from = g->defeats[e].from_idx;
         size_t to   = g->defeats[e].to_idx;
+        es->forces[to][es->n_attackers[to]]      = g->defeats[e].force;
         es->attackers[to][es->n_attackers[to]++] = from;
         es->is_attacker[from] = true;
     }

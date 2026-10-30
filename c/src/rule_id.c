@@ -18,7 +18,7 @@ static const char *rc__spec_identity(const rc_spec *s) {
     return v ? v : "";
 }
 
-char *rc__rule_id(rc_graph *g, rc_rule_func fn, void *user_data,
+char *rc__rule_id(rc_graph *g, rc__any_fn fn, void *user_data,
                   rc_spec *const *specs, size_t n_specs) {
     const char *fid = rc__func_id(g, fn, user_data);
     if (!fid) return NULL;

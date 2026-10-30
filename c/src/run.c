@@ -62,6 +62,7 @@ static rc_status rc__run_depth(rc_graph *g, rc_context *ctx, rc_eval_option o,
             .specs       = m->specs,        /* = Backing */
             .n_specs     = m->n_specs,
             .duration_ms = 0.0,             /* full pass는 non-trace — 측정 없음 */
+            .rule_verdict = es.ran[i] ? es.rule_verdict[i] : -1.0,   /* 규칙 자신의 v */
         };
     }
 
@@ -78,7 +79,7 @@ static rc_status rc__run_depth(rc_graph *g, rc_context *ctx, rc_eval_option o,
     rr->trace = tr;
     *out = rr;   /* 이후 오류여도 rr은 유효 — 호출자 destroy */
 
-    /* 디스패치: Active(activated && verdict > 0)만, 등록 순서(결정적). */
+    /* 디스패치: Active(activated(규칙 v > -1) && verdict > 0)만, 등록 순서(결정적). */
     for (size_t i = 0; i < g->n_rules; i++) {
         rc_rule_meta *m = &g->rules[i];
         const rc_trace_entry *self = &tr->nodes[i];

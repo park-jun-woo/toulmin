@@ -2,6 +2,7 @@
 
 #include "internal.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -20,45 +21,6 @@ rc_eval_option rc__resolve_option(const rc_eval_option *opt) {
     if (opt) o = *opt;
     if (o.duration) o.trace = true;
     return o;
-}
-
-/* h-Categoriser 핵심 — 재귀 + verdict 캐시(memoization).
-   Strict는 공격 합산 제외, 비활성 노드는 -1.0(캐시 미기록). */
-static double rc__calc(rc_eval_state *es, size_t i) {
-    if (es->err != RC_OK) return -1.0;
-    if (es->has_verdict[i]) return es->verdict[i];
-
-    rc_rule_meta *m = &es->g->rules[i];
-
-    if (!es->ran[i]) {
-        es->ran[i] = true;
-        bool act = false;
-        void *ev = NULL;
-        rc_status st = m->fn(es->ctx, m->specs, m->n_specs, m->user_data, &act, &ev);
-        if (st != RC_OK) {
-            rc__set_error(es->g, RC_ERR_RULE,
-                          "rule \"%s\": failed (status %d)", m->name, st);
-            es->err = RC_ERR_RULE;
-            return -1.0;
-        }
-        es->active[i]   = act;
-        es->evidence[i] = ev;
-    }
-
-    if (!es->active[i]) return -1.0;
-
-    double total = 0.0;
-    if (m->strength != RC_STRICT) {           /* Strict는 공격 합산 제외 */
-        for (size_t k = 0; k < es->n_attackers[i]; k++) {
-            total += (rc__calc(es, es->attackers[i][k]) + 1.0) / 2.0;
-            if (es->err != RC_OK) return -1.0;
-        }
-    }
-
-    double v = 2.0 * (m->qualifier / (1.0 + total)) - 1.0;
-    es->has_verdict[i] = true;
-    es->verdict[i] = v;
-    return v;
 }
 
 /* Evaluate trace의 role은 등록 role이 아니라 defeats 구조로 판정한다
@@ -82,9 +44,66 @@ static bool rc__trace_append(rc_eval_state *es, rc_trace_entry e) {
     return true;
 }
 
-/* h-Categoriser + trace 기록. calc과 동일한 재귀지만 방문 순서로 엔트리를 남긴다.
-   duration이 켜지면 규칙 함수 실행 구간을 ms로 측정한다. */
-static double rc__calc_trace(rc_eval_state *es, size_t i, bool with_duration) {
+/* 규칙 함수를 원래 타입으로 호출해 자기 verdict v ∈ [-1,1]과 evidence를 얻는다.
+   bool 규칙은 true → +1, false → -1로 바꾼다(Go boolRuleFunc 대응).
+   실패 반환 또는 범위 밖·NaN verdict면 es->err를 RC_ERR_RULE로 래치한다(Go safeCall 대응).
+   범위 오류일 때 함수가 낸 evidence는 es->evidence[i]에 남겨 정리 경로
+   (rc__results_abandon)가 dtor로 회수하게 한다. */
+static rc_status rc__call_rule(rc_eval_state *es, size_t i, double *out_v, void **out_ev) {
+    rc_rule_meta *m = &es->g->rules[i];
+    void *ev = NULL;
+    double v = -1.0;
+    rc_status st;
+    if (m->fn) {
+        bool act = false;
+        st = m->fn(es->ctx, m->specs, m->n_specs, m->user_data, &act, &ev);
+        v = act ? 1.0 : -1.0;
+    } else {
+        st = m->vfn(es->ctx, m->specs, m->n_specs, m->user_data, &v, &ev);
+    }
+    if (st != RC_OK) {
+        rc__set_error(es->g, RC_ERR_RULE,
+                      "rule \"%s\": failed (status %d)", m->name, st);
+        es->err = RC_ERR_RULE;
+        return RC_ERR_RULE;
+    }
+    if (isnan(v) || v < -1.0 || v > 1.0) {
+        es->evidence[i] = ev;
+        rc__set_error(es->g, RC_ERR_RULE,
+                      "rule \"%s\": rule verdict %g out of range [-1, 1]", m->name, v);
+        es->err = RC_ERR_RULE;
+        return RC_ERR_RULE;
+    }
+    *out_v = v;
+    *out_ev = ev;
+    return RC_OK;
+}
+
+/* 공격자가 예외(Except, defeater)로 게이트하는지: strength 또는 등록 role로 판정
+   (Go isExceptAttacker 대응). 나머지 공격자는 분모에 들어가는 반박이다. */
+static bool rc__is_except_attacker(const rc_eval_state *es, size_t j) {
+    const rc_rule_meta *m = &es->g->rules[j];
+    return m->strength == RC_DEFEATER || (m->role && strcmp(m->role, "except") == 0);
+}
+
+/* raw = q·a_eff/(1+sum) → verdict 2·raw − 1을 캐시하고 a_eff를 기록한다(Go settle). */
+static double rc__settle(rc_eval_state *es, size_t i, double a_eff, double sum) {
+    es->applicability[i] = a_eff;
+    double raw = es->g->rules[i].qualifier * a_eff / (1.0 + sum);
+    double v = 2.0 * raw - 1.0;
+    es->has_verdict[i] = true;
+    es->verdict[i] = v;
+    return v;
+}
+
+/* h-Categoriser 핵심 — 재귀 + verdict 캐시(memoization).
+   trace=true면 첫 방문 노드마다 엔트리를 방문 순서로 남기고, with_duration이면 규칙 함수
+   실행 구간을 ms로 잰다. 규칙 v == -1(해당 없음)이면 공격자를 평가하지 않고 -1.0(캐시 미기록).
+     a = (v+1)/2,  S = Σ_반박 F·(v_j+1)/2,  a_eff = a·Π_예외 (1 − F·(v_j+1)/2)
+     raw = q·a_eff/(1+S),  verdict = 2·raw − 1
+   Strict는 반박·예외를 모두 무시한다. bool 규칙·예외 없음·F=1이면 옛 식
+   raw = q/(1+Σ raw(attackers))와 비트 단위로 같다. */
+static double rc__calc_node(rc_eval_state *es, size_t i, bool trace, bool with_duration) {
     if (es->err != RC_OK) return -1.0;
     if (es->has_verdict[i]) return es->verdict[i];
 
@@ -92,53 +111,52 @@ static double rc__calc_trace(rc_eval_state *es, size_t i, bool with_duration) {
 
     if (!es->ran[i]) {
         es->ran[i] = true;
-        double start = with_duration ? rc__now_ms() : 0.0;
-        bool act = false;
+        double start = (trace && with_duration) ? rc__now_ms() : 0.0;
+        double rv = -1.0;
         void *ev = NULL;
-        rc_status st = m->fn(es->ctx, m->specs, m->n_specs, m->user_data, &act, &ev);
-        if (st != RC_OK) {
-            rc__set_error(es->g, RC_ERR_RULE,
-                          "rule \"%s\": failed (status %d)", m->name, st);
-            es->err = RC_ERR_RULE;
-            return -1.0;
-        }
-        es->active[i]   = act;
-        es->evidence[i] = ev;
-        double elapsed = with_duration ? rc__now_ms() - start : 0.0;
+        if (rc__call_rule(es, i, &rv, &ev) != RC_OK) return -1.0;
+        es->rule_verdict[i] = rv;
+        es->active[i]       = rv > -1.0;
+        es->evidence[i]     = ev;
 
-        rc_trace_entry entry = {
-            .name        = m->short_name,          /* graph 소유 문자열 차용 */
-            .role        = rc__infer_role(es, i),  /* 구조 기반 판정 */
-            .activated   = act,
-            .qualifier   = m->qualifier,
-            .verdict     = 0.0,                     /* 기록 시점엔 미확정 */
-            .evidence    = ev,
-            .ground      = NULL,                    /* Evaluate 경로에선 미기록 */
-            .specs       = m->specs,               /* = Backing, 차용 */
-            .n_specs     = m->n_specs,
-            .duration_ms = elapsed,
-        };
-        if (!rc__trace_append(es, entry)) {
-            rc__set_error(es->g, RC_ERR_NOMEM, "trace: out of memory");
-            es->err = RC_ERR_NOMEM;
-            return -1.0;
+        if (trace) {
+            double elapsed = with_duration ? rc__now_ms() - start : 0.0;
+            rc_trace_entry entry = {
+                .name         = m->short_name,          /* graph 소유 문자열 차용 */
+                .role         = rc__infer_role(es, i),  /* 구조 기반 판정 */
+                .activated    = es->active[i],
+                .qualifier    = m->qualifier,
+                .verdict      = 0.0,                     /* 기록 시점엔 미확정 */
+                .evidence     = ev,
+                .ground       = NULL,                    /* Evaluate 경로에선 미기록 */
+                .specs        = m->specs,               /* = Backing, 차용 */
+                .n_specs      = m->n_specs,
+                .duration_ms  = elapsed,
+                .rule_verdict = rv,                      /* 규칙 자신의 v */
+            };
+            if (!rc__trace_append(es, entry)) {
+                rc__set_error(es->g, RC_ERR_NOMEM, "trace: out of memory");
+                es->err = RC_ERR_NOMEM;
+                return -1.0;
+            }
         }
     }
 
     if (!es->active[i]) return -1.0;
 
-    double total = 0.0;
-    if (m->strength != RC_STRICT) {
-        for (size_t k = 0; k < es->n_attackers[i]; k++) {
-            total += (rc__calc_trace(es, es->attackers[i][k], with_duration) + 1.0) / 2.0;
-            if (es->err != RC_OK) return -1.0;
-        }
-    }
+    double a = (es->rule_verdict[i] + 1.0) / 2.0;
+    if (m->strength == RC_STRICT) return rc__settle(es, i, a, 0.0);
 
-    double v = 2.0 * (m->qualifier / (1.0 + total)) - 1.0;
-    es->has_verdict[i] = true;
-    es->verdict[i] = v;
-    return v;
+    double sum = 0.0, gate = 1.0;
+    for (size_t k = 0; k < es->n_attackers[i]; k++) {
+        size_t j = es->attackers[i][k];
+        double vj = rc__calc_node(es, j, trace, with_duration);
+        if (es->err != RC_OK) return -1.0;
+        double x = es->forces[i][k] * (vj + 1.0) / 2.0;
+        if (rc__is_except_attacker(es, j)) gate *= 1.0 - x;   /* 예외: 곱셈 게이트 */
+        else                               sum  += x;         /* 반박: 분모 */
+    }
+    return rc__settle(es, i, a * gate, sum);
 }
 
 /* trace 모드에서 워런트마다 상태를 비운다. evidence 배열은 0으로 클리어하되
@@ -149,6 +167,8 @@ static void rc__reset(rc_eval_state *es) {
         memset(es->ran,         0, n * sizeof *es->ran);
         memset(es->active,      0, n * sizeof *es->active);
         memset(es->has_verdict, 0, n * sizeof *es->has_verdict);
+        memset(es->rule_verdict,  0, n * sizeof *es->rule_verdict);
+        memset(es->applicability, 0, n * sizeof *es->applicability);
         memset(es->evidence,    0, n * sizeof *es->evidence);
     }
     es->n_trace = 0;
@@ -196,8 +216,7 @@ rc_status rc__evaluate_internal(rc_graph *g, rc_context *ctx, rc_eval_option o,
             rc__reset(es);
         }
 
-        double v = o.trace ? rc__calc_trace(es, i, o.duration)
-                           : rc__calc(es, i);
+        double v = rc__calc_node(es, i, o.trace, o.duration);
         if (es->err != RC_OK) {
             st = es->err;
             rc__results_abandon(res, es);
@@ -212,6 +231,7 @@ rc_status rc__evaluate_internal(rc_graph *g, rc_context *ctx, rc_eval_option o,
             .evidence = es->evidence[i],
             .trace    = NULL,
             .n_trace  = 0,
+            .applicability = es->applicability[i],   /* a_eff */
         };
         if (o.trace && es->n_trace > 0) {
             /* trace 버퍼를 결과에 딥카피 (엔트리 배열만 — 문자열/spec은 graph 차용). */
@@ -231,9 +251,9 @@ rc_status rc__evaluate_internal(rc_graph *g, rc_context *ctx, rc_eval_option o,
         }
     }
 
-    if (full) {   /* run 경로: trace 강제 off이므로 non-trace rc__calc으로 미평가 노드를 채움 */
+    if (full) {   /* run 경로: trace 강제 off이므로 non-trace 평가로 미평가 노드를 채움 */
         for (size_t i = 0; i < g->n_rules; i++)
-            if (!es->ran[i]) rc__calc(es, i);
+            if (!es->ran[i]) rc__calc_node(es, i, false, false);
         if (es->err != RC_OK) {
             st = es->err;
             rc__results_abandon(res, es);

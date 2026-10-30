@@ -2,18 +2,37 @@
 
 #include "internal.h"
 
+#include <math.h>
 #include <stdlib.h>
 
-/* r → target defeats 간선을 추가한다(인덱스 기반). */
-rc_status rc_rule_attacks(rc_rule *r, rc_rule *target) {
-    if (!r || !target || r->graph != target->graph) return RC_ERR_INVALID_ARG;
+/* r → target defeats 간선을 강도 force로 추가한다(인덱스 기반, 검증은 호출자). */
+static rc_status rc__attacks(rc_rule *r, rc_rule *target, double force) {
     rc_graph *g = r->graph;
     if (!rc__defeats_reserve(g, g->n_defeats + 1)) return RC_ERR_NOMEM;
     rc_defeat_edge e;
     e.from_idx = r->idx;
     e.to_idx = target->idx;
+    e.force = force;
     g->defeats[g->n_defeats++] = e;
     return RC_OK;
+}
+
+/* r → target defeats 간선을 추가한다(force = 1, 기존 동작). */
+rc_status rc_rule_attacks(rc_rule *r, rc_rule *target) {
+    if (!r || !target || r->graph != target->graph) return RC_ERR_INVALID_ARG;
+    return rc__attacks(r, target, 1.0);
+}
+
+/* 강도 force ∈ [0,1]의 defeats 간선을 추가한다. NaN·범위 밖이면 간선 없이
+   RC_ERR_INVALID_ARG를 반환하고 빌더 오류를 래치한다(Qualifier 관례 — Go는 panic). */
+rc_status rc_rule_attacks_with_force(rc_rule *r, rc_rule *target, double force) {
+    if (!r || !target || r->graph != target->graph) return RC_ERR_INVALID_ARG;
+    if (isnan(force) || force < 0.0 || force > 1.0) {
+        rc__builder_fail(r->graph, RC_ERR_INVALID_ARG,
+                         "force must be between 0.0 and 1.0, got %g", force);
+        return RC_ERR_INVALID_ARG;
+    }
+    return rc__attacks(r, target, force);
 }
 
 /* spec을 규칙에 부착하고 ID를 재계산한다. 오류는 지연 처리(self 반환). */
@@ -34,7 +53,7 @@ rc_rule *rc_rule_with(rc_rule *r, rc_spec *spec) {
     if (!rc__specs_append(g, m, spec)) return r;   /* NOMEM → builder_fail 내부 기록 */
 
     /* ID 재계산 (간선은 인덱스 기반이라 재바인딩 불필요) */
-    char *new_id = rc__rule_id(g, m->fn, m->user_data, m->specs, m->n_specs);
+    char *new_id = rc__rule_id(g, rc__meta_fn(m), m->user_data, m->specs, m->n_specs);
     if (!new_id) { rc__builder_fail(g, RC_ERR_NOMEM, "out of memory"); return r; }
     free(m->name);
     m->name = new_id;
@@ -43,10 +62,10 @@ rc_rule *rc_rule_with(rc_rule *r, rc_spec *spec) {
     return r;
 }
 
-/* qualifier [0,1] 설정. 범위 위반은 지연 처리(self 반환). */
+/* qualifier [0,1] 설정. NaN·범위 위반은 지연 처리(self 반환). */
 rc_rule *rc_rule_qualifier(rc_rule *r, double q) {
     if (!r) return r;
-    if (q < 0.0 || q > 1.0) {
+    if (isnan(q) || q < 0.0 || q > 1.0) {
         rc__builder_fail(r->graph, RC_ERR_INVALID_ARG,
                          "qualifier must be between 0.0 and 1.0, got %g", q);
         return r;
