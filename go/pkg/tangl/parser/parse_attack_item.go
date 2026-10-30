@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=parser control=sequence
-//ff:what parseAttackItem — parse a "don't/do not `target` when `attacker`" edge
+//ff:what parseAttackItem — parse a "don't/do not `target` when `attacker`" or "`attacker` attacks `target` with force F" edge
 package parser
 
 import (
@@ -9,14 +9,16 @@ import (
 )
 
 // parseAttackItem parses edge_decl: DONT NAME "when" NAME, where DONT is
-// "don't" or "do not". It returns ok=false (no error) when the item does not
-// start with either form, so the caller can try the exec edge forms next.
+// "don't" or "do not" (the omitted-force form, Force nil), or delegates to
+// parseForceAttackItem for the explicit form NAME "attacks" NAME "with" "force"
+// DECIMAL. It returns ok=false (no error) when the item is neither, so the
+// caller can try the exec edge forms next.
 func parseAttackItem(it item, path string) (ast.Attack, bool, error) {
 	rest, ok := takeKeyword(it.Text, "don't")
 	if !ok {
 		r2, ok2 := takeKeyword(it.Text, "do")
 		if !ok2 {
-			return ast.Attack{}, false, nil
+			return parseForceAttackItem(it, path)
 		}
 		r3, ok3 := takeKeyword(r2, "not")
 		if !ok3 {

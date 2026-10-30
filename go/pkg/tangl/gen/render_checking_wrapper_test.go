@@ -15,7 +15,7 @@ func TestRenderCheckingWrapper(t *testing.T) {
 	want := "func checkOrderWrapper(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {\n" +
 		"\tresults, err := targetCaseGraph.Evaluate(ctx)\n" +
 		"\tif err != nil {\n" +
-		"\t\treturn false, err\n" +
+		"\t\tpanic(err) // surfaced by the engine as this rule's Evaluate/Run error\n" +
 		"\t}\n" +
 		"\treturn tanglCaseActive(results), results\n" +
 		"}\n\n"

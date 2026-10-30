@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=parser control=sequence
-//ff:what TestApplyNodeUsingKo — 판정/checking and function-ref/using paths, plus their error branches
+//ff:what TestApplyNodeUsingKo — (alias-qualified) 판정/checking and function-ref/using paths, plus their error branches
 package ko
 
 import (
@@ -54,6 +54,16 @@ func TestApplyNodeUsingKo(t *testing.T) {
 		n := &ast.Node{}
 		if err := applyNodeUsingKo(n, "`fn` 여분", 1, "t.md"); err == nil {
 			t.Fatal("expected error for unexpected trailing text after the function reference")
+		}
+	})
+
+	t.Run("AliasCheckingOk", func(t *testing.T) {
+		n := &ast.Node{}
+		if err := applyNodeUsingKo(n, "`대출`.`갱신 가능` 판정", 1, "t.md"); err != nil {
+			t.Fatalf("err=%v", err)
+		}
+		if n.Checking == nil || n.Checking.Alias != "대출" || n.Checking.Name != "갱신 가능" || n.Using != nil {
+			t.Fatalf("got %+v", n.Checking)
 		}
 	})
 }

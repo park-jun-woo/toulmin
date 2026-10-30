@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=codegen control=sequence
-//ff:what TestRegisterCaseAttacks — tests registerCaseAttacks for empty attacks and multiple attacks emitted in order
+//ff:what TestRegisterCaseAttacks — tests registerCaseAttacks for empty attacks, ordered attacks, and explicit forces
 package gen
 
 import (
@@ -34,6 +34,23 @@ func TestRegisterCaseAttacks(t *testing.T) {
 		}
 		registerCaseAttacks(&w, c, nodes)
 		want := "\tnA.Attacks(nB)\n\tnB.Attacks(nC)\n\n"
+		if w.String() != want {
+			t.Errorf("got %q, want %q", w.String(), want)
+		}
+	})
+
+	t.Run("explicit force is passed through, even 1", func(t *testing.T) {
+		var w strings.Builder
+		half, one := 0.5, 1.0
+		c := ast.Case{
+			Attacks: []ast.Attack{
+				{Attacker: "a", Target: "b", Force: &half},
+				{Attacker: "c", Target: "b", Force: &one},
+				{Attacker: "b", Target: "c"},
+			},
+		}
+		registerCaseAttacks(&w, c, nodes)
+		want := "\tnA.Attacks(nB, 0.5)\n\tnC.Attacks(nB, 1)\n\tnB.Attacks(nC)\n\n"
 		if w.String() != want {
 			t.Errorf("got %q, want %q", w.String(), want)
 		}

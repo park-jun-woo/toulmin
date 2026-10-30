@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=parser control=iteration dimension=1
-//ff:what TestRenderNode — renderNode covers role/article, using+with+qualified, checking, and level
+//ff:what TestRenderNode — renderNode covers role/article, using+with+qualified+grounds, (alias) checking, bare qualified, and level
 package en
 
 import (
@@ -30,6 +30,12 @@ func TestRenderNode(t *testing.T) {
 			"`overdrawn` is a counter rule using `policy`.`IsOverdrawn`, level fail"},
 		{ast.Node{Name: "pending", Role: ast.CounterRule, Using: &ast.Ref{Alias: "policy", Name: "IsPending"}, Level: ast.LevelReview},
 			"`pending` is a counter rule using `policy`.`IsPending`, level review"},
+		{ast.Node{Name: "short", Role: ast.CounterRule, Qualified: &q, Level: ast.LevelFail},
+			"`short` is a counter rule qualified 0.8, level fail"},
+		{ast.Node{Name: "remote ok", Role: ast.GeneralRule, Checking: &ast.Ref{Alias: "loan", Name: "can renew"}, Qualified: &q},
+			"`remote ok` is a general rule checking `loan`.`can renew` qualified 0.8"},
+		{ast.Node{Name: "src", Role: ast.CounterRule, Using: &ast.Ref{Alias: "chk", Name: "F"}, Grounds: []string{"body", "mx"}},
+			"`src` is a counter rule using `chk`.`F` grounded on `body` and `mx`"},
 	}
 	for _, tc := range cases {
 		if got := renderNode(tc.n); got != tc.want {

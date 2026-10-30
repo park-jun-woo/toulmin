@@ -10,9 +10,10 @@ import (
 )
 
 // renderNodeKo renders a case node in the adnominal canonical form: the subject,
-// then the fixed-order modifiers — '<terms> 을 기준으로 하는' (With), '가중치 <float> 의'
-// (Qualified), '실패를/검토를 보고하는' (Level) — joined by ", " when two or more,
-// then the optional '<ref> 쓰는'/'`Y` 판정 쓰는' clause, the role word, and 규칙이다.
+// then the fixed-order modifiers — '<terms> 을 기준으로 하는' (With), '<names> 를 근거로
+// 하는' (Grounds), '가중치 <float> 의' (Qualified), '실패를/검토를 보고하는' (Level) — joined by ", " when two or more,
+// then the optional '<ref> 쓰는'/'<case-ref> 판정 쓰는' clause (an alias-qualified
+// '`별칭`.`Y` 판정 쓰는' for a cross-document case), the role word, and 규칙이다.
 // It inverts parseNodeKo/parseNodeModifiersKo.
 func renderNodeKo(n ast.Node) string {
 	role := "일반"
@@ -25,6 +26,9 @@ func renderNodeKo(n ast.Node) string {
 	var mods []string
 	if len(n.With) > 0 {
 		mods = append(mods, renderWithKo(n.With))
+	}
+	if len(n.Grounds) > 0 {
+		mods = append(mods, renderGroundsKo(n.Grounds))
 	}
 	if n.Qualified != nil {
 		mods = append(mods, "가중치 "+strconv.FormatFloat(*n.Qualified, 'g', -1, 64)+" 의")
@@ -42,7 +46,7 @@ func renderNodeKo(n ast.Node) string {
 	if n.Using != nil {
 		s += renderRefKo(*n.Using) + " 쓰는 "
 	} else if n.Checking != nil {
-		s += "`" + n.Checking.Name + "` 판정 쓰는 "
+		s += renderRefKo(*n.Checking) + " 판정 쓰는 "
 	}
 	return s + role + " 규칙이다"
 }

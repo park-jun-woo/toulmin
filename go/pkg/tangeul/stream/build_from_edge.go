@@ -27,9 +27,8 @@ func buildFromEdge(d *dec, rel []toulmin.EdgePacket) (doc.StmtRef, error) {
 		if d.curCase < 0 {
 			return doc.StmtRef{}, errors.New("tangeul/stream: attack outside any case")
 		}
-		a := ast.Attack{Target: d.nodeName[toulmin.TID(e.DstTID)], Attacker: d.nodeName[toulmin.TID(e.Src)]}
 		ai := len(d.ast.Cases[d.curCase].Attacks)
-		d.ast.Cases[d.curCase].Attacks = append(d.ast.Cases[d.curCase].Attacks, a)
+		d.ast.Cases[d.curCase].Attacks = append(d.ast.Cases[d.curCase].Attacks, buildAttack(d, e))
 		return doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{d.curCase, 2, ai}}, nil
 	case toulmin.PropSupersedes:
 		if d.curCase < 0 {

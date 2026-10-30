@@ -16,7 +16,7 @@ import (
 // term while chains and either groups must be nested list items.
 func renderInlineRuleKo(r ast.InlineRule) (string, error) {
 	if r.Using != nil {
-		s := "`" + r.Name + "` 은 "
+		s := "`" + r.Name + "` " + josaFor(r.Name, "은", "는") + " "
 		if len(r.With) > 0 {
 			s += renderWithKo(r.With) + " "
 		}

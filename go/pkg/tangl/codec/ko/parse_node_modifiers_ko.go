@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=parser control=sequence
-//ff:what parseNodeModifiersKo — consume the fixed-order [기준][가중치][보고] adnominal modifiers
+//ff:what parseNodeModifiersKo — consume the fixed-order [기준][근거][가중치][보고] adnominal modifiers
 package ko
 
 import (
@@ -10,6 +10,7 @@ import (
 
 // parseNodeModifiersKo consumes a node declaration's optional adnominal modifiers
 // in their fixed canonical order — '`a` [그리고 `b`]* 을 기준으로 하는' (With),
+// '`g` [그리고 `h`]* 를 근거로 하는' (Grounds, legacy migration input),
 // '가중치 <float> 의' (Qualified), '(실패를|검토를) 보고하는' (Level) — and returns the
 // unconsumed remainder (the optional '<fn> 쓰는' clause, or empty). Commas between
 // modifiers and the particles 을/를/의 are peeled by skipParticlesKo. Out-of-order
@@ -18,6 +19,10 @@ func parseNodeModifiersKo(n *ast.Node, s string, line int, path string) (string,
 	s = skipParticlesKo(s)
 	if with, rest, ok := parseWithModifierKo(s); ok {
 		n.With = with
+		s = skipParticlesKo(rest)
+	}
+	if grounds, rest, ok := parseGroundModifierKo(s); ok {
+		n.Grounds = grounds
 		s = skipParticlesKo(rest)
 	}
 	if rest, ok := takeKeywordKo(s, "가중치"); ok {

@@ -1,5 +1,5 @@
 //ff:func feature=tangl type=parser control=iteration dimension=1
-//ff:what TestRenderNodeKo — renderNodeKo covers role words, using/checking, and 0~3 adnominal modifiers
+//ff:what TestRenderNodeKo — renderNodeKo covers role words, using/(alias) checking, and 0~4 adnominal modifiers incl. 근거
 package ko
 
 import (
@@ -26,6 +26,10 @@ func TestRenderNodeKo(t *testing.T) {
 			"`저온` 은 `a` 그리고 `b` 를 기준으로 하는, 가중치 0.8 의 `센서`.`low` 쓰는 예외 규칙이다"},
 		{ast.Node{Name: "승인", Role: ast.GeneralRule, Checking: &ast.Ref{Name: "승인 가능"}},
 			"`승인` 은 `승인 가능` 판정 쓰는 일반 규칙이다"},
+		{ast.Node{Name: "원격 승인", Role: ast.GeneralRule, Checking: &ast.Ref{Alias: "대출", Name: "갱신 가능"}},
+			"`원격 승인` 은 `대출`.`갱신 가능` 판정 쓰는 일반 규칙이다"},
+		{ast.Node{Name: "소스", Role: ast.CounterRule, Using: &ast.Ref{Alias: "검사", Name: "F"}, Grounds: []string{"body"}, Qualified: &q08},
+			"`소스` 는 `body` 를 근거로 하는, 가중치 0.8 의 `검사`.`F` 쓰는 반박 규칙이다"},
 		{ast.Node{Name: "컵 없음", Role: ast.CounterRule, Using: &ast.Ref{Alias: "게이트", Name: "noCup"}, Level: ast.LevelFail},
 			"`컵 없음` 은 실패를 보고하는 `게이트`.`noCup` 쓰는 반박 규칙이다"},
 		{ast.Node{Name: "재고 부족", Role: ast.ExceptRule, Using: &ast.Ref{Alias: "게이트", Name: "lowStock"}, Level: ast.LevelReview},

@@ -390,7 +390,7 @@ summaries — see [TANGEUL.en.md](./TANGEUL.en.md).
 A `Provides` or `Internal` entry either `check`s a case — compiles to
 `Graph.Evaluate` (pure judgment, no side effects) — or `run`s a case —
 compiles to `Graph.Run` (judgment + `RunOn`-driven execution). A `do` edge
-fires when its node goes Active; `once` guards it (`tangl.OnceDone` /
+fires when its node prevails (`Activated && verdict > 0`); `once` guards it (`tangl.OnceDone` /
 `tangl.OnceMark`) so a retried tick or request does not repeat the action.
 Its paired `undo` is pushed onto a saga compensation stack
 (`tangl.PushCompensation`) at the moment the `do` succeeds, and is replayed
@@ -415,7 +415,7 @@ this endpoint actually do" without executing anything. `checking` edges
 | `pkg/tangl/ast` | locale-independent AST types | `Document`, `Case`, `Node`, `InlineRule`, `Exec`, `Endpoint`, `Definition`, `Ref`, `Role` |
 | `pkg/tangl/parser` | markdown → AST | `Parse(path string) (*ast.Document, error)`, `ParseSource(src, path string) (*ast.Document, error)` |
 | `pkg/tangeul` | binary SSOT stream: `.geul` load/save + AST/prose tiling | `Load`, `Save`, `EqualIgnoringLine`; en/ko surface codecs implement `doc.Codec` (see `TANGEUL.en.md`, `TANGEUL.ko.md`) |
-| `pkg/tangl/validate` | structural checks + advisories | `Validate(doc *ast.Document) error` (duplicate names, dangling refs, undo-without-do, checking/run/attack cycles — collects all violations), `Lint(doc *ast.Document) []string` (warns on unguarded `do` reachable from `tangl:Internal`) |
+| `pkg/tangl/validate` | structural checks + advisories | `Validate(doc *ast.Document) error` (duplicate names, dangling refs, qualifier/force outside `[0, 1]`, undo-without-do, checking/run/attack cycles — collects all violations), `Lint(doc *ast.Document) []string` (warns on unguarded `do` reachable from `tangl:Internal` and on certainty gates outside `(50%, 100%]`) |
 | `pkg/tangl/effects` | static effect-summary analyzer | `Closure(doc *ast.Document, endpoint string) ([]Entry, error)`; `Entry{Kind, Func, Once, Case, Node}` |
 | `pkg/tangl/gen` | AST → Go source | `Generate`, `GenerateWithOptions` — definitions and materialized list Specs, rules, case graphs, endpoints, internal triggers, `gofmt`-ed |
 | `pkg/tangl/materialize` | eagerly snapshots file-backed Definitions | `DefinitionLoaderRegistry`, `DefinitionLoadRequest`, `DefinitionSnapshot`, `Lists` |

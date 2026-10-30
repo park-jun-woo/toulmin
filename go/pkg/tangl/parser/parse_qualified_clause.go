@@ -1,22 +1,9 @@
-//ff:func feature=tangl type=parser control=iteration dimension=1
-//ff:what parseQualifiedClause — parse the float value of a "qualified" clause
+//ff:func feature=tangl type=parser control=sequence
+//ff:what parseQualifiedClause — parse the weight value of a "qualified" clause ([0, 1], at most 4 decimals)
 package parser
 
-import "strconv"
-
-// parseQualifiedClause parses the FLOAT following "qualified".
+// parseQualifiedClause parses the FLOAT following "qualified": a weight in
+// [0, 1] with at most four decimal places (parseUnitDecimal).
 func parseQualifiedClause(s string, path string, line int) (float64, string, error) {
-	s = trimStart(s)
-	i := 0
-	for i < len(s) && (s[i] == '.' || s[i] == '-' || (s[i] >= '0' && s[i] <= '9')) {
-		i++
-	}
-	if i == 0 {
-		return 0, "", errAt(path, line, "expected float after 'qualified'")
-	}
-	q, err := strconv.ParseFloat(s[:i], 64)
-	if err != nil {
-		return 0, "", errAt(path, line, "invalid qualified value %q: %v", s[:i], err)
-	}
-	return q, s[i:], nil
+	return parseUnitDecimal(s, "qualified", path, line)
 }

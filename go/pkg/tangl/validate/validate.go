@@ -5,7 +5,8 @@ package validate
 import "github.com/park-jun-woo/toulmin/go/pkg/tangl/ast"
 
 // Validate runs every structural check on doc (duplicate names, dangling
-// references, undo-without-do, and the checking/run/don't cycle bans) and
+// references, weights outside [0, 1], undo-without-do, and the
+// checking/run/don't cycle bans) and
 // collects every violation into a single error (pattern=error-collection).
 // It returns nil when doc has no violations.
 func Validate(doc *ast.Document) error {
@@ -31,6 +32,7 @@ func Validate(doc *ast.Document) error {
 	errs = append(errs, checkExecFuncAliasRefs(doc)...)
 	errs = append(errs, checkRuleCallAliases(doc)...)
 	errs = append(errs, checkExistsBinders(doc)...)
+	errs = append(errs, checkWeights(doc)...)
 	errs = append(errs, checkUndoRequiresDo(doc)...)
 	errs = append(errs, checkCheckingCycle(doc)...)
 	errs = append(errs, checkRunCycle(doc)...)

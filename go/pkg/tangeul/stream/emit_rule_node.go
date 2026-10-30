@@ -16,7 +16,9 @@ import (
 // emitRuleNode encodes a case rule node: its role, its crisp reporting level, an
 // F_FUNC warrant reference materialized as a Func node, an F_CHECK checked case,
 // F_WITH/F_GROUNDS name TEXTs, an F_QUAL qualifier, and its name label. An undeclared
-// `checking` case is a hard error.
+// `checking` case is a hard error, and so is an alias-qualified (cross-document)
+// one: the GEUL TOULMIN NODE F_CHECK field is a REF to a case record of the same
+// document, so there is no slot for another document's case.
 func emitRuleNode(e *enc, ref doc.StmtRef, n ast.Node, span toulmin.Span) ([]core.Word, error) {
 	self := e.tt.byRef[tidKey(ref)]
 	role, err := codebook.RoleFromAST(n.Role)
@@ -34,7 +36,7 @@ func emitRuleNode(e *enc, ref doc.StmtRef, n ast.Node, span toulmin.Span) ([]cor
 	}
 	if n.Checking != nil {
 		if n.Checking.Alias != "" {
-			return nil, fmt.Errorf("tangeul/stream: alias-qualified checking is not yet supported (see plans/tangeul/ follow-up phase)")
+			return nil, fmt.Errorf("tangeul/stream: node %q: alias-qualified checking `%s`.`%s` cannot be encoded: GEUL TOULMIN F_CHECK carries a same-document case REF only", n.Name, n.Checking.Alias, n.Checking.Name)
 		}
 		dst, ok := e.tt.caseByName[n.Checking.Name]
 		if !ok {

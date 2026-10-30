@@ -1,11 +1,9 @@
 module github.com/park-jun-woo/toulmin/go
 
-go 1.22
-
-toolchain go1.22.2
+go 1.25
 
 require (
-	github.com/geul-org/gogeul v0.0.0-20261027083952-d91b6d10b3e5
+	github.com/geul-org/gogeul v0.0.0-20261030172829-fa01bc88711c
 	github.com/spf13/cobra v1.10.2
 )
 

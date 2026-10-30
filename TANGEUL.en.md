@@ -31,7 +31,7 @@ undo `bank`.`refund` when `balance sufficient`
 run `can pour water` when `order received`
 ```
 
-Backticks visually separate variables from keywords. Backticked = user-defined name; unbacktricked = keyword or package alias.
+Backticks visually separate variables from keywords. Backticked = user-defined name; un-backticked = keyword or literal.
 
 ## The seven sections
 
@@ -41,7 +41,7 @@ Backticks visually separate variables from keywords. Backticked = user-defined n
 | `tangl:See` | Reference declaration | optional | `see ... from` |
 | `tangl:Definitions` | Term and Spec definitions | optional | `means ... as`, JSON string arrays, `reads ... from`, `has ... as` |
 | `tangl:Rules` | Predicate declarations | optional | `` `name` when ``, `` `name` uses ``, `and`, `or`, `not`, `either` |
-| `tangl:Cases` | Judgment + execution | required | `in case of`, `is required`, `is a .../counter/except rule`, `checking`, `don't ... when`, `do ... when`, **`do ... once when`**, **`undo ... when`**, `run ... when` |
+| `tangl:Cases` | Judgment + execution | required | `in case of`, `is required`, `is a .../counter/except rule`, `checking`, `qualified`, `don't ... when`, `attacks ... with force`, `supersedes`, `do ... when`, **`do ... once when`**, **`undo ... when`**, `run ... when` |
 | `tangl:Provides` | Endpoints | optional | `provides`, `is required`, `run`, `check` |
 | `tangl:Internal` | Internal work (ticks/events) | optional | `on`, `every`, `until`, `run`, `check` |
 
@@ -54,12 +54,12 @@ The same case graph runs in **two modes**:
 | Mode | Meaning | `do`/`run` fires? | Used for |
 |---|---|---|---|
 | **Evaluate** | Pure judgment. Produces only a verdict | ❌ no | `checking` (judgment composition), read-only endpoints (`check`), tests |
-| **Run** | Judge-first → execute-after | ✅ Active nodes' `do`/`run` fires | Executing endpoints (`run`), Internal ticks |
+| **Run** | Judge-first → execute-after | ✅ prevailing nodes' `do`/`run` fire | Executing endpoints (`run`), Internal ticks |
 
 This duality is **why it is safe to put execution inside Cases**:
 
 - If a case is **referenced as a rule** (`checking`) or its verdict is merely **queried**, that is Evaluate → **zero side effects**. Judgment is purely reused and tested.
-- If an endpoint **`run`s** a case, that is Run → the Active nodes' execution fires.
+- If an endpoint **`run`s** a case, that is Run → the execution of the nodes that **prevail** (§Judgment terms) fires.
 
 > **Prohibition**: side effects must never leak from the read path (Evaluate). `checking` must never fire execution — otherwise you get the footgun of "I only referenced a judgment, and a robot moved."
 
@@ -113,6 +113,16 @@ be bound into multiple Cases with different roles, levels, and qualifiers.
       - and <condition2>
     - or <condition3>
 ```
+
+**Bool and graded rules.** An expression rule (`when`) and a `checking` composition
+produce a boolean judgment, which the engine reads as a verdict of `+1` (applies)
+or `−1` (does not apply). A graded verdict in `[−1, 1]` comes only from a `uses`
+host function with the signature `func(toulmin.Context, toulmin.Specs) (float64, any)`
+— the code generator binds the host function as-is, so either signature works
+there. The reference evaluator (`pkg/tangl/eval`) is bool-only: its `Resolver`
+returns `func(toulmin.Context, toulmin.Specs) (bool, any)` predicates and
+`CompileDocument` yields bool closures, so a graded host rule cannot be checked
+through `eval` today.
 
 `with` and `grounded on` are predicate properties and therefore belong to the
 Rules declaration. For an expression rule, the first step of every `spec`
@@ -205,31 +215,47 @@ Case names conventionally follow the `can ...` question form. `is required` decl
 
 ```
 - `<name>` is a general rule
-- `<name>` is a general rule using <func>
-- `<name>` is a counter rule using <func>
-- `<name>` is an except rule using <func>
-- `<name>` is a general rule using <func> with <Spec> qualified <float>
-- `<name>` is a counter rule using <func> grounded on <ground>
+- `<name>` is a counter rule qualified <float>
+- `<name>` is a counter rule qualified <float>, level fail
+- `<name>` is an except rule, level review
 - `<name>` is a general rule checking <other-case>
+- `<name>` is a general rule checking <other-case> qualified <float>
 - `<name>` is a general rule checking `<alias>`.`<other-case>`
-- `<name>` is a counter rule using <func>, level fail
-- `<name>` is an except rule using <func>, level review
-
-The `using`/`with`/`grounded on` node forms above are legacy input accepted for
-migration. New canonical documents declare those predicate properties in
-`tangl:Rules` and cite the same name here with only role, qualifier, and level.
-If a Rules declaration exists, repeating its predicate properties in a Case is
-a load error. `checking` remains a Case-owned composition form.
+- `<name>` is a general rule using <func>
+- `<name>` is a counter rule using <func> with <Spec> qualified <float> grounded on <ground>
 ```
 
-| Node | Engine | Meaning |
+The `using`/`with`/`grounded on` node forms (the last two lines) are legacy input
+accepted for migration. New canonical documents declare those predicate
+properties in `tangl:Rules` and cite the same name here with only role,
+qualifier, and level. If a Rules declaration exists, repeating its predicate
+properties in a Case is a load error. `checking` remains a Case-owned
+composition form.
+
+`qualified <float>` is the node's weight `q` (`.Qualifier(q)`), a number in
+`[0, 1]` with at most four decimal places (GEUL carries it as a SIGNED-DECIMAL
+at four places). A value outside the range or a finer one is a load error — the
+parser rejects the literal and `Validate` rejects such a value in an AST that
+arrives another way. The authored spelling (`0.80`) is kept in the `.geul`
+SOURCE and comes back byte-for-byte in mode-1 decoding; mode-2 rendering prints
+the shortest decimal (`0.8`).
+
+> **Cross-document `checking` and `.geul`**: the parsers (en/ko) and renderers
+> accept `` checking `alias`.`case` `` and `gen` compiles it, but the `.geul`
+> stream cannot carry it yet — the GEUL TOULMIN NODE `F_CHECK` field is a REF to
+> a case record of the same document, with no slot for another document's case.
+> `tangl encode` therefore fails on such a node with an explicit error. Until the
+> GEUL grammar grows a cross-document case reference, cross-document composition
+> is reachable only from an in-memory AST (`parser.ParseSource` → `gen`).
+
+| Node | Engine | Meaning (when it attacks) |
 |---|---|---|
-| `general rule` | Rule (Warrant) | claim |
-| `counter rule` | Counter (Rebuttal) | rebuttal (reverses verdict) |
-| `except rule` | Except (Defeater) | exception (attenuates verdict) |
+| `general rule` | Rule (Warrant) | claim (as an attacker it acts as a rebuttal) |
+| `counter rule` | Counter (Rebuttal) | rebuttal — adds to the target's denominator; one full rebuttal brings a full warrant to `0`, it does not reverse it |
+| `except rule` | Except (Defeater) | exception — gates the target's applicability; one full exception brings it to `−1` |
 
 `, level fail` / `, level review` is an optional trailing modifier on a node
-(after `using`/`checking`) that pins the node's **crisp reporting level** for
+(after `using`/`checking`/`qualified`) that pins the node's **crisp reporting level** for
 reins-style aggregation (any Fail → FAIL, else any Review → REVIEW, else PASS).
 It compiles to `.Level(toulmin.Fail)` / `.Level(toulmin.Review)`. When omitted,
 nothing is emitted and the engine's role-based default applies — so documents
@@ -248,16 +274,48 @@ evaluation time.
 | `with <Spec>` | judgment-criteria spec | fixed at declaration time |
 | `grounded on <ground>` | external fact resolved at evaluation time | evaluation time — a different axis |
 
-`checking <case>` is **judgment composition** — using another case's verdict as a rule. It **compiles to Evaluate** and fires no side effects. Circular references are forbidden. The target is a `CASE_REF` (the same grammar as `FUNC_REF`): a bare local `` `case` `` names a case in the same document, and an alias-qualified `` `alias`.`case` `` names a case reached through a See-declared local alias (cross-document). A cross-document reference **compiles to a Go cross-package call fixed at `gen` time**: `gen` emits `` `alias`.`Checking<Case>` `` — a call into the exported wrapper the referenced document's own `gen` output publishes for that case — and adds an import of the referenced document's generated package (its import path derived from the sibling `.geul`'s location; see §References). Every case is externally addressable, so a document exports a `Checking<Case>` wrapper for **each** of its cases, whether or not it checks them itself. Cross-document cycles (A's case checks B's case checks A's case) are rejected by the multi-document loader before `gen` runs.
+`checking <case>` is **judgment composition** — using another case's verdict as a rule. It **compiles to Evaluate** and fires no side effects. Circular references are forbidden. The target is a `CASE_REF` (the same grammar as `FUNC_REF`): a bare local `` `case` `` names a case in the same document, and an alias-qualified `` `alias`.`case` `` names a case reached through a See-declared local alias (cross-document). A cross-document reference **compiles to a Go cross-package call fixed at `gen` time**: `gen` emits `` `alias`.`Checking<Case>` `` — a call into the exported wrapper the referenced document's own `gen` output publishes for that case — and adds an import of the referenced document's generated package (its import path derived from the sibling `.geul`'s location; see §References). Every case is externally addressable, so a document exports a `Checking<Case>` wrapper for **each** of its cases, whether or not it checks them itself. Cross-document cycles (A's case checks B's case checks A's case) are rejected by the multi-document loader before `gen` runs. (The `.geul` stream cannot yet carry a cross-document reference — see the note under §Node registration.)
 
-> **Implementation note (Active composition rule for case verdicts)**: a case may have multiple warrants (`general rule`). The "case's judgment" that `checking` references is composed by the following rule — among a case's Evaluate results, **if one or more warrants have verdict > 0, the case is considered established (active)**. `until` (§Internal) uses the same rule.
+> **Implementation note (case composition rule)**: a case may have multiple warrants (`general rule`). The "case's judgment" that `checking` references is composed by the following rule — among a case's Evaluate results, **if one or more warrants prevail (verdict > 0), the case is established**. `until` (§Internal) uses the same rule. A `checking` node is a bool rule: established → `+1`, otherwise `−1`. If evaluating the checked case fails (a rule panics or returns an out-of-range verdict), the generated wrapper does not fold the failure into `−1`; it re-raises it, and the calling graph's `Evaluate`/`Run` returns that error.
 
-### Defeat edges (don't / do not)
+### Judgment terms — applies, prevails, a_eff
+
+Three distinct conditions are used below; the word "Active" alone is not used for them.
+
+| Term | Condition | Engine | Used for |
+|---|---|---|---|
+| **applies** | the rule's own verdict `v > −1` | `TraceEntry.Activated` | an attacker contributes only while it applies; a node that does not apply is `−1` and its attackers are not evaluated |
+| **prevails** | applies **and** final verdict `> 0` (certainty above 50%) | `Activated && Verdict > 0` | firing `do`/`run`; a case is established (`checking`, `until`) when one of its warrants prevails |
+| **effective applicability `a_eff`** | `a_eff = (v+1)/2 · Π_except (1 − F·(v_j+1)/2)` | `EvalResult.Applicability` | a superseder excludes while its `a_eff > 0` |
+
+The verdict of a node with own verdict `v`, qualifier `q`, rebuttals `j ∈ R` and exceptions `k ∈ E` (each with attack force `F`, default 1, and each counted only while it applies) is
+
+```
+a      = (v + 1) / 2
+S      = Σ_{j∈R} F_j · (v_j + 1)/2          rebuttal: denominator
+a_eff  = a · Π_{k∈E} (1 − F_k · (v_k + 1)/2)  exception: applicability gate
+verdict = 2 · q · a_eff / (1 + S) − 1
+```
+
+A `strict` node ignores its attackers. Whether an attacker is a rebuttal or an exception is decided by **the attacker's role** (`except rule` → exception, anything else → rebuttal), not by the edge: the same `don't`/`attacks` statement is a denominator term from a counter rule and a gate from an except rule.
+
+### Defeat edges (don't / do not / attacks ... with force)
 
 ```
 - don't `<target>` when `<attacker>`
+- `<attacker>` attacks `<target>` with force <F>
 ```
-If the attacker is Active, it attacks the target. `do not` is equivalent. → `attacker.Attacks(target)`
+While the attacker applies, it attacks the target. `do not` is equivalent to `don't`.
+
+| Form | Force | GEUL | Engine |
+|---|---|---|---|
+| `` don't `<target>` when `<attacker>` `` (omitted) | 1 | ATTACKS, `F_FORCE` off | `attacker.Attacks(target)` |
+| `` `<attacker>` attacks `<target>` with force <F> `` (explicit) | `F` | ATTACKS, `F_FORCE` on + SIGNED-DECIMAL | `attacker.Attacks(target, F)` |
+
+- **Force** `F` scales one attack: the attacker's contribution `(v+1)/2` is multiplied by `F` before it enters the denominator (rebuttal) or the gate (exception) — §Judgment terms. It is a property of the edge; do not confuse it with a node's Strength (defeasible/strict) or its qualifier.
+- `F` is a number in `[0, 1]` with at most four decimal places. A value outside the range or a finer one is a load error (the parser rejects the literal; `Validate` rejects such a value in any AST).
+- The explicit form always records its force — `with force 1` and `with force 1.0` set `F_FORCE` and stay the explicit statement on every round trip; only `don't` leaves it off.
+- **Spelling and round trips.** The `.geul` stream stores the force as a SIGNED-DECIMAL with trailing zeros trimmed, so `0.50` and `0.5` are the same value there. The authored bytes are not lost: the whole source is kept in the stream's SOURCE record, and mode-1 decoding (`tangl decode`) replays it byte-for-byte, `0.50` included. Mode-2 decoding (`tangl decode --locale en|ko`) regenerates each statement from the AST and prints the shortest decimal (`0.5`, `1`). This is the same rule `qualified` follows.
 
 ### Supersede edges (supersedes)
 
@@ -265,14 +323,16 @@ If the attacker is Active, it attacks the target. `do not` is equivalent. → `a
 - `<superseder>` supersedes `<superseded>`
 - supersede in order: `<highest>` > `<next>` > `<lowest>`
 ```
-If the superseder is Active, the superseded node is **crisply excluded from the
-tally** (it never enters the h-Categoriser traversal — only its trace is marked
-Excluded). → `superseder.Supersedes(superseded)`
+While the superseder's effective applicability `a_eff > 0` (§Judgment terms — its
+own applicability after its exceptions; rebuttals against it do not count), the
+superseded node is **crisply excluded from the tally** (it never enters the
+h-Categoriser traversal — only its trace is marked Excluded). An excluded node
+keeps its own power to exclude. → `superseder.Supersedes(superseded)`
 
 | Edge | Effect | Engine |
 |---|---|---|
-| `don't <y> when <x>` | attenuates `<y>`'s verdict (graded, enters the tally) | `x.Attacks(y)` |
-| `<x> supersedes <y>` | crisply excludes `<y>` from the tally (deterministic priority) | `x.Supersedes(y)` |
+| `don't <y> when <x>` / `<x> attacks <y> with force F` | graded: a rebuttal `<x>` lowers `<y>` through the denominator, an exception `<x>` gates `<y>`'s applicability (enters the tally) | `x.Attacks(y[, F])` |
+| `<x> supersedes <y>` | crisply excludes `<y>` from the tally while `a_eff(x) > 0` (deterministic priority) | `x.Supersedes(y)` |
 
 The priority-chain form requires at least three distinct names. It is parser
 syntax sugar: for names `N[0] ... N[n-1]`, it expands every pair `i < j` to
@@ -287,7 +347,7 @@ case and must not form a cycle (validated independently of the Attacks graph).
 
 ### Execution edges (do / run)
 
-Execution is attached with **node Active as the trigger**. It is the execution counterpart of the defeat edge (`don't ... when`).
+Execution is attached with **the node prevailing as the trigger** (§Judgment terms). It is the execution counterpart of the defeat edge (`don't ... when`).
 
 ```
 - do `<func>` when `<node>`
@@ -298,17 +358,17 @@ Execution is attached with **node Active as the trigger**. It is the execution c
 
 | Syntax | Engine | Meaning |
 |---|---|---|
-| `do <func> when <node>` | `node.RunOn(...)` | If node is Active, executes a **leaf action** (func) |
+| `do <func> when <node>` | `node.RunOn(...)` | If the node prevails, executes a **leaf action** (func) |
 | `do <func> once when <node>` | `node.RunOn(...)` + ctx guard | Same as above, but **at most once per ctx lifetime** (§once) |
-| `run <case> when <node>` | `node.Run(<case graph>)` | If node is Active, **Runs a sub-case** (execution composition, cascade + Trace) |
+| `run <case> when <node>` | `node.Run(<case graph>)` | If the node prevails, **Runs a sub-case** (execution composition, cascade + Trace) |
 
 - **`do` = leaf** (calls another subject's func/`provides`). **`run` = composite** (Runs a sub-case graph, whose `do`/`run` fire in turn).
-- `<node>` is a node name within the same case. Fires only when the node is Active (`Activated && verdict > 0`).
-- Certainty gate: `if at least/above/less than/at most <N>% certain` → the handler branches on `self.Verdict`.
+- `<node>` is a node name within the same case. Fires only when the node prevails (`Activated && verdict > 0`).
+- Certainty gate: `if at least/above/less than/at most <N>% certain` → the handler branches on `self.Verdict`. Because a handler fires only above 50% (verdict > 0), the meaningful range is `(50%, 100%]`: `at most N%` / `less than N%` with `N ≤ 50` never pass, and `at least N%` / `above N%` with `N ≤ 50` always pass. `tangl check` (`validate.Lint`) warns about both.
 
 > **Implementation note (function signature)**: functions referenced by `do`/`undo` follow the `func(ctx) error` signature (Go implementation: `func(toulmin.Context) error`). They take ctx as an argument and return an error — the returned error is the signal that triggers Run abortion and compensation (undo).
 
-> **Acyclicity constraint**: Cases must always be a **acyclic DAG** (enforced by the engine's `detectCycle`/`detectRunCycle`). Case→case cascading via `run` is allowed, but **cycles are forbidden**. **Repetition does not belong in Cases** — it is expressed via Internal's tick loop.
+> **Acyclicity constraint**: Cases must always be an **acyclic DAG** (enforced by the engine's `detectCycle`/`detectRunCycle`). Case→case cascading via `run` is allowed, but **cycles are forbidden**. **Repetition does not belong in Cases** — it is expressed via Internal's tick loop.
 
 > **Implementation note (current engine constraint)**: a node has one RunOn handler and one RunGraph. If a `<node>` has multiple `do`s, they compose into **sequential execution in document order** within a single handler. If a `<node>` has multiple `run`s, a composite subgraph is needed (engine extension or wrapper). If fan-out is needed, split the trigger node.
 
@@ -346,7 +406,7 @@ After the node's `do` **fires successfully**, if a handler error occurs at a lat
 
 - **Implementation (no engine changes needed)**: at the codegen level. Each `do` handler pushes a compensation closure onto **the compensation stack inside ctx** after success, and the Provides wrapper (`run` endpoint) executes the stack in reverse when `g.Run(ctx)` errors. Since ctx flows into subgraphs, **the entire cascade shares one stack** — a parent's withdrawal and a child's deposit form a single compensation unit.
 
-> **Distinction**: `do <func> when <counter-node>` and `undo` are different things. The former is an action for **when a judgment is rejected** (e.g. a deny node becomes Active → `Deny`), while the latter is compensation for **when execution dies partway through**. Judgment rejection is one branch of the normal path; execution failure is an abnormal termination.
+> **Distinction**: `do <func> when <counter-node>` and `undo` are different things. The former is an action for **when a judgment is rejected** (e.g. a deny node prevails → `Deny`), while the latter is compensation for **when execution dies partway through**. Judgment rejection is one branch of the normal path; execution failure is an abnormal termination.
 
 ### Execution order determinism
 
@@ -354,7 +414,7 @@ The rule that "`- ` unordered = order-independent, runtime may parallelize" hold
 
 Execution is different:
 
-- **Execution firing order is deterministic by the node's document declaration (registration) order.** If two nodes are simultaneously Active, their `do`s fire in document order (engine: handlers fire in rule registration order).
+- **Execution firing order is deterministic by the node's document declaration (registration) order.** If two nodes prevail in the same pass, their `do`s fire in document order (engine: handlers fire in rule registration order).
 - **Parallelizing execution is forbidden.** If the order of side effects becomes nondeterministic, claims of determinism and auditability break — for reproducibility and auditability to hold, the same document and the same world must always produce the same execution sequence.
 - Multiple `do`s on the same node compose into sequential execution within a single handler, in document order.
 - **Execution sequences where order carries meaning are recommended to be made explicit via `1.` ordered lists** — this reveals to the reader that meaning is carried by declaration order.
@@ -370,9 +430,9 @@ parent judge → parent execute → child judge → child execute → (grandchil
 The child's judgment **sees the ctx/world as mutated by the parent's handler.** The coffee example depends exactly on this interleaving — the timeline within one tick (one top-level Run pass):
 
 ```
-T1  can place cup judged     → order received Active (no cup yet)
+T1  can place cup judged     → order received prevails (no cup yet)
 T2  placeCup executes        → world changes: cup is placed
-T3  can pour water judged    → cupIsPlaced sensor sees T2's result → Active
+T3  can pour water judged    → cupIsPlaced sensor sees T2's result → cup placed prevails
 T4  pourWater executes
 T5  can brew espresso judged → waterIsPoured is true
 T6  extractShot executes
@@ -382,7 +442,7 @@ T8  serve executes
 
 T3's judgment comes **after** T2's execution. Auditors must not read this as "all judgments precede all executions" — within each graph, all of that graph's judgments precede all of that graph's executions, and cascades interleave judgment and execution level by level. This is not a bug but a design: children must be able to judge based on the results of the parent's execution for a staged process to be expressed in a single pass. (If a sensor update is slow and T3 is still false, that tick simply stops there, and the next tick picks up where it left off — which is why the Internal tick loop and `once` are a pair.)
 
-## Work (tangl:Provides) — endpoints
+## Provides (tangl:Provides) — endpoints
 
 The **entry points** this Subject exposes externally. Judgment and execution live in Cases; Provides declares only **which case is triggered through which interface**. The document's location determines the mode of provision:
 
@@ -450,7 +510,7 @@ Work that self-triggers without an external request. **Repetition and infinity l
 |---|---|
 | `on <event>` | Runs once upon receiving the event |
 | `every <interval>` | Repeats Run at the interval (`30s`, `1hour`, `7:00`) |
-| `` every <interval> until `<case>` `` | Runs every tick until the termination condition is satisfied. **ctx is shared across ticks** — the lifetime of the `once` guard is exactly this loop. The termination condition uses the same Active composition rule as §Node Registration — terminates if one or more of `<case>`'s warrants have verdict > 0 |
+| `` every <interval> until `<case>` `` | Runs every tick until the termination condition is satisfied. **ctx is shared across ticks** — the lifetime of the `once` guard is exactly this loop. The termination condition uses the same case composition rule as §Node registration — terminates if one or more of `<case>`'s warrants prevail (verdict > 0) |
 
 Event sources: referenced packages (`` `sensor`.`buttonPress` ``), completion of other work (`` `access`.complete ``), the system (`start`).
 
@@ -464,15 +524,15 @@ Event sources: referenced packages (`` `sensor`.`buttonPress` ``), completion of
 
 - **(a) Idempotent** — the world is the same no matter how many times it executes (e.g., overwriting state, log-like recording)
 - **(b) `once`** — guarded to once per ctx lifetime
-- **(c) Protected by a counter/sensor guard reflecting completion state** — structured so that the trigger node is no longer Active once execution has finished in the resulting world
+- **(c) Protected by a counter/sensor guard reflecting completion state** — structured so that the trigger node no longer prevails once execution has finished in the resulting world
 
 Rationale: the tick loop re-Runs a case wholesale every tick. A node whose condition is still true will have its `do` fire again every tick. In a coffee robot, (c) naturally holds — the trigger for `pourWater` is `cup placed`, and pouring water causes the next stage's sensor to update the world. But in domains where **the world does not reflect completion of execution**, such as transfers, filings, or dispatches, neither (a) nor (c) applies — you must use (b) `once` or design a completion counter.
 
-> **Lint recommendation**: an unguarded `do` (with no idempotency marker, no `once`, and no completion guard) on a case reachable from Internal is subject to a parser/linter **warning**.
+> **Lint**: `tangl check` (`validate.Lint`) warns about every `do` without `once` on a case reachable from Internal. The language has no marker for (a) idempotent or (c) completion-guarded actions, so such a warning on a deliberately idempotent `do` (e.g. a log write) is expected and is resolved by review, not by syntax.
 
 ### verdict → percent conversion
 
-`% = (verdict + 1) × 50` — `+1.0` = 100%, `0.0` = 50%, `-1.0` = 0%. Used in the certainty gate (`if at least N% certain`).
+`% = (verdict + 1) × 50` — `+1.0` = 100%, `0.0` = 50%, `-1.0` = 0%. Used in the certainty gate (`if at least N% certain`). A firing handler always sees more than 50% (§Execution edges).
 
 ## Example: robotic action control
 
@@ -572,6 +632,16 @@ Read by an auditor: "Once the order is received — place a cup **once**, then m
   - run `can access`
 ```
 
+How the verdicts come out (every predicate here is bool, so each rule's own verdict is `+1` or `−1`):
+
+| `block ip` | `exempt internal ip` | `block ip` verdict | `authenticate` verdict | fires |
+|---|---|---|---|---|
+| false | — | −1 (does not apply) | +1 | Allow, AccessResult |
+| true | false | +1 | 0 — one full rebuttal: `2·1/(1+1) − 1` | Deny |
+| true | true | −1 — the exception gates its applicability to 0 | +1 — the gated rebuttal contributes 0 | Allow, AccessResult |
+
+The exception does not attack `authenticate`; it removes `block ip` (a gate on the rebuttal), so the internal IP restores full authentication rather than a compromise value. To make blocking only partial, write `` `block ip` attacks `authenticate` with force 0.5 `` — then a blocked external IP leaves `authenticate` at `2·1/(1+0.5) − 1 ≈ 0.33`, which still prevails.
+
 `` do `policy`.`Deny` when `block ip` `` is **an action taken on judgment rejection** (attached to a counter node) — it is not an `undo`. Since ctx is freshly created per request and Allow/Deny are idempotent, `once` is also unnecessary here.
 
 ## Example: bank transfer (compensation)
@@ -624,9 +694,9 @@ Read by an auditor: "If the balance is sufficient — execute the withdrawal **o
 Temporal order of the failure scenario:
 
 ```
-1. can withdraw judged        → balance sufficient Active
+1. can withdraw judged        → balance sufficient prevails
 2. withdraw executes, succeeds → refund compensation armed (stack: [refund])
-3. can deposit judged          → recipient valid Active
+3. can deposit judged          → recipient valid prevails
 4. deposit executes, errors    → Run aborts immediately
 5. wrapper runs compensation stack in reverse → refund fires (the money comes back)
 6. original error reported — the transfer failed, and the world is as it was before the transfer
@@ -682,9 +752,11 @@ COMPARE_OP = "is" "empty" | "is" "not" "empty" | "equals" | "is" "in"
 
 cases_stmt = case_decl | required_decl | node_decl | edge_decl | exec_decl
 case_decl  = "in" "case" "of" NAME
-node_decl  = NAME "is" ("a"|"an") ROLE_EXPR (["checking" CASE_REF] [qual_clause] [level_clause])
+node_decl  = NAME "is" ("a"|"an") ROLE_EXPR [using_clause | "checking" CASE_REF] [qual_clause] [level_clause]
+using_clause = "using" FUNC_REF [with_clause] [qual_clause] [grounded_clause]   # legacy migration input
 level_clause = "," "level" ("fail" | "review")             # crisp reporting level
-edge_decl  = DONT NAME "when" NAME                          # defeat edge
+edge_decl  = DONT NAME "when" NAME                          # defeat edge, force omitted (1)
+           | NAME "attacks" NAME "with" "force" WEIGHT      # defeat edge, explicit force
            | NAME "supersedes" NAME                         # supersede edge
            | "supersede" "in" "order" ":" NAME (">" NAME){2,} # desugared priority chain
 exec_decl  = do_edge | run_edge | undo_edge
@@ -694,7 +766,8 @@ run_edge   = "run" NAME "when" NAME                        # run <case> when <no
 certainty_clause = "if" THRESHOLD_OP INT "%" "certain"
 with_clause = "with" with_arg [("and") with_arg]*
 grounded_clause = "grounded" "on" with_arg [("and") with_arg]*
-qual_clause = "qualified" FLOAT
+qual_clause = "qualified" WEIGHT
+WEIGHT     = DECIMAL                                       # value in [0, 1], at most 4 fractional digits
 ROLE_EXPR  = "general" "rule" | "counter" "rule" | "except" "rule"
 DONT       = "don't" | "do" "not"
 
@@ -716,7 +789,7 @@ CASE_REF = NAME | NAME "." NAME        # same grammar as FUNC_REF: bare local ca
 ```
 
 - The NAME node of an `undo_edge` must be preceded by at least one `do_edge` within the same case (parser-validated).
-- Keywords: `this`, `document`, `see`, `means`, **`reads`**, `as`, `is`, `a`, `an`, `from`, `general`, `rule`, `counter`, `except`, `case`, `using`, **`uses`**, `checking`, `with`, `qualified`, `provides`, `required`, `run`, `check`, `do`, `don't`, `not`, `when`, **`once`**, **`undo`**, **`supersedes`**, **`level`**, **`fail`**, **`review`**, **`grounded`**, `on`, `every`, `until`, `has`, `if`, `at`, `least`, `above`, `less`, `than`, `most`, `certain`, `and`, `or`, `either`, `empty`, `equals`, `in`, `greater`, **`any`**, **`of`**, **`satisfies`**, **`holds`**, **`result`**, **`spec`**. Reserved (parsed but not yet implemented): **`all`**, **`count`**, **`sum`**.
+- Keywords: `this`, `document`, `see`, `means`, **`reads`**, `as`, `is`, `a`, `an`, `from`, `general`, `rule`, `counter`, `except`, `case`, `using`, **`uses`**, `checking`, `with`, `qualified`, **`attacks`**, **`force`**, `provides`, `required`, `run`, `check`, `do`, `don't`, `not`, `when`, **`once`**, **`undo`**, **`supersedes`**, **`level`**, **`fail`**, **`review`**, **`grounded`**, `on`, `every`, `until`, `has`, `if`, `at`, `least`, `above`, `less`, `than`, `most`, `certain`, `and`, `or`, `either`, `empty`, `equals`, `in`, `greater`, **`any`**, **`of`**, **`satisfies`**, **`holds`**, **`result`**, **`spec`**. Reserved (parsed but not yet implemented): **`all`**, **`count`**, **`sum`**.
 
 ## Go API correspondence table
 
@@ -730,7 +803,7 @@ CASE_REF = NAME | NAME "." NAME        # same grammar as FUNC_REF: bare local ca
 | `` `x` is a general rule using fn `` | `x := g.Rule(fn)` |
 | `` `x` is a counter rule using fn `` | `x := g.Counter(fn)` |
 | `` `x` is an except rule using fn `` | `x := g.Except(fn)` |
-| `` `x` is a general rule checking `y` `` | `x := g.Rule(checkCase(y))` — **`y` is Evaluate (pure)** |
+| `` `x` is a general rule checking `y` `` | `x := g.Rule(checkCase(y))` — **`y` is Evaluate (pure)**; an Evaluate error is re-raised, never folded into `−1` |
 | `` `x` is a general rule checking `alias`.`y` `` | `x := g.Rule(alias.CheckingY)` — cross-package call; `alias` resolves to a Go import path derived from the sibling `.geul`'s location, and `CheckingY` is the exported wrapper the referenced document emits for case `y` (Evaluate, pure) |
 | `` `n` when <expr> `` (a `tangl:Rules` entry) | `func n(toulmin.Context, toulmin.Specs) (bool, any)` — the second return is an auto-generated witness `toulmin.Fact` |
 | `` `n` uses `p`.`fn` with `x` grounded on `body` `` | host predicate declaration; `x` is injected as a Spec and `body` is the ground contract |
@@ -739,6 +812,7 @@ CASE_REF = NAME | NAME "." NAME        # same grammar as FUNC_REF: bare local ca
 | `` with `term` `` / `qualified 0.8` | `.With(defs["term"])` / `.Qualifier(0.8)` |
 | `` grounded on `source-body` `` | `.Grounds("source-body")` |
 | `` don't `x` when `y` `` | `y.Attacks(x)` |
+| `` `y` attacks `x` with force 0.5 `` | `y.Attacks(x, 0.5)` (explicit force; `with force 1` → `y.Attacks(x, 1)`) |
 | `` `x` supersedes `y` `` | `x.Supersedes(y)` |
 | `` supersede in order: `A` > `B` > `C` `` | `A.Supersedes(B)`, `A.Supersedes(C)`, `B.Supersedes(C)` |
 | `` , level fail `` / `` , level review `` | `.Level(toulmin.Fail)` / `.Level(toulmin.Review)` |
@@ -762,7 +836,7 @@ CASE_REF = NAME | NAME "." NAME        # same grammar as FUNC_REF: bare local ca
 4. **Three-way split of declaration, connection, and execution** — node registration (`is a ... rule`), defeat edges (`don't ... when`), and execution edges (`do`/`undo`/`run ... when`) are separated. Execution attaches with node Active as the trigger (1:1 with engine RunOn/RunGraph).
 5. **Endpoints stay thin** — Provides is only the provision surface (CLI/HTTP/func) + required inputs + `run`/`check`. Policy lives in Cases, interface lives in Provides. Ownership of the compensation stack also belongs to the wrapper (endpoint).
 6. **Infinity lives at the outer tick** — Cases is an acyclic finite DAG. Repetition and infinite loops live in Internal (`every`/`on`/`until`). Every tick is one bounded, traceable Run pass.
-7. **Continuous-valued verdict** — counter rejects, except warns. Graded execution via the certainty gate (`if N% certain`).
+7. **Continuous-valued verdict** — a counter rule lowers its target through the denominator (one full rebuttal → 0), an except rule gates its applicability (one full exception → −1), and an attack force scales either. Graded execution via the certainty gate (`if N% certain`).
 8. **No concealment** — all policy is open to the auditor.
 9. **1:1 Go API correspondence** — `run→Run`, `do→RunOn`, `run case→r.Run(subgraph)`, `checking→Evaluate`, `once→ctx guard`, `undo→compensation stack`. No ambiguity.
 10. **Written by AI, read by humans** — readability is maximized.
