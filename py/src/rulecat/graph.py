@@ -12,6 +12,7 @@ from rulecat.rule_meta import RuleMeta
 from rulecat.rule import Rule
 from rulecat.rule_id import rule_id
 from rulecat.short_name import short_name
+from rulecat.to_verdict import to_verdict
 from rulecat.detect_cycle import detect_cycle
 from rulecat.detect_run_cycle import detect_run_cycle
 
@@ -69,7 +70,9 @@ class Graph:
                 f"toulmin: run depth exceeded {run_max_depth} "
                 "(possible runaway composition)"
             )
-        results, active, verdict_cache, evidence = self._evaluate(ctx, opt, full=True)
+        results, active, verdict_cache, evidence, rule_verdict = self._evaluate(
+            ctx, opt, full=True
+        )
 
         # 디스패치 전 1회 — 전 노드 TraceEntry를 등록 순서로 조립
         # (인덱스 i ↔ self.rules[i] 구조적 보장)
@@ -79,6 +82,7 @@ class Graph:
                 name=short_name(r.name),
                 role=self.roles.get(r.name, "rule"),
                 activated=active.get(r.name, False),
+                rule_verdict=rule_verdict.get(r.name, -1.0),
                 qualifier=r.qualifier,
                 verdict=verdict_cache.get(r.name, 0.0),
                 evidence=evidence.get(r.name),
@@ -113,13 +117,17 @@ class Graph:
 
     def _evaluate(
         self, ctx: Context, opt: EvalOption, full: bool
-    ) -> tuple[list[EvalResult], dict[str, bool], dict[str, float], dict[str, Any]]:
+    ) -> tuple[
+        list[EvalResult], dict[str, bool], dict[str, float], dict[str, Any],
+        dict[str, float],
+    ]:
         # Build eval maps
         fn_map: dict[str, Any] = {}
         qual_map: dict[str, float] = {}
         str_map: dict[str, int] = {}
         specs_map: dict[str, list[Any]] = {}
         edges: dict[str, list[str]] = {}
+        forces: dict[str, list[float]] = {}  # forces[to][i] = edges[to][i]의 F
 
         for r in self.rules:
             fn_map[r.name] = r.fn
@@ -128,9 +136,8 @@ class Graph:
             specs_map[r.name] = r.specs
 
         for d in self.defeats:
-            if d.to not in edges:
-                edges[d.to] = []
-            edges[d.to].append(d.from_)
+            edges.setdefault(d.to, []).append(d.from_)
+            forces.setdefault(d.to, []).append(d.force)
 
         # Cycle detection
         cycle_err = detect_cycle(edges)
@@ -145,7 +152,9 @@ class Graph:
 
         # Eval state
         ran: set[str] = set()
-        active: dict[str, bool] = {}
+        active: dict[str, bool] = {}          # 파생값: rule_verdict > -1
+        rule_verdict: dict[str, float] = {}   # 규칙 함수 자신의 v ∈ [-1, 1]
+        applicability: dict[str, float] = {}  # a_eff
         evidence: dict[str, Any] = {}
         verdict_cache: dict[str, float] = {}
         trace_entries: list[TraceEntry] = []
@@ -164,34 +173,63 @@ class Graph:
                 return "counter"
             return "rule"
 
+        def is_except_attacker(id: str) -> bool:
+            # 예외(Except/Defeater)는 곱셈 게이트, 그 밖의 공격자는 반박(분모)
+            return (
+                str_map.get(id) == Strength.DEFEATER
+                or self.roles.get(id) == "except"
+            )
+
+        def call_rule(id: str) -> bool:
+            """규칙 함수를 실행해 결과를 기록한다. 오류면 err를 세우고 False."""
+            try:
+                raw_v, ev = fn_map[id](ctx, specs_map.get(id, []))
+                v = to_verdict(raw_v)
+            except Exception as e:
+                err[0] = RuntimeError(f'rule "{id}": {e}')
+                return False
+            rule_verdict[id] = v
+            active[id] = v > -1.0
+            evidence[id] = ev
+            return True
+
+        def combine(id: str, eval_fn: Any) -> float:
+            # a = (v+1)/2, S = Σ_반박 F·(v_j+1)/2,
+            # a_eff = a · Π_예외 (1 − F·(v_j+1)/2), raw = q·a_eff/(1+S)
+            a = (rule_verdict[id] + 1.0) / 2.0
+            total = 0.0
+            gate = 1.0
+            if str_map.get(id) != Strength.STRICT:  # strict는 공격을 모두 무시
+                fs = forces.get(id, [])
+                for i, aid in enumerate(edges.get(id, [])):
+                    f = fs[i] if i < len(fs) else 1.0
+                    x = f * (eval_fn(aid) + 1.0) / 2.0
+                    if is_except_attacker(aid):
+                        gate *= 1.0 - x
+                    else:
+                        total += x
+            a_eff = a * gate
+            applicability[id] = a_eff
+            q = qual_map.get(id, 1.0)
+            v = 2.0 * (q * a_eff / (1.0 + total)) - 1.0
+            verdict_cache[id] = v
+            return v
+
         def calc(id: str) -> float:
             if err[0]:
                 return -1.0
             cached = verdict_cache.get(id)
             if cached is not None:
                 return cached
-            fn = fn_map.get(id)
-            if fn is None:
+            if fn_map.get(id) is None:
                 return -1.0
             if id not in ran:
                 ran.add(id)
-                try:
-                    act, ev = fn(ctx, specs_map.get(id, []))
-                    active[id] = act
-                    evidence[id] = ev
-                except Exception as e:
-                    err[0] = RuntimeError(f'rule "{id}": {e}')
+                if not call_rule(id):
                     return -1.0
             if not active.get(id):
-                return -1.0
-            total = 0.0
-            if str_map.get(id) != Strength.STRICT:
-                for aid in edges.get(id, []):
-                    total += (calc(aid) + 1.0) / 2.0
-            q = qual_map.get(id, 1.0)
-            v = 2.0 * (q / (1.0 + total)) - 1.0
-            verdict_cache[id] = v
-            return v
+                return -1.0  # 해당 없음: 공격자 평가를 건너뜀(지연 평가)
+            return combine(id, calc)
 
         def calc_trace(id: str, with_duration: bool) -> float:
             if err[0]:
@@ -199,43 +237,33 @@ class Graph:
             cached = verdict_cache.get(id)
             if cached is not None:
                 return cached
-            fn = fn_map.get(id)
-            if fn is None:
+            if fn_map.get(id) is None:
                 return -1.0
             if id not in ran:
                 ran.add(id)
                 start = time.perf_counter() if with_duration else 0.0
-                try:
-                    act, ev = fn(ctx, specs_map.get(id, []))
-                    active[id] = act
-                    evidence[id] = ev
-                except Exception as e:
-                    err[0] = RuntimeError(f'rule "{id}": {e}')
+                if not call_rule(id):
                     return -1.0
                 elapsed = time.perf_counter() - start if with_duration else None
                 trace_entries.append(TraceEntry(
                     name=id,
                     role=infer_role(id),
                     activated=active.get(id, False),
+                    rule_verdict=rule_verdict[id],
                     qualifier=qual_map.get(id, 1.0),
                     evidence=evidence.get(id),
                     specs=specs_map.get(id, []),
                     duration=elapsed,
                 ))
             if not active.get(id):
-                return -1.0
-            total = 0.0
-            if str_map.get(id) != Strength.STRICT:
-                for aid in edges.get(id, []):
-                    total += (calc_trace(aid, with_duration) + 1.0) / 2.0
-            q = qual_map.get(id, 1.0)
-            v = 2.0 * (q / (1.0 + total)) - 1.0
-            verdict_cache[id] = v
-            return v
+                return -1.0  # 해당 없음: 공격자 평가를 건너뜀(지연 평가)
+            return combine(id, lambda aid: calc_trace(aid, with_duration))
 
         def reset() -> None:
             ran.clear()
             active.clear()
+            rule_verdict.clear()
+            applicability.clear()
             evidence.clear()
             verdict_cache.clear()
             trace_entries.clear()
@@ -260,6 +288,7 @@ class Graph:
                 name=short_name(r.name),
                 verdict=verdict,
                 evidence=evidence.get(r.name),
+                applicability=applicability.get(r.name, 0.0),
             )
             if opt.trace:
                 result.trace = [
@@ -267,6 +296,7 @@ class Graph:
                         name=short_name(t.name),
                         role=t.role,
                         activated=t.activated,
+                        rule_verdict=t.rule_verdict,
                         qualifier=t.qualifier,
                         evidence=t.evidence,
                         specs=t.specs,
@@ -283,7 +313,7 @@ class Graph:
             if err[0]:
                 raise err[0]
 
-        return results, active, verdict_cache, evidence
+        return results, active, verdict_cache, evidence, rule_verdict
 
 
 def _resolve_option(opt: EvalOption | None) -> EvalOption:

@@ -27,7 +27,9 @@ def test_compensation_chain():
     r.attacks(w)
     d.attacks(r)
     results = g.evaluate(MapContext())
-    assert abs(results[0].verdict - 1/3) < 1e-5
+    # except가 counter의 적용도를 0으로 게이트(verdict -1) → 완전 보상, warrant = 1.0
+    # (예외가 분모에 있던 옛 의미론에서는 1/3)
+    assert results[0].verdict == 1.0
 
 
 def test_diamond_dag():
@@ -41,7 +43,9 @@ def test_diamond_dag():
     d.attacks(r1)
     d.attacks(r2)
     results = g.evaluate(MapContext())
-    assert results[0].verdict == 0.0
+    # defeater가 두 counter를 모두 -1로 게이트 → 어느 쪽도 warrant를 누르지 않음: 1.0
+    # (예외가 counter의 분모에 있던 옛 의미론에서는 0.0)
+    assert results[0].verdict == 1.0
 
 
 def test_inactive_rule():

@@ -1,6 +1,8 @@
 from __future__ import annotations
+import math
 from typing import TYPE_CHECKING, Any
 
+from rulecat.attack_force import attack_force
 from rulecat.rule_id import rule_id
 
 if TYPE_CHECKING:
@@ -15,9 +17,16 @@ class Rule:
         self._idx = idx
         self._fn = fn
 
-    def attacks(self, target: Rule) -> None:
+    def attacks(self, target: Rule, force: float = 1.0) -> None:
+        """이 규칙이 target을 공격한다는 간선을 선언한다.
+
+        force F ∈ [0, 1](기본 1)는 공격의 세기다. 반박(counter·rule 공격자)은
+        target의 분모에 F·(v+1)/2를 더하고, 예외(except)는 target의 적용도에
+        1 − F·(v+1)/2를 곱한다. NaN·범위 밖이면 ValueError.
+        """
         from rulecat.defeat_edge import DefeatEdge
-        self._graph.defeats.append(DefeatEdge(from_=self.id, to=target.id))
+        f = attack_force(force)
+        self._graph.defeats.append(DefeatEdge(from_=self.id, to=target.id, force=f))
 
     def with_spec(self, spec: Spec) -> Rule:
         spec.validate()
@@ -38,8 +47,8 @@ class Rule:
         return self
 
     def qualifier(self, q: float) -> Rule:
-        if q < 0.0 or q > 1.0:
-            raise ValueError("qualifier must be between 0.0 and 1.0")
+        if math.isnan(q) or q < 0.0 or q > 1.0:
+            raise ValueError("toulmin: qualifier must be between 0.0 and 1.0")
         self._graph.rules[self._idx].qualifier = q
         return self
 

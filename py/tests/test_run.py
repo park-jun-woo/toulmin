@@ -270,8 +270,16 @@ def test_gradient_branch_via_verdict():
 
 
 def test_gradient_branch_soft_when_defeated():
-    # internal=True: exempt active -> block defeated (0.0) -> auth verdict ~0.33 -> soft
-    g, auth, block, exempt = _build_access_control()
+    # internal=True, 반 세기(F=0.5) exempt: block 적용도 0.5 -> block verdict 0.0
+    # -> auth verdict ~0.33 -> soft.
+    # (전 세기 exempt는 block을 -1로 게이트해 auth = 1.0 -> hard. 옛 의미론에서는
+    # 예외가 분모에 있어 전 세기로도 ~0.33이었다.)
+    g = Graph("access-control")
+    auth = g.rule(_auth)
+    block = g.counter(_block)
+    exempt = g.except_(_exempt)
+    block.attacks(auth)
+    exempt.attacks(block, 0.5)
     branch = []
     auth_name = short_of(auth)
 

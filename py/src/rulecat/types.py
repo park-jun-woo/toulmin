@@ -19,7 +19,13 @@ class Spec(Protocol):
     def validate(self) -> None: ...
 
 
-RuleFunc = Callable[[Context, list[Spec]], tuple[bool, Any]]
+# 규칙 함수: (ctx, specs) -> (verdict, evidence), verdict ∈ [-1, 1].
+# +1 = 완전히 해당, 0 = 반쯤 해당, -1 = 해당 없음.
+# 해당 없음은 0이 아니라 -1이다. 0을 돌려주면 규칙이 Active로 남아 공격자까지
+# 평가되고 판정에 계속 반영된다. 0은 합법 값이라 엔진이 이 실수를 검출하지 못한다.
+# 옛 bool 반환도 받는다: True → +1, False → -1.
+# NaN·범위 밖이면 평가 오류(RuntimeError)다.
+RuleFunc = Callable[[Context, list[Spec]], tuple[float | bool, Any]]
 
 
 class Strength(IntEnum):
@@ -43,7 +49,8 @@ class EvalOption:
 class TraceEntry:
     name: str = ""           # = Claim
     role: str = ""           # rule | counter | except
-    activated: bool = False
+    activated: bool = False  # 파생값: rule_verdict > -1
+    rule_verdict: float = -1.0  # 규칙 함수 자신의 v ∈ [-1, 1](공격 반영 전). 실행 안 됐으면 -1
     qualifier: float = 1.0
     verdict: float = 0.0     # 노드 우세/패배 판별용
     evidence: Any = None
@@ -57,6 +64,8 @@ class EvalResult:
     name: str = ""
     verdict: float = 0.0
     evidence: Any = None
+    # 유효 적용도 a_eff ∈ [0, 1] = (v+1)/2 · Π_except (1 − F·(v_j+1)/2)
+    applicability: float = 0.0
     trace: list[TraceEntry] = field(default_factory=list)
 
 
