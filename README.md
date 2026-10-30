@@ -176,15 +176,19 @@ make -C c build              # C — vendor the c/ dir, or `make -C c install` (
 ### Rules are functions
 
 ```typescript
-// TypeScript
-const fn: RuleFunc = (ctx, specs) => [boolean, unknown]
+// TypeScript — number v in [-1, +1], or boolean (true → +1, false → -1)
+const fn: RuleFunc = (ctx, specs) => [number | boolean, unknown]
 
-// Python
-def fn(ctx: Context, specs: list[Spec]) -> tuple[bool, Any]: ...
+// Python — float v in [-1, +1], or bool (True → +1, False → -1)
+def fn(ctx: Context, specs: list[Spec]) -> tuple[float | bool, Any]: ...
 
 // Go
 func fn(ctx Context, specs Specs) (float64, any) // graded: v in [-1, +1]
 func fn(ctx Context, specs Specs) (bool, any)    // still accepted: true → +1, false → -1
+
+// C
+bool rc_rule_func(...);     /* register with rc_graph_rule / _counter / _except */
+rc_verdict_func(... double *out_verdict); /* register with rc_graph_rule_verdict / _counter_verdict / _except_verdict */
 ```
 
 - `ctx` = context with get/set for per-request facts (user, IP, context)
@@ -244,9 +248,20 @@ Not binary. **The framework interprets**:
 - Moderation: `verdict ≤ 0` → block, `0 < v ≤ 0.3` → flag, `> 0.3` → allow
 - Feature flags: `verdict > 0` → enabled
 
-### Graded rules, exceptions, and attack force (Go)
+### Graded rules, exceptions, and attack force
 
-In Go a rule function may return how much it applies instead of a plain yes/no:
+A rule function may return how much it applies instead of a plain yes/no. All four ports share the semantics below; the Go names are used in the examples.
+
+| | Go | TypeScript | Python | C |
+|---|---|---|---|---|
+| graded rule | `(float64, any)` | `[number, unknown]` | `(float, Any)` | `rc_verdict_func` + `rc_graph_*_verdict` |
+| attack force | `Attacks(t, f)` | `attacks(t, f)` | `attacks(t, force=f)` | `rc_rule_attacks_with_force(r, t, f)` |
+| applicability | `EvalResult.Applicability` | `applicability` | `applicability` | `rc_eval_result.applicability` |
+| rule's own v | `TraceEntry.RuleVerdict` | `ruleVerdict` | `rule_verdict` | `rc_trace_entry.rule_verdict` |
+| invalid force / qualifier | panic | throws | `ValueError` | `RC_ERR_INVALID_ARG` |
+| invalid rule verdict | `Evaluate` error | error | `RuntimeError` | `RC_ERR_RULE` |
+
+In TypeScript and Python a return value that is neither a number nor a boolean (`undefined`, `None`) is an error, not "false".
 
 ```go
 func fn(ctx Context, specs Specs) (float64, any) // v in [-1, +1]
@@ -276,7 +291,7 @@ verdict = 2 · raw − 1
 ```
 
 - A **Counter** (rebuttal) argues against the conclusion and stays in the denominator, as before.
-- An **Except** (exception) says the rule does not apply here: it scales down the target's applicability instead of adding to the denominator. One fully applying exception gates its target to `-1`; three exceptions that each half-apply leave `(1 − 0.75)³ ≈ 0.016` of the applicability. (Before, three exceptions only pulled a target down to `-0.5`.)
+- An **Except** (exception) says the rule does not apply here: it scales down the target's applicability instead of adding to the denominator. One fully applying exception gates its target to `-1`; three exceptions with `v = 0.5` each leave `(1 − 0.75)³ ≈ 0.016` of the applicability. (Before, three exceptions only pulled a target down to `-0.5`.)
 - `Strict` rules ignore both. `Supersedes` is unchanged (crisp exclusion).
 - `EvalResult.Applicability` reports `a_eff` for each warrant.
 

@@ -101,15 +101,19 @@ go get github.com/park-jun-woo/toulmin/go/pkg/toulmin  # Go
 ### 규칙은 함수다
 
 ```typescript
-// TypeScript
-const fn: RuleFunc = (ctx, specs) => [boolean, unknown]
+// TypeScript — 수 v ∈ [-1, +1] 또는 boolean (true → +1, false → -1)
+const fn: RuleFunc = (ctx, specs) => [number | boolean, unknown]
 
-// Python
-def fn(ctx: Context, specs: list[Spec]) -> tuple[bool, Any]: ...
+// Python — 실수 v ∈ [-1, +1] 또는 bool (True → +1, False → -1)
+def fn(ctx: Context, specs: list[Spec]) -> tuple[float | bool, Any]: ...
 
 // Go
 func fn(ctx Context, specs Specs) (float64, any) // 등급 판정: v ∈ [-1, +1]
 func fn(ctx Context, specs Specs) (bool, any)    // 그대로 허용: true → +1, false → -1
+
+// C
+bool rc_rule_func(...);     /* rc_graph_rule / _counter / _except로 등록 */
+rc_verdict_func(... double *out_verdict); /* rc_graph_rule_verdict / _counter_verdict / _except_verdict로 등록 */
 ```
 
 - `ctx` = get/set 기반의 요청별 컨텍스트 (사용자, IP, 컨텍스트)
@@ -171,9 +175,20 @@ verdict = 2 × raw - 1
 
 규칙의 주장을 긍정형으로 설계하면 verdict가 직관에 부합한다 — "접근 허용"(+1 = 허용), "파일 구조 준수"(+1 = 준수).
 
-### 등급 규칙, 예외, 공격 강도 (Go)
+### 등급 규칙, 예외, 공격 강도
 
-Go에서는 규칙 함수가 예/아니오 대신 얼마나 해당하는지를 반환할 수 있다:
+규칙 함수는 예/아니오 대신 얼마나 해당하는지를 반환할 수 있다. 네 포트가 아래 의미론을 똑같이 따른다. 예시는 Go 이름으로 쓴다.
+
+| | Go | TypeScript | Python | C |
+|---|---|---|---|---|
+| 등급 규칙 | `(float64, any)` | `[number, unknown]` | `(float, Any)` | `rc_verdict_func` + `rc_graph_*_verdict` |
+| 공격 강도 | `Attacks(t, f)` | `attacks(t, f)` | `attacks(t, force=f)` | `rc_rule_attacks_with_force(r, t, f)` |
+| 적용도 | `EvalResult.Applicability` | `applicability` | `applicability` | `rc_eval_result.applicability` |
+| 규칙 자체의 v | `TraceEntry.RuleVerdict` | `ruleVerdict` | `rule_verdict` | `rc_trace_entry.rule_verdict` |
+| 잘못된 force·qualifier | panic | 예외 | `ValueError` | `RC_ERR_INVALID_ARG` |
+| 잘못된 규칙 verdict | `Evaluate` 오류 | 오류 | `RuntimeError` | `RC_ERR_RULE` |
+
+TypeScript와 Python에서 수도 boolean도 아닌 반환값(`undefined`, `None`)은 "거짓"이 아니라 오류다.
 
 ```go
 func fn(ctx Context, specs Specs) (float64, any) // v ∈ [-1, +1]
@@ -203,7 +218,7 @@ verdict = 2 · raw − 1
 ```
 
 - **Counter**(반박)는 결론에 맞서는 주장이다. 지금처럼 분모에 들어간다.
-- **Except**(예외)는 "이 경우엔 규칙이 적용되지 않는다"는 말이다. 분모에 더하지 않고 대상의 적용도를 깎는다. 완전히 해당하는 예외 하나면 대상은 `-1`이 된다. 반쯤 해당하는 예외 셋이면 적용도가 `(1 − 0.75)³ ≈ 0.016`만 남는다. (이전에는 예외 셋이 붙어도 `-0.5`까지만 내려갔다.)
+- **Except**(예외)는 "이 경우엔 규칙이 적용되지 않는다"는 말이다. 분모에 더하지 않고 대상의 적용도를 깎는다. 완전히 해당하는 예외 하나면 대상은 `-1`이 된다. `v = 0.5`인 예외 셋이면 적용도가 `(1 − 0.75)³ ≈ 0.016`만 남는다. (이전에는 예외 셋이 붙어도 `-0.5`까지만 내려갔다.)
 - `Strict` 규칙은 둘 다 무시한다. `Supersedes`(크리스프 배제)는 그대로다.
 - `EvalResult.Applicability`가 각 warrant의 `a_eff`를 알려 준다.
 
