@@ -8,6 +8,7 @@ import { shortName } from "./short-name.js";
 import { detectCycle } from "./detect-cycle.js";
 import { detectRunCycle } from "./detect-run-cycle.js";
 import { createTrace } from "./trace.js";
+import { safeCall } from "./safe-call.js";
 
 const runMaxDepth = 64;   // 깊이 백스톱 (모듈 스코프)
 
@@ -61,6 +62,7 @@ export class Graph {
         name: shortName(r.name),
         role: this.roles.get(r.name) ?? "rule",
         activated: st.active.get(r.name) ?? false,
+        ruleVerdict: st.ruleVerdict.get(r.name) ?? -1.0,
         qualifier: r.qualifier,
         verdict: st.verdictCache.get(r.name) ?? 0,
         evidence: st.evidence.get(r.name),
@@ -98,6 +100,7 @@ export class Graph {
   private _evaluate(ctx: Context, opt: { method: EvalMethod; trace: boolean; duration: boolean }, full: boolean): {
     results: EvalResult[];
     active: Map<string, boolean>;
+    ruleVerdict: Map<string, number>;
     verdictCache: Map<string, number>;
     evidence: Map<string, unknown>;
   } {
@@ -107,6 +110,7 @@ export class Graph {
     const strMap = new Map<string, Strength>();
     const specsMap = new Map<string, Specs>();
     const edges = new Map<string, string[]>();
+    const forces = new Map<string, number[]>();   // forces[to][i] = force of edges[to][i]
     const roleMap = new Map(this.roles);
 
     for (const r of this.rules) {
@@ -119,6 +123,9 @@ export class Graph {
       const list = edges.get(d.to) ?? [];
       list.push(d.from);
       edges.set(d.to, list);
+      const fl = forces.get(d.to) ?? [];
+      fl.push(d.force ?? 1.0);
+      forces.set(d.to, fl);
     }
 
     // Cycle detection
@@ -133,7 +140,9 @@ export class Graph {
 
     // Evaluation state
     const ran = new Set<string>();
-    const active = new Map<string, boolean>();
+    const active = new Map<string, boolean>();          // derived: ruleVerdict > -1
+    const ruleVerdict = new Map<string, number>();      // rule function's own v in [-1, 1]
+    const applicability = new Map<string, number>();    // a_eff
     const evidence = new Map<string, unknown>();
     const verdictCache = new Map<string, number>();
     let trace: TraceEntry[] = [];
@@ -151,6 +160,49 @@ export class Graph {
       return "rule";
     }
 
+    // Exceptions (except / Defeater) gate the target's applicability multiplicatively;
+    // every other attacker is a rebuttal in the denominator.
+    function isExceptAttacker(id: string): boolean {
+      return strMap.get(id) === Strength.Defeater || roleMap.get(id) === "except";
+    }
+
+    // Runs the rule function once; on error sets err and returns false.
+    function runRule(id: string, fn: RuleFunc): boolean {
+      const out = safeCall(fn, ctx, specsMap.get(id)!);   // every registered id has specs
+      if (!out.ok) {
+        err = new Error(`rule "${id}": ${out.error}`);
+        return false;
+      }
+      ruleVerdict.set(id, out.verdict);
+      active.set(id, out.verdict > -1.0);
+      evidence.set(id, out.evidence);
+      return true;
+    }
+
+    // a = (v+1)/2; S = Σ_rebuttal F·(v_j+1)/2; a_eff = a · Π_except (1 − F·(v_j+1)/2)
+    // raw = q · a_eff / (1 + S); verdict = 2·raw − 1. Strict ignores every attacker.
+    function combine(id: string, evalFn: (aid: string) => number): number {
+      const a = (ruleVerdict.get(id)! + 1.0) / 2.0;   // only active (ran) nodes reach combine
+      let sum = 0;
+      let gate = 1.0;
+      if (strMap.get(id) !== Strength.Strict) {
+        const fl = forces.get(id) ?? [];
+        (edges.get(id) ?? []).forEach((aid, i) => {
+          const x = fl[i] * (evalFn(aid) + 1.0) / 2.0;   // forces is parallel to edges
+          if (isExceptAttacker(aid)) gate *= 1.0 - x;
+          else sum += x;
+        });
+      }
+      const aEff = a * gate;
+      applicability.set(id, aEff);
+      const q = qualMap.get(id)!;
+      const v = 2 * (q * aEff / (1 + sum)) - 1;
+      verdictCache.set(id, v);
+      return v;
+    }
+
+    // A node whose rule verdict is -1 (not applicable) returns -1 without
+    // evaluating its attackers (lazy evaluation).
     function calc(id: string): number {
       if (err) return -1.0;
       const cached = verdictCache.get(id);
@@ -159,26 +211,10 @@ export class Graph {
       if (!fn) return -1.0;
       if (!ran.has(id)) {
         ran.add(id);
-        try {
-          const [act, ev] = fn(ctx, specsMap.get(id) ?? []);
-          active.set(id, act);
-          evidence.set(id, ev);
-        } catch (e) {
-          err = new Error(`rule "${id}": ${e}`);
-          return -1.0;
-        }
+        if (!runRule(id, fn)) return -1.0;
       }
       if (!active.get(id)) return -1.0;
-      let sum = 0;
-      if (strMap.get(id) !== Strength.Strict) {
-        for (const aid of edges.get(id) ?? []) {
-          sum += (calc(aid) + 1.0) / 2.0;
-        }
-      }
-      const q = qualMap.get(id) ?? 1.0;
-      const v = 2 * (q / (1 + sum)) - 1;
-      verdictCache.set(id, v);
-      return v;
+      return combine(id, calc);
     }
 
     function calcTrace(id: string, withDuration: boolean): number {
@@ -190,20 +226,14 @@ export class Graph {
       if (!ran.has(id)) {
         ran.add(id);
         const start = withDuration ? performance.now() : 0;
-        try {
-          const [act, ev] = fn(ctx, specsMap.get(id) ?? []);
-          active.set(id, act);
-          evidence.set(id, ev);
-        } catch (e) {
-          err = new Error(`rule "${id}": ${e}`);
-          return -1.0;
-        }
+        if (!runRule(id, fn)) return -1.0;
         const elapsed = withDuration ? performance.now() - start : undefined;
         trace.push({
           name: id,
           role: inferRole(id),
-          activated: active.get(id) ?? false,
-          qualifier: qualMap.get(id) ?? 1.0,
+          activated: active.get(id)!,
+          ruleVerdict: ruleVerdict.get(id)!,
+          qualifier: qualMap.get(id)!,
           verdict: 0,                       // evaluate-trace path: verdict not assembled here (Go parity: zero-value)
           evidence: evidence.get(id),
           specs: specsMap.get(id),
@@ -211,21 +241,14 @@ export class Graph {
         });
       }
       if (!active.get(id)) return -1.0;
-      let sum = 0;
-      if (strMap.get(id) !== Strength.Strict) {
-        for (const aid of edges.get(id) ?? []) {
-          sum += (calcTrace(aid, withDuration) + 1.0) / 2.0;
-        }
-      }
-      const q = qualMap.get(id) ?? 1.0;
-      const v = 2 * (q / (1 + sum)) - 1;
-      verdictCache.set(id, v);
-      return v;
+      return combine(id, (aid) => calcTrace(aid, withDuration));
     }
 
     function reset(): void {
       ran.clear();
       active.clear();
+      ruleVerdict.clear();
+      applicability.clear();
       evidence.clear();
       verdictCache.clear();
       trace = [];
@@ -249,6 +272,7 @@ export class Graph {
         name: shortName(r.name),
         verdict,
         evidence: evidence.get(r.name),
+        applicability: applicability.get(r.name)!,   // active warrant → combine ran
       };
       if (opt.trace) {
         result.trace = trace.map(t => ({ ...t, name: shortName(t.name) }));
@@ -263,7 +287,7 @@ export class Graph {
       if (err) throw err;
     }
 
-    return { results, active, verdictCache, evidence };
+    return { results, active, ruleVerdict, verdictCache, evidence };
   }
 }
 
