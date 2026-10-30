@@ -1,3 +1,4 @@
+//ff:func feature=tangl type=parser control=sequence
 //ff:what TestParseHostRule — Rules host declaration owns using, with, and grounds
 package parser
 

@@ -1,3 +1,5 @@
+//ff:func feature=tangl type=parser control=sequence
+//ff:what parseStringListDefinition — parse a JSON string-array definition body into a StringListDef
 package parser
 
 import (

@@ -32,21 +32,3 @@ func parseCompareRhsKo(cmp ast.Compare, rhs string, line int, path string) (ast.
 	cmp.Rhs = op
 	return cmp, nil
 }
-
-func normalizeLiteralValueKo(op, value string) string {
-	if op != "is in" {
-		return stripLiteralQuotesKo(value)
-	}
-	items := strings.Split(value, ",")
-	for i := range items {
-		items[i] = stripLiteralQuotesKo(strings.TrimSpace(items[i]))
-	}
-	return strings.Join(items, ", ")
-}
-
-func stripLiteralQuotesKo(value string) string {
-	if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
-		return value[1 : len(value)-1]
-	}
-	return value
-}

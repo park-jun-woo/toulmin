@@ -30,24 +30,7 @@ func buildRefIndex(a *ast.Document) map[int]doc.StmtRef {
 		idx[r.Line] = doc.StmtRef{Sec: toulmin.SectionRules, Path: []int{ri}}
 	}
 	for ci, c := range a.Cases {
-		idx[c.Line] = doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{ci}}
-		for si, req := range c.Requires {
-			idx[req.Line] = doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{ci, 0, si}}
-		}
-		for si, n := range c.Nodes {
-			idx[n.Line] = doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{ci, 1, si}}
-		}
-		for si, at := range c.Attacks {
-			idx[at.Line] = doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{ci, 2, si}}
-		}
-		for si, ex := range c.Execs {
-			idx[ex.Line] = doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{ci, 3, si}}
-		}
-		for si, sp := range c.Supersedes {
-			if _, exists := idx[sp.Line]; !exists || len(sp.Chain) >= 3 {
-				idx[sp.Line] = doc.StmtRef{Sec: toulmin.SectionCases, Path: []int{ci, 4, si}}
-			}
-		}
+		indexCaseRefs(idx, ci, c)
 	}
 	for ei, ep := range a.Provides {
 		idx[ep.Line] = doc.StmtRef{Sec: toulmin.SectionProvides, Path: []int{ei}}

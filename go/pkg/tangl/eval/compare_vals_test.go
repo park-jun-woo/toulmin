@@ -2,11 +2,7 @@
 //ff:what TestCompareVals — tests every tangl comparison operator over resolved values
 package eval
 
-import (
-	"testing"
-
-	"github.com/park-jun-woo/toulmin/go/pkg/toulmin"
-)
+import "testing"
 
 func TestCompareVals(t *testing.T) {
 	cases := []struct {
@@ -43,12 +39,5 @@ func TestCompareVals(t *testing.T) {
 				t.Fatalf("compareVals(%v,%v,%q,%v)=%v want %v", c.lhs, c.ok, c.op, c.rhs, got, c.want)
 			}
 		})
-	}
-}
-
-func TestCompareValsStructuredStringList(t *testing.T) {
-	list := toulmin.NewStringListSpec("domains", []string{"a,b", " c "})
-	if !compareVals("a,b", true, "is in", list) || !compareVals(" c ", true, "is in", list) || compareVals("c", true, "is in", list) {
-		t.Fatal("structured string-list membership is not exact")
 	}
 }

@@ -39,17 +39,3 @@ func resolveRuleSpecs(doc *ast.Document, res Resolver, lists map[string]toulmin.
 	}
 	return out, nil
 }
-
-func uniqueTerms(groups ...[]string) []string {
-	seen := map[string]bool{}
-	var out []string
-	for _, group := range groups {
-		for _, term := range group {
-			if !seen[term] {
-				seen[term] = true
-				out = append(out, term)
-			}
-		}
-	}
-	return out
-}

@@ -1,3 +1,5 @@
+//ff:func feature=tangl type=parser control=sequence
+//ff:what parseFileDefinition — parse a file-backed definition ("reads `Type` from \"path\"")
 package parser
 
 import (

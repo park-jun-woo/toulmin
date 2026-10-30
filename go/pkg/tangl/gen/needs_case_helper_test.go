@@ -61,6 +61,16 @@ func TestNeedsCaseHelper(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "internal with until and no cases triggers true",
+			doc: &ast.Document{
+				Internals: []ast.Internal{
+					{Event: "start"},
+					{Event: "tick", Until: "doneCase"},
+				},
+			},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

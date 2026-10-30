@@ -1,4 +1,4 @@
-//ff:func feature=tangl type=parser control=sequence
+//ff:func feature=tangl type=parser control=iteration dimension=1
 //ff:what parseRoleExpr — parse a ROLE_EXPR (general/counter/except rule)
 package parser
 

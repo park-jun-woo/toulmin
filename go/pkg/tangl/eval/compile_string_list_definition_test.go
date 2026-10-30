@@ -1,3 +1,5 @@
+//ff:func feature=tangl type=engine control=sequence
+//ff:what TestCompileDocumentStringListMembership — a string-list definition compiles to exact "is in" membership
 package eval
 
 import (

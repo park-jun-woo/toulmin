@@ -1,3 +1,4 @@
+//ff:func feature=tangl type=codegen control=sequence
 //ff:what TestGenerateHostRuleBinding — a bare case binding inherits host function and With from Rules
 package gen
 

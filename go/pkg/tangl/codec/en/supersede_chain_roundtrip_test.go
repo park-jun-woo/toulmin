@@ -1,3 +1,4 @@
+//ff:func feature=tangl type=parser control=sequence
 //ff:what TestSupersedeChainRoundTrip — English codec preserves chain surface while AST contains the closure
 package en
 

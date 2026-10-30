@@ -28,21 +28,3 @@ func withCompareRhs(cmp ast.Compare, rhs string, line int, path string) (ast.Com
 	cmp.Rhs = op
 	return cmp, nil
 }
-
-func normalizeLiteralValue(op, value string) string {
-	if op != "is in" {
-		return stripLiteralQuotes(value)
-	}
-	items := strings.Split(value, ",")
-	for i := range items {
-		items[i] = stripLiteralQuotes(strings.TrimSpace(items[i]))
-	}
-	return strings.Join(items, ", ")
-}
-
-func stripLiteralQuotes(value string) string {
-	if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
-		return value[1 : len(value)-1]
-	}
-	return value
-}

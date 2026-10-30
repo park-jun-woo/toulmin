@@ -1,3 +1,4 @@
+//ff:func feature=tangl type=parser control=sequence
 //ff:what TestParseHostRuleKo — Korean Rules host declaration owns using and criteria
 package ko
 

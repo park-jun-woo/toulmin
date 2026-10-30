@@ -1,3 +1,4 @@
+//ff:func feature=tangl type=parser control=iteration dimension=1
 //ff:what TestParseSupersedeChainKo — Korean chain expands identically to canonical pair edges
 package ko
 

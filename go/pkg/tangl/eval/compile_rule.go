@@ -1,4 +1,4 @@
-//ff:func feature=tangl type=engine control=selection
+//ff:func feature=tangl type=engine control=sequence
 //ff:what compileRule — compile an expression rule or bind a host predicate declaration
 package eval
 

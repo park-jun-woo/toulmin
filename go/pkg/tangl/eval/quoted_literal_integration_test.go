@@ -1,3 +1,4 @@
+//ff:func feature=tangl type=engine control=iteration dimension=1
 //ff:what TestQuotedLiteralIntegration — quoted comparison literals evaluate as their unquoted values
 package eval
 

@@ -36,11 +36,3 @@ func renderRule(r ast.InlineRule) string {
 	lines := renderCondList(r.Cond, 1)
 	return head + "\n" + strings.Join(lines, "\n")
 }
-
-func renderBacktickNames(names []string) string {
-	parts := make([]string, len(names))
-	for i, name := range names {
-		parts[i] = "`" + name + "`"
-	}
-	return strings.Join(parts, " and ")
-}

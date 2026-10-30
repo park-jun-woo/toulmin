@@ -1,3 +1,5 @@
+//ff:func feature=tangl type=parser control=iteration dimension=1
+//ff:what TestParseListAndFileDefinitions — string-list and file definitions parse; malformed JSON arrays are rejected
 package parser
 
 import (

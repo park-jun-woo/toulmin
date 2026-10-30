@@ -11,6 +11,12 @@ func TestDefKind_String(t *testing.T) {
 	if got := StructDef.String(); got != "StructDef" {
 		t.Errorf("StructDef: got %q, want %q", got, "StructDef")
 	}
+	if got := StringListDef.String(); got != "StringListDef" {
+		t.Errorf("StringListDef: got %q, want %q", got, "StringListDef")
+	}
+	if got := FileSpecDef.String(); got != "FileSpecDef" {
+		t.Errorf("FileSpecDef: got %q, want %q", got, "FileSpecDef")
+	}
 	if got := DefKind(99).String(); got != "DefKind(?)" {
 		t.Errorf("unknown: got %q, want %q", got, "DefKind(?)")
 	}

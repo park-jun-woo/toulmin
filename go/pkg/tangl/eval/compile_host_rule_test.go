@@ -1,3 +1,4 @@
+//ff:func feature=tangl type=engine control=sequence
 //ff:what TestCompileHostRule — host Rules declarations bind through Resolver and preserve evidence
 package eval
 

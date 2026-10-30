@@ -1,3 +1,5 @@
+//ff:func feature=tangl type=validator control=iteration dimension=1
+//ff:what checkDefinitionKinds — reject definitions whose populated fields do not match their Kind
 package validate
 
 import (
@@ -6,32 +8,19 @@ import (
 	"github.com/park-jun-woo/toulmin/go/pkg/tangl/ast"
 )
 
+// checkDefinitionKinds reports one error per definition whose fields are invalid
+// for its Kind. A well-formed file definition with a relative path additionally
+// requires Document.Path to resolve against.
 func checkDefinitionKinds(doc *ast.Document) []error {
 	var errs []error
 	for _, d := range doc.Defs {
-		bad := false
-		switch d.Kind {
-		case ast.ConstDef:
-			bad = len(d.Fields) != 0 || len(d.Strings) != 0 || d.LoadType != "" || d.FilePath != ""
-		case ast.StructDef:
-			bad = d.Value != "" || d.SpecRef != nil || len(d.Strings) != 0 || d.LoadType != "" || d.FilePath != ""
-		case ast.StringListDef:
-			bad = d.Value != "" || d.SpecRef != nil || len(d.Fields) != 0 || d.LoadType != "" || d.FilePath != ""
-		case ast.FileSpecDef:
-			bad = d.Value != "" || d.SpecRef != nil || len(d.Fields) != 0 || len(d.Strings) != 0 || d.LoadType == "" || d.FilePath == ""
-			if !bad && !filepath.IsAbs(d.FilePath) && doc.Path == "" {
-				errs = append(errs, errAt(doc.Path, d.Line, "definition %q uses a relative file path but Document.Path is empty", d.Name))
-			}
-		default:
-			bad = true
-		}
-		if bad {
+		if definitionFieldsInvalid(d) {
 			errs = append(errs, errAt(doc.Path, d.Line, "definition %q has invalid fields for %s", d.Name, d.Kind.String()))
+			continue
+		}
+		if d.Kind == ast.FileSpecDef && !filepath.IsAbs(d.FilePath) && doc.Path == "" {
+			errs = append(errs, errAt(doc.Path, d.Line, "definition %q uses a relative file path but Document.Path is empty", d.Name))
 		}
 	}
 	return errs
-}
-
-func specCapable(d ast.Definition) bool {
-	return d.Kind == ast.StringListDef || d.Kind == ast.FileSpecDef || (d.Kind == ast.ConstDef && d.SpecRef != nil)
 }

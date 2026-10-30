@@ -1,3 +1,5 @@
+//ff:func feature=tangl type=parser control=sequence
+//ff:what parseStringListDefinitionKo — parse a JSON string-array 정의 body into a StringListDef
 package ko
 
 import (

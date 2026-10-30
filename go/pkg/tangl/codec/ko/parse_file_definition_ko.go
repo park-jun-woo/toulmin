@@ -1,3 +1,5 @@
+//ff:func feature=tangl type=parser control=sequence
+//ff:what parseFileDefinitionKo — parse a file-backed 정의 ('`타입` 을 "경로" 파일에서 읽는다')
 package ko
 
 import (

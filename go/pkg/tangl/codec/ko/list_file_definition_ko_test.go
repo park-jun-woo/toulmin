@@ -1,3 +1,5 @@
+//ff:func feature=tangl type=parser control=sequence
+//ff:what TestListAndFileDefinitionKo — Korean string-list and file-backed definitions parse and render canonically
 package ko
 
 import (

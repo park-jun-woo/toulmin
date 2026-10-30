@@ -13,14 +13,3 @@ func renderSupersede(s ast.Supersede) string {
 	}
 	return "`" + s.Superseder + "` supersedes `" + s.Superseded + "`"
 }
-
-func renderSupersedeChainNames(names []string) string {
-	text := ""
-	for i, name := range names {
-		if i > 0 {
-			text += " > "
-		}
-		text += "`" + name + "`"
-	}
-	return text
-}

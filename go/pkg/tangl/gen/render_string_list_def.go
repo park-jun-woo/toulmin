@@ -1,3 +1,5 @@
+//ff:func feature=tangl type=codegen control=iteration dimension=1
+//ff:what renderStringListDef — emit a string-list definition as a toulmin.NewStringListSpec var
 package gen
 
 import (

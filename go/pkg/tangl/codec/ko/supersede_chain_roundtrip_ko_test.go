@@ -1,3 +1,4 @@
+//ff:func feature=tangl type=parser control=sequence
 //ff:what TestSupersedeChainRoundTripKo — Korean codec preserves chain surface while AST contains the closure
 package ko
 
