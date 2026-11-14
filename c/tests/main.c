@@ -13,6 +13,8 @@ void test_trace(void);
 void test_expect_and_cases(void);
 void test_run(void);
 void test_run_compose(void);
+void test_verdict(void);
+void test_supersedes(void);
 
 int main(void) {
     test_map_context();
@@ -22,6 +24,8 @@ int main(void) {
     test_expect_and_cases();
     test_run();
     test_run_compose();
+    test_verdict();
+    test_supersedes();
 
     printf("%d checks, %d failures\n", rc_test_checks, rc_test_failures);
     return rc_test_failures == 0 ? 0 : 1;

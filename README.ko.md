@@ -93,7 +93,7 @@ toulmin: **요구사항마다 2줄, 기존 코드 변경 없음.** if-else: **�
 ```bash
 npm install rulecat          # TypeScript
 pip install rulecat          # Python (planned)
-go get github.com/park-jun-woo/toulmin/pkg/toulmin  # Go
+go get github.com/park-jun-woo/toulmin/go/pkg/toulmin  # Go
 ```
 
 ## 핵심 개념
@@ -101,14 +101,19 @@ go get github.com/park-jun-woo/toulmin/pkg/toulmin  # Go
 ### 규칙은 함수다
 
 ```typescript
-// TypeScript
-const fn: RuleFunc = (ctx, specs) => [boolean, unknown]
+// TypeScript — 수 v ∈ [-1, +1] 또는 boolean (true → +1, false → -1)
+const fn: RuleFunc = (ctx, specs) => [number | boolean, unknown]
 
-// Python
-def fn(ctx: Context, specs: list[Spec]) -> tuple[bool, Any]: ...
+// Python — 실수 v ∈ [-1, +1] 또는 bool (True → +1, False → -1)
+def fn(ctx: Context, specs: list[Spec]) -> tuple[float | bool, Any]: ...
 
 // Go
-func fn(ctx Context, specs Specs) (bool, any)
+func fn(ctx Context, specs Specs) (float64, any) // 등급 판정: v ∈ [-1, +1]
+func fn(ctx Context, specs Specs) (bool, any)    // 그대로 허용: true → +1, false → -1
+
+// C
+bool rc_rule_func(...);     /* rc_graph_rule / _counter / _except로 등록 */
+rc_verdict_func(... double *out_verdict); /* rc_graph_rule_verdict / _counter_verdict / _except_verdict로 등록 */
 ```
 
 - `ctx` = get/set 기반의 요청별 컨텍스트 (사용자, IP, 컨텍스트)
@@ -145,7 +150,9 @@ expunged.Attacks(criminal)  // 말소가 전과를 무력화
 
 **Except가 차별점이다.** "예외의 예외"를 if-else로는 구조적으로 표현할 수 없다. defeats graph에서는 엣지 한 줄이다.
 
-**Supersedes는 크리스프한 우선권이다.** `Attacks`는 h-Categoriser에 가중치로 반영되지만 `winner.Supersedes(loser)`는 그렇지 않다. `winner`가 Active면 `loser`는 verdict가 낮아지는 게 아니라 집계에서 통째로 배제된다 — trace에 `Excluded`로 표시되고 순회 자체에 들어가지 않는다. 한 규칙이 다른 규칙과 저울질하는 게 아니라 그냥 우선해야 할 때 쓴다.
+**Supersedes는 크리스프한 우선권이다.** `Attacks`는 h-Categoriser에 가중치로 반영되지만 `winner.Supersedes(loser)`는 그렇지 않다. `winner`의 적용도 `a_eff > 0`이면 `loser`는 verdict가 낮아지는 게 아니라 집계에서 통째로 배제된다 — trace에 `Excluded`로 표시되고 순회 자체에 들어가지 않는다. 한 규칙이 다른 규칙과 저울질하는 게 아니라 그냥 우선해야 할 때 쓴다.
+
+`a_eff`는 `winner` 자신의 `(v+1)/2`에 `Except` 게이트를 곱한 값이다(아래 참조). `Counter` 반박은 반영하지 않고, `Strict`인 winner는 `(v+1)/2` 그대로다. `a_eff`가 0.3처럼 일부만 남아도 loser 전체를 배제한다. 예: VIP 할인이 일반 할인을 배제한다. "정지된 VIP" 예외가 VIP 할인을 완전히 막으면 일반 할인은 배제되지 않아 고객은 일반 할인을 받는다. 예외 force가 0.5이거나 VIP 할인에 반박이 붙으면 배제는 유지된다. 배제된 규칙도 자기 배제권은 유지한다(`X > Y > Z`에서 `Y`가 배제돼도 `Z`는 배제된다). 네 포트 모두 지원한다(TS·Python `supersedes`, C `rc_rule_supersedes`).
 
 ### Verdict
 
@@ -169,6 +176,63 @@ verdict = 2 × raw - 1
 - 피처 플래그: `verdict > 0` → 활성
 
 규칙의 주장을 긍정형으로 설계하면 verdict가 직관에 부합한다 — "접근 허용"(+1 = 허용), "파일 구조 준수"(+1 = 준수).
+
+### 등급 규칙, 예외, 공격 강도
+
+규칙 함수는 예/아니오 대신 얼마나 해당하는지를 반환할 수 있다. 네 포트가 아래 의미론을 똑같이 따른다. 예시는 Go 이름으로 쓴다.
+
+| | Go | TypeScript | Python | C |
+|---|---|---|---|---|
+| 등급 규칙 | `(float64, any)` | `[number, unknown]` | `(float, Any)` | `rc_verdict_func` + `rc_graph_*_verdict` |
+| 공격 강도 | `Attacks(t, f)` | `attacks(t, f)` | `attacks(t, force=f)` | `rc_rule_attacks_with_force(r, t, f)` |
+| 적용도 | `EvalResult.Applicability` | `applicability` | `applicability` | `rc_eval_result.applicability` |
+| 규칙 자체의 v | `TraceEntry.RuleVerdict` | `ruleVerdict` | `rule_verdict` | `rc_trace_entry.rule_verdict` |
+| 잘못된 force·qualifier | panic | 예외 | `ValueError` | `RC_ERR_INVALID_ARG` |
+| 잘못된 규칙 verdict | `Evaluate` 오류 | 오류 | `RuntimeError` | `RC_ERR_RULE` |
+
+TypeScript와 Python에서 수도 boolean도 아닌 반환값(`undefined`, `None`)은 "거짓"이 아니라 오류다.
+
+```go
+func fn(ctx Context, specs Specs) (float64, any) // v ∈ [-1, +1]
+```
+
+| `v` | 의미 |
+|---|---|
+| `+1` | 완전히 해당 (옛 `true`) |
+| `0` | **반쯤 해당** |
+| `-1` | 해당 없음 (옛 `false`) |
+
+**해당 없음은 0이 아니라 −1이다. 0은 '반쯤 해당'이다.** bool에 익숙한 대로 "아니오"를 `return 0, nil`로 쓰면 규칙이 꺼지지 않는다. 적용도 0.5로 Active인 채 남고, 공격자도 평가되고, 그래프에 계속 반영된다. 판정이 조용히 틀어지며, **엔진은 이를 검출하지 못한다 — 0은 합법적인 값이므로 사용자가 알아서 조심해야 한다.** 해당하지 않으면 `-1`을 반환한다.
+
+- `v`는 `[-1, +1]` 안이어야 한다. NaN이나 범위를 벗어난 값은 오류다. `Evaluate`/`Run`이 멈추고 `rule "<id>": rule verdict <v> out of range [-1, 1]`를 반환한다(규칙 panic과 같은 경로).
+- 옛 `func(Context, Specs) (bool, any)` 시그니처도 그대로 쓴다. `true` → `+1`, `false` → `-1`이고, bool 그래프의 판정값은 이전과 정확히 같다(`Except`가 공격하는 경우만 다르다 — 아래).
+- `v > -1`이면 Active다. `v == -1`일 때만 공격자 평가를 건너뛴다(지연 평가).
+- `TraceEntry.RuleVerdict`에 규칙 자체의 `v`가 남는다. `TraceEntry.Activated`는 `v > -1`로 유지된다.
+
+반박(Counter)과 예외(Except)는 이제 다르게 계산한다:
+
+```
+a      = (v + 1) / 2                               자기 적용도
+S      = Σ_반박  F · (v_j + 1) / 2                 반박: 분모
+a_eff  = a · Π_예외 (1 − F · (v_j + 1) / 2)        예외: 곱셈 게이트
+raw    = q · a_eff / (1 + S)
+verdict = 2 · raw − 1
+```
+
+- **Counter**(반박)는 결론에 맞서는 주장이다. 지금처럼 분모에 들어간다.
+- **Except**(예외)는 "이 경우엔 규칙이 적용되지 않는다"는 말이다. 분모에 더하지 않고 대상의 적용도를 깎는다. 완전히 해당하는 예외 하나면 대상은 `-1`이 된다. `v = 0.5`인 예외 셋이면 적용도가 `(1 − 0.75)³ ≈ 0.016`만 남는다. (이전에는 예외 셋이 붙어도 `-0.5`까지만 내려갔다.)
+- `Strict` 규칙은 둘 다 무시한다. `Supersedes`(크리스프 배제)는 배제자의 `a_eff > 0`일 때만 배제하므로, 예외가 배제자를 완전히 막으면 배제도 풀린다.
+- `EvalResult.Applicability`가 각 warrant의 `a_eff`를 알려 준다.
+
+`Attacks`는 선택 인자로 공격 강도 `F ∈ [0, 1]`을 받는다. 기본값은 `1`이다:
+
+```go
+blocked.Attacks(auth)       // F = 1 (기존 동작 그대로)
+hint.Attacks(auth, 0.3)     // 약한 반박
+partial.Attacks(rule, 0.5)  // 적용도를 최대 절반만 깎는 예외
+```
+
+`F`는 반박 항과 예외 게이트 양쪽에 곱해진다. 값을 둘 이상 주거나 NaN이거나 `[0, 1]`을 벗어나면 선언 시점에 panic한다(`Qualifier`와 같은 관례).
 
 ### Level
 
@@ -296,28 +360,29 @@ TANGEUL은 코어 위에 바로 컴파일되는 마크다운 정책 언어다 �
 - **판정과 실행이 분리된다.** `Provides`/`Internal` 항목은 케이스를 `check`(순수 판정 — `Graph.Evaluate`로 컴파일)하거나 `run`(판정 후 `RunOn`을 통한 `do`/`undo` 부수효과 — `Graph.Run`으로 컴파일)한다.
 - **saga 보상이 내장되어 있다.** `do`가 성공하는 순간 짝을 이루는 `undo`가 보상 스택에 적재되고, 같은 패스 안에서 이후 단계가 실패하면 스택을 LIFO로 되돌린다. 복구 불가능한 실패는 원인과 보상 실패를 함께 담은 `*tangl.ReviewError`로 승격된다.
 - **effect summary로 감사한다.** `tangl effects`는 실행하지 않고도 한 엔드포인트가 일으킬 수 있는 모든 `do`/`undo`를 정적으로 나열한다.
-- **크리스프 우선권과 레벨도 표면에서.** `` `X` 면 `Y` 배제한다 ``는 `X`가 성립하면 `Y`를 집계에서 배제한다. `` `A` > `B` > `C` 순서로 배제한다 ``는 모든 앞→뒤 우선권 간선으로 전개된다. 관형절 `실패를 보고하는` / `검토를 보고하는`은 크리스프 리포팅 레벨을 표기한다.
-- **하나의 이진 단일 진실(TANGEUL).** `tangl encode`는 저작한 `.md` 표면을 로케일 독립적인 컴팩트 `.tangeul` 스트림(AST + 원문 prose span)으로 흡수하며, 이후 모든 명령은 그 스트림 위에서 동작한다. `tangl decode`는 스트림을 다시 텍스트 표면으로 렌더링한다 — 모드 1에서는 바이트 항등, 모드 2에서는 다른 로케일로 재생성.
-- **영어·한국어 표면, 같은 AST.** `tangl encode`는 문서의 섹션 헤더로 en/ko를 자동 판별하고, `tangl decode --locale ko`는 임의의 `.tangeul`을 비개발자 감사자를 위한 한국어 감사 표면으로 렌더링한다(`TANGEUL.ko.md` 참조).
+- **공격 세기도 표면에서.** `` `Y` 면 `X` 무효다 ``는 세기 1의 공격이고, `` `Y` 면 `X` 를 0.5의 세기로 공격한다 ``(영어 `` `Y` attacks `X` with force 0.5 ``)는 `Y.Attacks(X, 0.5)`로 컴파일된다. 세기는 `[0, 1]`(소수 넷째 자리까지) 값이며 `.geul`에는 ATTACKS의 `F_FORCE` 자리로 실린다.
+- **크리스프 우선권과 레벨도 표면에서.** `` `X` 면 `Y` 배제한다 ``는 `X`의 실효 적용도가 `a_eff > 0`인 동안 `Y`를 집계에서 배제한다. `` `A` > `B` > `C` 순서로 배제한다 ``는 모든 앞→뒤 우선권 간선으로 전개된다. 관형절 `실패를 보고하는` / `검토를 보고하는`은 크리스프 리포팅 레벨을 표기한다.
+- **하나의 이진 단일 진실(TANGEUL).** `tangl encode`는 저작한 `.md` 표면을 로케일 독립적인 컴팩트 `.geul` 파일(GEUL t002 DOC 하나, TOULMIN 코덱: AST + 원문 prose span)로 흡수하며, 이후 모든 명령은 그 스트림 위에서 동작한다. `tangl decode`는 스트림을 다시 텍스트 표면으로 렌더링한다 — 모드 1에서는 바이트 항등, 모드 2에서는 다른 로케일로 재생성.
+- **영어·한국어 표면, 같은 AST.** `tangl encode`는 문서의 섹션 헤더로 en/ko를 자동 판별하고, `tangl decode --locale ko`는 임의의 `.geul`을 비개발자 감사자를 위한 한국어 감사 표면으로 렌더링한다(`TANGEUL.ko.md` 참조).
 
 ```bash
-go install github.com/park-jun-woo/toulmin/cmd/tangl@latest
+go install github.com/park-jun-woo/toulmin/go/cmd/tangl@latest
 
-tangl encode policy.md -o policy.tangeul   # .md 표면을 .tangeul 스트림으로 흡수 (로케일 자동 판별)
-tangl check policy.tangeul                 # 검증 + lint
-tangl effects policy.tangeul pay           # 엔드포인트 "pay"에서 도달 가능한 정적 do/undo 요약
-tangl gen policy.tangeul -o pay_gen.go     # 문서를 Go 소스로 컴파일
-tangl decode policy.tangeul                # 스트림을 다시 텍스트로 렌더링 (모드 1, 바이트 항등)
-tangl decode policy.tangeul --locale ko    # 같은 스트림을 한국어 감사 표면으로 렌더링 (모드 2)
+tangl encode policy.md -o policy.geul   # .md 표면을 .geul 스트림으로 흡수 (로케일 자동 판별)
+tangl check policy.geul                 # 검증 + lint
+tangl effects policy.geul pay           # 엔드포인트 "pay"에서 도달 가능한 정적 do/undo 요약
+tangl gen policy.geul -o pay_gen.go     # 문서를 Go 소스로 컴파일
+tangl decode policy.geul                # 스트림을 다시 텍스트로 렌더링 (모드 1, 바이트 항등)
+tangl decode policy.geul --locale ko    # 같은 스트림을 한국어 감사 표면으로 렌더링 (모드 2)
 ```
 
 ```
-$ tangl encode pkg/tangl/parser/testdata/transfer.md -o transfer.tangeul
+$ tangl encode pkg/tangl/parser/testdata/transfer.md -o transfer.geul
 
-$ tangl check transfer.tangeul
+$ tangl check transfer.geul
 ok
 
-$ tangl effects transfer.tangeul transfer
+$ tangl effects transfer.geul transfer
 do   bank.withdraw        once (can withdraw / balance sufficient)
 undo bank.refund               (can withdraw / balance sufficient)
 do   bank.deposit         once (can deposit / recipient valid)

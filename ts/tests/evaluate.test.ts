@@ -22,7 +22,7 @@ describe("Evaluate", () => {
     expect(results[0].verdict).toBe(0.0);
   });
 
-  it("compensation chain — verdict 1/3", () => {
+  it("compensation chain — except gates the counter out, verdict 1.0", () => {
     const g = new Graph("test");
     const wFn: RuleFunc = (ctx, specs) => [true, null];
     const rFn: RuleFunc = (ctx, specs) => [true, null];
@@ -33,7 +33,9 @@ describe("Evaluate", () => {
     r.attacks(w);
     d.attacks(r);
     const results = g.evaluate(newContext());
-    expect(results[0].verdict).toBeCloseTo(1 / 3, 5);
+    // Except gates the counter's applicability to 0 (verdict -1): full compensation,
+    // warrant = 1.0 (was 1/3 when except sat in the counter's denominator).
+    expect(results[0].verdict).toBe(1.0);
   });
 
   it("diamond DAG — shared attacker", () => {
@@ -51,7 +53,9 @@ describe("Evaluate", () => {
     d.attacks(r1);
     d.attacks(r2);
     const results = g.evaluate(newContext());
-    expect(results[0].verdict).toBe(0.0);
+    // The except gates both counters to -1 (applicability 0), so neither weighs on the
+    // warrant: 1.0 (was 0.0 when the except sat in the counters' denominators).
+    expect(results[0].verdict).toBe(1.0);
   });
 
   it("inactive rule — no result", () => {

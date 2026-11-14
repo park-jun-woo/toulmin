@@ -5,7 +5,7 @@
 sufficient` 노드에 `do` 없이 `undo`만 걸어, `tangl check`가 정확히
 거부하는지 검증한다.
 
-기대: `go run ./cmd/tangl check test/bad-undo-without-do.md` 는 0이 아닌
+기대: `tangl check test/bad-undo-without-do.md` 는 0이 아닌
 종료 코드로 실패하고, 메시지는
 `case "can refund" undo when "balance sufficient" has no preceding do on that node` 형태여야 한다.
 

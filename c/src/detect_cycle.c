@@ -35,3 +35,34 @@ rc_status rc__detect_cycle(rc_eval_state *es, size_t *cycle_at) {
     free(color);
     return st;
 }
+
+/* supersede 간선 from → to를 따라 DFS. 간선 목록을 선형 탐색한다(규칙 수십 규모). */
+static rc_status rc__supersede_dfs(const rc_graph *g, size_t node,
+                                   unsigned char *color, size_t *cycle_at) {
+    color[node] = RC__GRAY;
+    for (size_t e = 0; e < g->n_supersedes; e++) {
+        if (g->supersedes[e].from_idx != node) continue;
+        size_t nb = g->supersedes[e].to_idx;
+        if (color[nb] == RC__GRAY) { *cycle_at = nb; return RC_ERR_CYCLE; }
+        if (color[nb] == RC__WHITE) {
+            rc_status st = rc__supersede_dfs(g, nb, color, cycle_at);
+            if (st != RC_OK) return st;
+        }
+    }
+    color[node] = RC__BLACK;
+    return RC_OK;
+}
+
+/* supersede 간선 순환을 defeats와 독립으로 감지한다(상호 배제는 작성 오류). */
+rc_status rc__detect_supersede_cycle(const rc_graph *g, size_t *cycle_at) {
+    size_t n = g->n_rules;
+    if (n == 0 || g->n_supersedes == 0) return RC_OK;
+    unsigned char *color = calloc(n, 1);
+    if (!color) return RC_ERR_NOMEM;
+    rc_status st = RC_OK;
+    for (size_t i = 0; i < n && st == RC_OK; i++)
+        if (color[i] == RC__WHITE)
+            st = rc__supersede_dfs(g, i, color, cycle_at);
+    free(color);
+    return st;
+}

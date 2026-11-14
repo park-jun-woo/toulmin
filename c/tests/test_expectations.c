@@ -17,14 +17,15 @@ static rc_graph *make_v1(void) {
     rc_graph_rule(g, ew_fn, NULL);
     return g;
 }
-/* verdict 1/3 결과 그래프 (보상 사슬 w←r←d). */
+/* verdict 1/3 결과 그래프 (보상 사슬 w←r←d, 반 강도 Except).
+   반박 r의 적용도 0.5 → r verdict 0 → w = 1/3. 강도 1이면 r이 완전히 게이트되어 w = 1.0. */
 static rc_graph *make_v13(void) {
     rc_graph *g = rc_graph_create("v13");
     rc_rule *w = rc_graph_rule(g, ew_fn, NULL);
     rc_rule *r = rc_graph_counter(g, er_fn, NULL);
     rc_rule *d = rc_graph_except(g, ed_fn, NULL);
     rc_rule_attacks(r, w);
-    rc_rule_attacks(d, r);
+    rc_rule_attacks_with_force(d, r, 0.5);
     return g;
 }
 /* 결과 0건 그래프 (비활성 규칙). */

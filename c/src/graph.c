@@ -66,6 +66,18 @@ bool rc__specs_append(rc_graph *g, rc_rule_meta *m, rc_spec *spec) {
     return true;
 }
 
+/* supersedes 배열이 need개를 담도록 성장한다. */
+bool rc__supersedes_reserve(rc_graph *g, size_t need) {
+    if (need <= g->cap_supersedes) return true;
+    size_t new_cap = g->cap_supersedes ? g->cap_supersedes * 2 : 8;
+    while (new_cap < need) new_cap *= 2;
+    rc_defeat_edge *grown = realloc(g->supersedes, new_cap * sizeof *grown);
+    if (!grown) { rc__set_error(g, RC_ERR_NOMEM, "out of memory"); return false; }
+    g->supersedes = grown;
+    g->cap_supersedes = new_cap;
+    return true;
+}
+
 /* defeats 배열이 need개를 담도록 성장한다. */
 bool rc__defeats_reserve(rc_graph *g, size_t need) {
     if (need <= g->cap_defeats) return true;
@@ -100,6 +112,7 @@ void rc_graph_destroy(rc_graph *g) {
     for (size_t i = 0; i < g->n_handles; i++) free(g->handles[i]);
     free(g->handles);
     free(g->defeats);
+    free(g->supersedes);
     for (size_t i = 0; i < g->n_funcs; i++) free(g->funcs[i].id);
     free(g->funcs);
     free(g->name);
@@ -116,13 +129,20 @@ void rc_graph_set_evidence_destructor(rc_graph *g, void (*dtor)(void *)) {
     g->evidence_dtor = dtor;
 }
 
-/* 규칙을 등록한다. 실패(NULL 인자/중복/메모리) 시 NULL + last_error 기록. */
-static rc_rule *rc__register(rc_graph *g, rc_rule_func fn, void *user_data,
-                             rc_strength strength, const char *role) {
-    if (!g) return NULL;
-    if (!fn) { rc__set_error(g, RC_ERR_INVALID_ARG, "fn must not be NULL"); return NULL; }
+/* 규칙 메타의 함수 포인터(bool 또는 verdict)를 정체성 키용 범용 포인터로. */
+rc__any_fn rc__meta_fn(const rc_rule_meta *m) {
+    return m->fn ? (rc__any_fn)m->fn : (rc__any_fn)m->vfn;
+}
 
-    char *rid = rc__rule_id(g, fn, user_data, NULL, 0);
+/* 규칙을 등록한다. fn(bool)과 vfn(verdict) 중 정확히 하나만 non-NULL로 넘긴다.
+   실패(NULL 인자/중복/메모리) 시 NULL + last_error 기록. */
+static rc_rule *rc__register(rc_graph *g, rc_rule_func fn, rc_verdict_func vfn,
+                             void *user_data, rc_strength strength, const char *role) {
+    if (!g) return NULL;
+    if (!fn && !vfn) { rc__set_error(g, RC_ERR_INVALID_ARG, "fn must not be NULL"); return NULL; }
+
+    rc__any_fn key = fn ? (rc__any_fn)fn : (rc__any_fn)vfn;
+    char *rid = rc__rule_id(g, key, user_data, NULL, 0);
     if (!rid) { rc__set_error(g, RC_ERR_NOMEM, "out of memory"); return NULL; }
 
     /* 중복 검출: 같은 (fn, user_data) 쌍 → 같은 funcID → 이름 충돌 */
@@ -144,6 +164,7 @@ static rc_rule *rc__register(rc_graph *g, rc_rule_func fn, void *user_data,
     m->strength = strength;
     m->role = role;                         /* 정적 문자열 */
     m->fn = fn;
+    m->vfn = vfn;
     m->user_data = user_data;
 
     rc_rule *r = malloc(sizeof *r);
@@ -164,14 +185,28 @@ static rc_rule *rc__register(rc_graph *g, rc_rule_func fn, void *user_data,
     return r;
 }
 
+/* bool 규칙: true → +1, false → -1 (평가 시 변환). */
 rc_rule *rc_graph_rule(rc_graph *g, rc_rule_func fn, void *user_data) {
-    return rc__register(g, fn, user_data, RC_DEFEASIBLE, "rule");
+    return rc__register(g, fn, NULL, user_data, RC_DEFEASIBLE, "rule");
 }
 
 rc_rule *rc_graph_counter(rc_graph *g, rc_rule_func fn, void *user_data) {
-    return rc__register(g, fn, user_data, RC_DEFEASIBLE, "counter");
+    return rc__register(g, fn, NULL, user_data, RC_DEFEASIBLE, "counter");
 }
 
 rc_rule *rc_graph_except(rc_graph *g, rc_rule_func fn, void *user_data) {
-    return rc__register(g, fn, user_data, RC_DEFEATER, "except");
+    return rc__register(g, fn, NULL, user_data, RC_DEFEATER, "except");
+}
+
+/* verdict 규칙: 규칙 함수가 v ∈ [-1,1]을 직접 낸다. */
+rc_rule *rc_graph_rule_verdict(rc_graph *g, rc_verdict_func fn, void *user_data) {
+    return rc__register(g, NULL, fn, user_data, RC_DEFEASIBLE, "rule");
+}
+
+rc_rule *rc_graph_counter_verdict(rc_graph *g, rc_verdict_func fn, void *user_data) {
+    return rc__register(g, NULL, fn, user_data, RC_DEFEASIBLE, "counter");
+}
+
+rc_rule *rc_graph_except_verdict(rc_graph *g, rc_verdict_func fn, void *user_data) {
+    return rc__register(g, NULL, fn, user_data, RC_DEFEATER, "except");
 }

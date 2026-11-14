@@ -167,7 +167,7 @@ toulmin: **2 lines per requirement, structure never changes.** if-else: **restru
 ```bash
 npm install rulecat          # TypeScript
 pip install rulecat          # Python (planned)
-go get github.com/park-jun-woo/toulmin/pkg/toulmin  # Go
+go get github.com/park-jun-woo/toulmin/go/pkg/toulmin  # Go
 make -C c build              # C — vendor the c/ dir, or `make -C c install` (see c/README.md)
 ```
 
@@ -176,14 +176,19 @@ make -C c build              # C — vendor the c/ dir, or `make -C c install` (
 ### Rules are functions
 
 ```typescript
-// TypeScript
-const fn: RuleFunc = (ctx, specs) => [boolean, unknown]
+// TypeScript — number v in [-1, +1], or boolean (true → +1, false → -1)
+const fn: RuleFunc = (ctx, specs) => [number | boolean, unknown]
 
-// Python
-def fn(ctx: Context, specs: list[Spec]) -> tuple[bool, Any]: ...
+// Python — float v in [-1, +1], or bool (True → +1, False → -1)
+def fn(ctx: Context, specs: list[Spec]) -> tuple[float | bool, Any]: ...
 
 // Go
-func fn(ctx Context, specs Specs) (bool, any)
+func fn(ctx Context, specs Specs) (float64, any) // graded: v in [-1, +1]
+func fn(ctx Context, specs Specs) (bool, any)    // still accepted: true → +1, false → -1
+
+// C
+bool rc_rule_func(...);     /* register with rc_graph_rule / _counter / _except */
+rc_verdict_func(... double *out_verdict); /* register with rc_graph_rule_verdict / _counter_verdict / _except_verdict */
 ```
 
 - `ctx` = context with get/set for per-request facts (user, IP, context)
@@ -220,7 +225,9 @@ expunged.Attacks(criminal)  // expungement neutralizes criminal record
 
 **Except is the differentiator.** "Exceptions to exceptions" cannot be structurally expressed with if-else. In a defeats graph, it's one edge.
 
-**Supersedes is a crisp override.** `Attacks` weighs into the h-Categoriser; `winner.Supersedes(loser)` doesn't. When `winner` is Active, `loser` is dropped from the tally outright — marked `Excluded` in the trace, never traversed — instead of merely having its verdict lowered. Use it when one rule must flatly take precedence over another rather than weigh against it.
+**Supersedes is a crisp override.** `Attacks` weighs into the h-Categoriser; `winner.Supersedes(loser)` doesn't. While `winner`'s applicability `a_eff > 0`, `loser` is dropped from the tally outright — marked `Excluded` in the trace, never traversed — instead of merely having its verdict lowered. Use it when one rule must flatly take precedence over another rather than weigh against it.
+
+`a_eff` is `winner`'s own `(v+1)/2` after its `Except` gates (see below); `Counter` rebuttals do not count, and a `Strict` winner keeps `(v+1)/2`. Any positive `a_eff`, even 0.3, excludes the whole loser. Example: a VIP discount supersedes the general discount. If a "suspended VIP" exception fully gates the VIP discount, the general discount is no longer excluded, so the customer still gets it; an exception with force 0.5 or a rebuttal against the VIP discount keeps the exclusion. An excluded rule keeps its own power to exclude (`X > Y > Z`: `Z` stays excluded even though `Y` is). Available in all four ports (`supersedes` in TS/Python, `rc_rule_supersedes` in C).
 
 ### Verdict
 
@@ -242,6 +249,63 @@ Not binary. **The framework interprets**:
 - Security: `verdict ≤ 0` → deny
 - Moderation: `verdict ≤ 0` → block, `0 < v ≤ 0.3` → flag, `> 0.3` → allow
 - Feature flags: `verdict > 0` → enabled
+
+### Graded rules, exceptions, and attack force
+
+A rule function may return how much it applies instead of a plain yes/no. All four ports share the semantics below; the Go names are used in the examples.
+
+| | Go | TypeScript | Python | C |
+|---|---|---|---|---|
+| graded rule | `(float64, any)` | `[number, unknown]` | `(float, Any)` | `rc_verdict_func` + `rc_graph_*_verdict` |
+| attack force | `Attacks(t, f)` | `attacks(t, f)` | `attacks(t, force=f)` | `rc_rule_attacks_with_force(r, t, f)` |
+| applicability | `EvalResult.Applicability` | `applicability` | `applicability` | `rc_eval_result.applicability` |
+| rule's own v | `TraceEntry.RuleVerdict` | `ruleVerdict` | `rule_verdict` | `rc_trace_entry.rule_verdict` |
+| invalid force / qualifier | panic | throws | `ValueError` | `RC_ERR_INVALID_ARG` |
+| invalid rule verdict | `Evaluate` error | error | `RuntimeError` | `RC_ERR_RULE` |
+
+In TypeScript and Python a return value that is neither a number nor a boolean (`undefined`, `None`) is an error, not "false".
+
+```go
+func fn(ctx Context, specs Specs) (float64, any) // v in [-1, +1]
+```
+
+| `v` | Meaning |
+|---|---|
+| `+1` | fully applies (the old `true`) |
+| `0` | **half applies** |
+| `-1` | does not apply (the old `false`) |
+
+**"Does not apply" is −1, not 0. Zero means "half applies".** A rule written with bool habits that returns `0, nil` for "no" does not switch off: it stays Active with applicability 0.5, its attackers are evaluated, and it still weighs into the graph. The verdict silently comes out wrong, and **the engine cannot detect this — 0 is a legal value, so you must watch for it yourself.** Return `-1` when the rule does not apply.
+
+- `v` must be in `[-1, +1]`. NaN or anything outside the range is an error: `Evaluate`/`Run` stop and return `rule "<id>": rule verdict <v> out of range [-1, 1]`, the same path as a panicking rule.
+- The old `func(Context, Specs) (bool, any)` signature still works unchanged: `true` → `+1`, `false` → `-1`, and bool graphs produce exactly the same verdicts as before (except where an `Except` attacks — see below).
+- A node is Active when `v > -1`. Only `v == -1` skips evaluating its attackers (lazy evaluation).
+- `TraceEntry.RuleVerdict` records the rule's own `v`; `TraceEntry.Activated` is kept as `v > -1`.
+
+Counter and Except are now computed differently:
+
+```
+a      = (v + 1) / 2                               own applicability
+S      = Σ_counter  F · (v_j + 1) / 2              rebuttals: denominator
+a_eff  = a · Π_except (1 − F · (v_j + 1) / 2)      exceptions: multiplicative gate
+raw    = q · a_eff / (1 + S)
+verdict = 2 · raw − 1
+```
+
+- A **Counter** (rebuttal) argues against the conclusion and stays in the denominator, as before.
+- An **Except** (exception) says the rule does not apply here: it scales down the target's applicability instead of adding to the denominator. One fully applying exception gates its target to `-1`; three exceptions with `v = 0.5` each leave `(1 − 0.75)³ ≈ 0.016` of the applicability. (Before, three exceptions only pulled a target down to `-0.5`.)
+- `Strict` rules ignore both. `Supersedes` excludes only while the superseder's `a_eff > 0`, so an exception that fully gates the superseder lifts its exclusion.
+- `EvalResult.Applicability` reports `a_eff` for each warrant.
+
+`Attacks` takes an optional force `F` in `[0, 1]`, default `1`:
+
+```go
+blocked.Attacks(auth)       // F = 1 (unchanged behaviour)
+hint.Attacks(auth, 0.3)     // a weak rebuttal
+partial.Attacks(rule, 0.5)  // an exception that removes at most half of the applicability
+```
+
+`F` scales both the rebuttal term and the exception gate. More than one force value, NaN, or a value outside `[0, 1]` panics at declaration, like `Qualifier`.
 
 ### Level
 
@@ -371,28 +435,29 @@ TANGEUL is a markdown policy language that compiles directly onto the core: no s
 - **Judgment and execution are separated.** A `Provides`/`Internal` entry either `check`s a case (compiles to `Graph.Evaluate` — pure) or `run`s one (compiles to `Graph.Run` — judgment then `do`/`undo` side effects via `RunOn`).
 - **Saga compensation, built in.** Each `do` arms its paired `undo` on a compensation stack the moment it succeeds; a later failure in the same pass replays the stack LIFO, and unrecoverable failures escalate to a `*tangl.ReviewError` carrying both the cause and the compensation error.
 - **Effect summary, for audit.** `tangl effects` statically lists every `do`/`undo` an endpoint can trigger — without running it.
-- **Crisp overrides and levels, in the surface too.** `` `X` supersedes `Y` `` excludes `Y` from the tally when `X` holds. `` supersede in order: `A` > `B` > `C` `` expands to every earlier→later priority edge. A trailing `, level fail` / `, level review` tags a case's crisp reporting level. All forms round-trip in either locale.
-- **One binary source of truth (TANGEUL).** `tangl encode` absorbs an authored `.md` surface into a compact, locale-independent `.tangeul` stream (AST + verbatim prose spans); every other command runs on that stream. `tangl decode` renders it back to a text surface — byte-identically in mode 1, or regenerated into another locale in mode 2.
-- **English or Korean surface, same AST.** `tangl encode` auto-detects en/ko from the document's section headers; `tangl decode --locale ko` renders any `.tangeul` as a Korean audit surface for non-developer reviewers (see `TANGEUL.ko.md`).
+- **Attack force, in the surface too.** `` don't `X` when `Y` `` is an attack of force 1; `` `Y` attacks `X` with force 0.5 `` (KO `` `Y` 면 `X` 를 0.5의 세기로 공격한다 ``) compiles to `Y.Attacks(X, 0.5)`. The force is a weight in `[0, 1]` (at most four decimals) carried in `.geul` as the ATTACKS `F_FORCE` slot.
+- **Crisp overrides and levels, in the surface too.** `` `X` supersedes `Y` `` excludes `Y` from the tally while `X` applies (`a_eff > 0`). `` supersede in order: `A` > `B` > `C` `` expands to every earlier→later priority edge. A trailing `, level fail` / `, level review` tags a case's crisp reporting level. All forms round-trip in either locale.
+- **One binary source of truth (TANGEUL).** `tangl encode` absorbs an authored `.md` surface into a compact, locale-independent `.geul` file — exactly one GEUL DOC (GEUL t002, TOULMIN codec) holding the AST and the verbatim prose spans; every other command runs on that stream. `tangl decode` renders it back to a text surface — byte-identically in mode 1, or regenerated into another locale in mode 2.
+- **English or Korean surface, same AST.** `tangl encode` auto-detects en/ko from the document's section headers; `tangl decode --locale ko` renders any `.geul` as a Korean audit surface for non-developer reviewers (see `TANGEUL.ko.md`).
 
 ```bash
-go install github.com/park-jun-woo/toulmin/cmd/tangl@latest
+go install github.com/park-jun-woo/toulmin/go/cmd/tangl@latest
 
-tangl encode policy.md -o policy.tangeul   # absorb the .md surface into a .tangeul stream (locale auto-detected)
-tangl check policy.tangeul                 # validate + lint
-tangl effects policy.tangeul pay           # static do/undo summary reachable from endpoint "pay"
-tangl gen policy.tangeul -o pay_gen.go     # compile the document to Go source
-tangl decode policy.tangeul                # render the stream back to text (mode-1, byte-identical)
-tangl decode policy.tangeul --locale ko    # render the same stream as a Korean audit surface (mode-2)
+tangl encode policy.md -o policy.geul   # absorb the .md surface into a .geul stream (locale auto-detected)
+tangl check policy.geul                 # validate + lint
+tangl effects policy.geul pay           # static do/undo summary reachable from endpoint "pay"
+tangl gen policy.geul -o pay_gen.go     # compile the document to Go source
+tangl decode policy.geul                # render the stream back to text (mode-1, byte-identical)
+tangl decode policy.geul --locale ko    # render the same stream as a Korean audit surface (mode-2)
 ```
 
 ```
-$ tangl encode pkg/tangl/parser/testdata/transfer.md -o transfer.tangeul
+$ tangl encode pkg/tangl/parser/testdata/transfer.md -o transfer.geul
 
-$ tangl check transfer.tangeul
+$ tangl check transfer.geul
 ok
 
-$ tangl effects transfer.tangeul transfer
+$ tangl effects transfer.geul transfer
 do   bank.withdraw        once (can withdraw / balance sufficient)
 undo bank.refund               (can withdraw / balance sufficient)
 do   bank.deposit         once (can deposit / recipient valid)

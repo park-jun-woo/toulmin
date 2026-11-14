@@ -1,0 +1,40 @@
+//ff:func feature=tangl type=util control=selection
+//ff:what readHeadRecord — apply one HEAD Meta record (SPEC-VERSION, PROFILE, DEFAULT-LANGUAGE)
+package stream
+
+import (
+	"fmt"
+
+	"github.com/geul-org/gogeul/pkg/toulmin"
+
+	"github.com/geul-org/gogeul/pkg/core"
+)
+
+// readHeadRecord applies one HEAD Meta record to h. Declaration-class Meta that
+// this reader does not know must not be ignored (it may change interpretation),
+// so it is an error; source, lineage, verification and policy Meta (codecs
+// 0x20-0x5F) only inform trust and handling and are skipped. IMPORT is not part
+// of the TANGEUL profile yet.
+func readHeadRecord(h *headInfo, r core.Record) error {
+	switch r.Codec {
+	case core.MetaSpecVersion:
+		h.spec = true
+		return expectSpecVersion(r)
+	case core.MetaProfile:
+		h.profile = true
+		s, err := metaText(r, core.CodecUTF8TextEven)
+		if err != nil {
+			return err
+		}
+		return toulmin.CheckProfile(s)
+	case core.MetaDefaultLanguage:
+		s, err := metaText(r, core.CodecLanguageBCP47Even)
+		h.locale = s
+		return err
+	default:
+		if r.Codec >= 0x20 && r.Codec < 0x60 {
+			return nil
+		}
+		return fmt.Errorf("tangeul/stream: unsupported HEAD Meta 0x%02X", r.Codec)
+	}
+}

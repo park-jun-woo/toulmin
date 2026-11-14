@@ -66,8 +66,11 @@ describe("Run — node handlers (Active only)", () => {
 
     expect(fired.map(e => e.name.replace(/_\d+$/, "")).sort()).toEqual(["authenticate", "exemptInternalIP"]);
     expect(byPrefix(trace.all(), "exemptInternalIP").verdict).toBeGreaterThan(0);
-    expect(byPrefix(trace.all(), "blockIP").verdict).toBe(0);
-    expect(byPrefix(trace.all(), "authenticate").verdict).toBeCloseTo(1 / 3, 5);
+    // except gates blockIP's applicability to 0 → verdict -1 (was 0 when except sat in the
+    // denominator), so blockIP no longer weighs on authenticate: 1.0 (was 1/3).
+    expect(byPrefix(trace.all(), "blockIP").verdict).toBe(-1);
+    expect(byPrefix(trace.all(), "blockIP").activated).toBe(true);
+    expect(byPrefix(trace.all(), "authenticate").verdict).toBe(1.0);
   });
 
   it("roles are carried on trace entries", () => {
@@ -280,7 +283,7 @@ describe("Run — trace argument (node inspection)", () => {
 
     expect(trace.all()).toHaveLength(3);
     expect(byPrefix(trace.all(), "authenticate").verdict).toBeGreaterThan(0);
-    expect(byPrefix(trace.all(), "blockIP").verdict).toBe(0);
+    expect(byPrefix(trace.all(), "blockIP").verdict).toBe(-1);   // gated out by except (was 0)
     expect(byPrefix(trace.all(), "exemptInternalIP").verdict).toBeGreaterThan(0);
   });
 });

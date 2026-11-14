@@ -26,3 +26,14 @@ py/.coverage
 ts/coverage/
 AGENTS.md
 gde/
+
+# TSMA 산출물·비밀 (보안 점검 2026-10-27)
+tsma-results.jsonl
+session.json
+.env*
+*.key
+*.pem
+
+# 로컬 Go 워크스페이스(상위 draft/go.work를 쓴다)
+go.work
+go.work.sum

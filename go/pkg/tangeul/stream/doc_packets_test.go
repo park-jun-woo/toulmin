@@ -1,0 +1,38 @@
+//ff:func feature=tangl type=util control=sequence
+//ff:what docPackets — test helper: the classified BODY records and reader state of an encoded document
+package stream
+
+import (
+	"testing"
+
+	"github.com/geul-org/gogeul/pkg/toulmin"
+
+	"github.com/geul-org/gogeul/pkg/core"
+)
+
+// docPackets parses b (WriteDoc output) down to its classified BODY records and
+// returns them with a fresh reader state at the document's SPAN width, as ReadDoc
+// would have them before walking statements.
+func docPackets(t *testing.T, b []byte) (*dec, []rawPacket) {
+	t.Helper()
+	ws, err := core.ReadWords(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gd, err := core.SplitDocument(ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readHead(gd.Head); err != nil {
+		t.Fatal(err)
+	}
+	packets, err := readPackets(gd.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, sw, err := readPreamble(packets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return newDec(toulmin.Wire{Span: sw}), packets
+}

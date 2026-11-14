@@ -50,7 +50,8 @@ static void test_warrant_counter(void) {
     rc_graph_destroy(g);
 }
 
-/* 보상 사슬 w←r←d → 1/3 */
+/* 보상 사슬 w←r←d → 1.0. Except(d)가 반박 r의 적용도를 0으로 게이트(r verdict -1)하므로
+   r이 w에 무게를 싣지 않는다(완전 보상). Except가 r의 분모에 있던 0.1.0까지는 1/3이었다. */
 static void test_compensation_chain(void) {
     rc_graph *g = rc_graph_create("test");
     rc_context *ctx = rc_map_context_create();
@@ -64,7 +65,7 @@ static void test_compensation_chain(void) {
     ASSERT_TRUE(rc_graph_evaluate(g, ctx, NULL, &res) == RC_OK);
     size_t n; const rc_eval_result *items = rc_results_items(res, &n);
     ASSERT_TRUE(n == 1);
-    ASSERT_NEAR(items[0].verdict, 1.0 / 3.0, 1e-5);
+    ASSERT_NEAR(items[0].verdict, 1.0, 1e-12);
 
     rc_results_destroy(res);
     rc_map_context_destroy(ctx);

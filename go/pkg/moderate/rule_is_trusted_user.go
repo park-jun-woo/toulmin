@@ -1,0 +1,20 @@
+//ff:func feature=moderate type=rule control=sequence
+//ff:what IsTrustedUser: spec(TrustScoreSpec)으로 지정된 최소 신뢰 점수 이상인지 판정
+package moderate
+
+import "github.com/park-jun-woo/toulmin/go/pkg/toulmin"
+
+// IsTrustedUser checks if the author's trust score meets the minimum.
+// spec is *TrustScoreSpec.
+func IsTrustedUser(ctx toulmin.Context, specs toulmin.Specs) (bool, any) {
+	author, _ := ctx.Get("author")
+	if len(specs) == 0 {
+		return false, nil
+	}
+	tb := specs[0].(*TrustScoreSpec)
+	a, ok := author.(*Author)
+	if !ok {
+		return false, nil
+	}
+	return a.TrustScore >= tb.MinScore, nil
+}

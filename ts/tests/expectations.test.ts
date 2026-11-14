@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { verdictAbove, verdictAtMost, verdictBetween, noResult, type EvalResult } from "../src/index.js";
 
 describe("Expectations", () => {
-  const result = (v: number): EvalResult[] => [{ name: "test", verdict: v }];
+  const result = (v: number): EvalResult[] => [{ name: "test", verdict: v, applicability: 1 }];
 
   it("verdictAbove passes when verdict > threshold", () => {
     expect(() => verdictAbove(0)(result(0.5))).not.toThrow();
