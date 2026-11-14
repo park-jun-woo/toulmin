@@ -12,4 +12,5 @@ func (r *Rule) Supersedes(target *Rule) {
 		from: r.id,
 		to:   target.id,
 	})
+	r.graph.touch()
 }

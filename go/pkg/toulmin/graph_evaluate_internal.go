@@ -6,7 +6,7 @@ package toulmin
 // When full is true, every node is calc'd so inactive nodes also have their state filled.
 // Returns an error if the defeat graph contains a cycle or a rule panics.
 func (g *Graph) evaluate(ctx Context, opt EvalOption, full bool) ([]EvalResult, *evalContext, error) {
-	ec, err := newEvalContext(g.rules, g.defeats, g.supersedes, g.roles)
+	ec, err := g.plan().context()
 	if err != nil {
 		return nil, nil, err
 	}

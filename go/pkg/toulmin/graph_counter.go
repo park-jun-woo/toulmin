@@ -18,5 +18,6 @@ func (g *Graph) Counter(fn any) *Rule {
 		Fn:        wrapped,
 	})
 	g.roles[id] = "counter"
+	g.touch()
 	return &Rule{id: id, graph: g, idx: idx, fn: fn}
 }

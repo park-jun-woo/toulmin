@@ -2,6 +2,8 @@
 //ff:what Graph — defeats graph with rule registration and evaluation
 package toulmin
 
+import "sync/atomic"
+
 // Graph accumulates rules and defeat edges for graph construction and evaluation.
 type Graph struct {
 	name       string
@@ -9,4 +11,5 @@ type Graph struct {
 	roles      map[string]string
 	defeats    []defeatEdge
 	supersedes []defeatEdge
+	compiled   atomic.Pointer[evalPlan]
 }

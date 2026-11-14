@@ -14,4 +14,5 @@ func (r *Rule) Attacks(target *Rule, force ...float64) {
 		to:    target.id,
 		force: f,
 	})
+	r.graph.touch()
 }

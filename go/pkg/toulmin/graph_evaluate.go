@@ -9,6 +9,8 @@ import "fmt"
 // In Trace mode, each warrant is evaluated independently (rule functions may execute multiple times).
 // In non-Trace mode, rule results are shared across warrants (each function executes at most once).
 // Returns an error if the defeat graph contains a cycle or a rule panics.
+// The maps derived from the graph are built on the first evaluation and reused until the graph changes;
+// concurrent evaluations of an unchanging graph are safe as far as its rule functions are.
 func (g *Graph) Evaluate(ctx Context, opts ...EvalOption) ([]EvalResult, error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("toulmin: ctx must not be nil")
@@ -17,6 +19,9 @@ func (g *Graph) Evaluate(ctx Context, opts ...EvalOption) ([]EvalResult, error) 
 	if err != nil {
 		return nil, err
 	}
-	results, _, err := g.evaluate(ctx, opt, false)
+	results, ec, err := g.evaluate(ctx, opt, false)
+	if ec != nil && !opt.Trace {
+		ec.home.release(ec)
+	}
 	return results, err
 }

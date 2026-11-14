@@ -8,5 +8,6 @@ package toulmin
 func (r *Rule) Level(l Level) *Rule {
 	r.graph.rules[r.idx].Level = l
 	r.graph.rules[r.idx].LevelSet = true
+	r.graph.touch()
 	return r
 }

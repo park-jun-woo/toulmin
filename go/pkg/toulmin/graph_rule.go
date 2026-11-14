@@ -18,5 +18,6 @@ func (g *Graph) Rule(fn any) *Rule {
 		Fn:        wrapped,
 	})
 	g.roles[id] = "rule"
+	g.touch()
 	return &Rule{id: id, graph: g, idx: idx, fn: fn}
 }

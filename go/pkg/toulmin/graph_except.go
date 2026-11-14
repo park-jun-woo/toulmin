@@ -18,5 +18,6 @@ func (g *Graph) Except(fn any) *Rule {
 		Fn:        wrapped,
 	})
 	g.roles[id] = "except"
+	g.touch()
 	return &Rule{id: id, graph: g, idx: idx, fn: fn}
 }

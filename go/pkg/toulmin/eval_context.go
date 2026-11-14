@@ -23,4 +23,5 @@ type evalContext struct {
 	supersedeBy   map[string][]string
 	levelMap      map[string]Level
 	levelSetMap   map[string]bool
+	home          *evalPlan // the plan whose shared maps this state uses
 }

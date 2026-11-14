@@ -34,5 +34,6 @@ func (r *Rule) With(spec Spec) *Rule {
 			r.graph.supersedes[i].to = newID
 		}
 	}
+	r.graph.touch()
 	return r
 }

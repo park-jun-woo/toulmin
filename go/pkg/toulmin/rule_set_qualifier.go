@@ -11,5 +11,6 @@ func (r *Rule) Qualifier(q float64) *Rule {
 		panic("toulmin: qualifier must be between 0.0 and 1.0")
 	}
 	r.graph.rules[r.idx].Qualifier = q
+	r.graph.touch()
 	return r
 }
